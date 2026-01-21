@@ -2,8 +2,10 @@
     import { i18n } from '$lib/i18n.svelte';
     import { Search, Calendar } from 'lucide-svelte';
     import Button from '$lib/components/ui/Button.svelte';
+    import MonthPicker from '$lib/components/ui/MonthPicker.svelte';
     import Card from '$lib/components/ui/Card.svelte';
     import Badge from '$lib/components/ui/Badge.svelte';
+    import EmptyState from '$lib/components/ui/EmptyState.svelte';
     import { format } from 'date-fns';
     import { goto } from '$app/navigation';
     import { page } from '$app/state';
@@ -32,6 +34,10 @@
     }
 </script>
 
+<svelte:head>
+    <title>{i18n.t('labours')} - {i18n.t('monthlyReport')} | {i18n.t('appName')}</title>
+</svelte:head>
+
 <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -45,22 +51,12 @@
         <div class="flex flex-col md:flex-row gap-4">
             <div class="flex items-end gap-4 max-w-md flex-1">
                 <div class="flex-1">
-                    <label for="month" class="block text-sm font-medium text-gray-700 mb-1">{i18n.t('month')}</label>
-                    <div class="relative">
-                        <input 
-                            type="month" 
-                            id="month" 
-                            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white cursor-pointer"
-                            bind:value={selectedMonth}
-                        />
-                         <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                            <Calendar size={18} />
-                        </div>
-                    </div>
+                    <MonthPicker 
+                        label={i18n.t('month')}
+                        bind:value={selectedMonth}
+                        onchange={updateFilter}
+                    />
                 </div>
-                <Button onclick={updateFilter}>
-                    <Search size={18} /> Filter
-                </Button>
             </div>
 
              <div class="flex-1 relative">
@@ -71,7 +67,7 @@
                         id="search"
                         placeholder={i18n.t('searchPlaceholder')} 
                         bind:value={searchQuery} 
-                        class="w-full pl-10 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                        class="w-full pl-10 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                     />
                 </div>
             </div>
@@ -80,8 +76,11 @@
 
     <div class="grid grid-cols-1 gap-4">
         {#if filteredReports.length === 0}
-            <Card className="p-12 text-center text-gray-500">
-                <p>{i18n.t('noData')}</p>
+            <Card>
+                <EmptyState 
+                    title={i18n.t('noResults')} 
+                    icon={Calendar}
+                />
             </Card>
         {:else}
             <!-- Desktop Table -->
@@ -98,8 +97,12 @@
                     <tbody class="divide-y divide-gray-50">
                         {#each filteredReports as report}
                             <tr class="hover:bg-gray-50/50 transition-colors">
-                                <td class="px-6 py-2 text-sm font-bold text-gray-900 align-middle">{report.name}</td>
-                                <td class="px-6 py-2 text-sm font-mono font-bold text-indigo-600 align-middle">{report.code}</td>
+                                <td class="px-6 py-2 text-sm font-bold text-gray-900 align-middle">
+                                    <a href="/labours/{report.id}" class="hover:text-primary-600 transition-colors">
+                                        {report.name}
+                                    </a>
+                                </td>
+                                <td class="px-6 py-2 text-sm font-mono font-bold text-primary-600 align-middle">{report.code}</td>
                                 <td class="px-6 py-2 align-middle">
                                     <Badge status={report.isTrained ? 'success' : 'danger'}>
                                         {report.isTrained ? i18n.t('certificateOk') : i18n.t('noCertificate')}
@@ -122,8 +125,10 @@
                     <Card className="p-4 space-y-4">
                         <div class="flex justify-between items-start">
                              <div>
-                                <p class="text-lg font-bold text-gray-900">{report.name}</p>
-                                <p class="text-xs font-mono font-bold text-indigo-600">{report.code}</p>
+                                <a href="/labours/{report.id}" class="text-lg font-bold text-gray-900 hover:text-primary-600 transition-colors">
+                                    {report.name}
+                                </a>
+                                <p class="text-xs font-mono font-bold text-primary-600">{report.code}</p>
                             </div>
                             <Badge status="success" className="px-3 py-1 text-sm">
                                 {report.daysPresent} Days

@@ -6,36 +6,35 @@
     import Modal from '$lib/components/ui/Modal.svelte';
     import Input from '$lib/components/ui/Input.svelte';
     import Select from '$lib/components/ui/Select.svelte';
-    import DatePicker from '$lib/components/ui/DatePicker.svelte';
     import { enhance } from '$app/forms';
     import { invalidateAll } from '$app/navigation';
     import { toast } from 'svelte-sonner';
     import { format } from 'date-fns';
     import { formatDuration } from '$lib/utils';
-    import { User, Calendar, Briefcase, Hash, Info, Clock, CalendarCheck, Edit2 } from 'lucide-svelte';
+    import { User, Phone, Briefcase, Calendar, MapPin, Building, History, ArrowRight, UserCheck, Clock, Edit2 } from 'lucide-svelte';
     import type { PageData, ActionData } from './$types';
 
     let { data, form }: { data: PageData, form: ActionData } = $props();
 
     let isModalOpen = $state(false);
 
-    // Remove the $effect that relies on local 'form' prop as it won't work for cross-page actions
+    // Remove the $effect as we'll use enhance callback for cross-page actions
 
-    const labourTypeOptions = $derived([
-        { value: 'company', label: i18n.t('companyLabour') },
-        { value: 'contractor', label: i18n.t('contractorLabour') }
+    const visitorTypeOptions = $derived([
+        { value: 'guest', label: i18n.t('guest') },
+        { value: 'vendor', label: i18n.t('vendor') }
     ]);
 </script>
 
 <svelte:head>
-    <title>{data.labour.name} | {i18n.t('labours')} | {i18n.t('appName')}</title>
+    <title>{data.visitor.name} | {i18n.t('visitors')} | {i18n.t('appName')}</title>
 </svelte:head>
 
 <div class="space-y-8">
     <!-- Header Card -->
     <Card className="p-6 md:p-8">
         <div class="flex flex-col md:flex-row gap-8 items-start">
-            <div class="bg-primary-100 p-6 rounded-3xl text-primary-600">
+            <div class="bg-emerald-100 p-6 rounded-3xl text-emerald-600">
                 <User size={64} />
             </div>
             
@@ -43,14 +42,16 @@
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <div class="flex items-center gap-3">
-                            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight font-header">{data.labour.name}</h1>
+                            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight font-header">{data.visitor.name}</h1>
                             <Button variant="ghost" onclick={() => isModalOpen = true} className="p-2 h-9 w-9 min-w-0 bg-amber-50 hover:bg-amber-100">
                                 <Edit2 size={16} class="text-amber-600" />
                             </Button>
                         </div>
-                        <p class="text-primary-600 font-bold flex items-center gap-2 mt-1">
-                            <Hash size={16} /> {data.labour.codeNo}
-                        </p>
+                        <div class="flex wrap gap-3 mt-2">
+                            <Badge status="default" className="text-sm">
+                                {data.visitor.visitorType === 'vendor' ? i18n.t('vendor') : i18n.t('guest')}
+                            </Badge>
+                        </div>
                     </div>
                     <div class="flex flex-col items-end gap-2">
                         <Badge status={data.stats.currentStatus} className="px-4 py-2 text-base">
@@ -67,35 +68,23 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div class="space-y-1">
                         <p class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                            <Briefcase size={14} /> {i18n.t('designation')}
+                            <Building size={14} /> {i18n.t('company')}
                         </p>
-                        <p class="text-gray-900 font-semibold">{data.labour.designation || '-'}</p>
+                        <p class="text-gray-900 font-semibold">{data.visitor.company || '-'}</p>
                     </div>
                     <div class="space-y-1">
                         <p class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                            <Info size={14} /> {i18n.t('type')}
+                            <Phone size={14} /> {i18n.t('phone')}
                         </p>
-                        <Badge status={data.labour.type === 'company' ? 'on_premises' : 'default'}>
-                            {data.labour.type === 'company' ? i18n.t('companyLabour') : i18n.t('contractorLabour')}
-                        </Badge>
+                        <p class="text-gray-900 font-semibold">{data.visitor.contactNo || '-'}</p>
                     </div>
                     <div class="space-y-1">
                         <p class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                             <Calendar size={14} /> {i18n.t('joinDate')}
                         </p>
                         <p class="text-gray-900 font-semibold">
-                            {data.labour.joinDate ? format(new Date(data.labour.joinDate), 'PPP') : '-'}
+                            {data.visitor.createdAt ? format(new Date(data.visitor.createdAt), 'PPP') : '-'}
                         </p>
-                    </div>
-                    <div class="space-y-1">
-                        <p class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                            <Info size={14} /> {i18n.t('isTrained')}
-                        </p>
-                        <div>
-                            <Badge status={data.labour.isTrained ? 'success' : 'danger'}>
-                                {data.labour.isTrained ? i18n.t('certificateOk') : i18n.t('noCertificate')}
-                            </Badge>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -107,22 +96,24 @@
         <Card className="p-6">
             <div class="flex items-center gap-4">
                 <div class="bg-blue-50 text-blue-600 p-3 rounded-xl">
-                    <CalendarCheck size={24} />
+                    <UserCheck size={24} />
                 </div>
                 <div>
-                    <p class="text-sm font-bold text-gray-400 uppercase tracking-wider">{i18n.t('totalPresentDays')}</p>
-                    <p class="text-2xl font-black text-gray-900">{data.stats.totalPresentDays}</p>
+                    <p class="text-sm font-bold text-gray-400 uppercase tracking-wider">{i18n.t('totalVisits')}</p>
+                    <p class="text-2xl font-black text-gray-900">{data.stats.totalVisits}</p>
                 </div>
             </div>
         </Card>
         <Card className="p-6">
             <div class="flex items-center gap-4">
                 <div class="bg-amber-50 text-amber-600 p-3 rounded-xl">
-                    <Clock size={24} />
+                    <History size={24} />
                 </div>
                 <div>
-                    <p class="text-sm font-bold text-gray-400 uppercase tracking-wider">{i18n.t('avgWorkingHours')}</p>
-                    <p class="text-2xl font-black text-gray-900">{data.stats.avgWorkingHours}h</p>
+                    <p class="text-sm font-bold text-gray-400 uppercase tracking-wider">{i18n.t('lastVisit')}</p>
+                    <p class="text-lg font-bold text-gray-900">
+                        {data.stats.lastVisit ? format(new Date(data.stats.lastVisit), 'PPP') : i18n.t('noData')}
+                    </p>
                 </div>
             </div>
         </Card>
@@ -143,9 +134,10 @@
                         <thead class="bg-gray-50 border-b">
                             <tr>
                                 <th class="px-6 py-4 text-sm font-bold text-gray-500 uppercase">{i18n.t('date')}</th>
+                                <th class="px-6 py-4 text-sm font-bold text-gray-500 uppercase">{i18n.t('purpose')}</th>
                                 <th class="px-6 py-4 text-sm font-bold text-gray-500 uppercase">{i18n.t('entryTime')}</th>
                                 <th class="px-6 py-4 text-sm font-bold text-gray-500 uppercase">{i18n.t('exitTime')}</th>
-                                <th class="px-6 py-4 text-sm font-bold text-gray-500 uppercase">{i18n.t('workingHours')}</th>
+                                <th class="px-6 py-4 text-sm font-bold text-gray-500 uppercase">{i18n.t('duration')}</th>
                                 <th class="px-6 py-4 text-sm font-bold text-gray-500 uppercase">{i18n.t('status')}</th>
                             </tr>
                         </thead>
@@ -154,6 +146,9 @@
                                 <tr class="hover:bg-gray-50 transition-colors">
                                     <td class="px-6 py-4 text-sm font-medium text-gray-900">
                                         {format(new Date(log.date), 'PPP')}
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                                        {log.purpose || '-'}
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-600">
                                         {format(new Date(log.entryTime), 'p')}
@@ -181,12 +176,12 @@
 
 <Modal 
     open={isModalOpen} 
-    title={i18n.t('edit') + ' ' + i18n.t('labours')}
+    title={i18n.t('edit') + ' ' + i18n.t('visitors')}
     onclose={() => { isModalOpen = false; }}
 >
     <form 
         method="POST" 
-        action="/labours?/update" 
+        action="/visitors/profiles?/update" 
         use:enhance={() => {
             return async ({ result }) => {
                 if (result.type === 'success') {
@@ -200,52 +195,34 @@
         }} 
         class="space-y-4"
     >
-        <input type="hidden" name="id" value={data.labour.id} />
+        <input type="hidden" name="id" value={data.visitor.id} />
         
         <Input 
             label={i18n.t('name')} 
             name="name" 
             required 
-            value={data.labour.name || ''} 
+            value={data.visitor.name || ''} 
         />
         
         <Input 
-            label={i18n.t('codeNo')} 
-            name="codeNo" 
-            required 
-            value={data.labour.codeNo || ''} 
+            label={i18n.t('company')} 
+            name="company" 
+            value={data.visitor.company || ''} 
+        />
+        
+        <Input 
+            label={i18n.t('phone')} 
+            name="contactNo" 
+            value={data.visitor.contactNo || ''} 
         />
         
         <Select 
-            label={i18n.t('type')} 
-            name="type" 
+            label={i18n.t('visitorType')} 
+            name="visitorType" 
             required 
-            options={labourTypeOptions}
-            value={data.labour.type || 'company'}
+            options={visitorTypeOptions}
+            value={data.visitor.visitorType || 'guest'}
         />
-        
-        <Input 
-            label={i18n.t('designation')} 
-            name="designation" 
-            value={data.labour.designation || ''} 
-        />
-        
-        <DatePicker 
-            label={i18n.t('joinDate')} 
-            name="joinDate" 
-            value={data.labour.joinDate ? format(new Date(data.labour.joinDate), 'yyyy-MM-dd') : ''} 
-        />
-        
-        <div class="flex items-center gap-2">
-            <input 
-                type="checkbox" 
-                id="isTrained" 
-                name="isTrained" 
-                class="w-5 h-5 text-primary-600 rounded focus:ring-primary-500 border-gray-300"
-                checked={data.labour.isTrained}
-            />
-            <label for="isTrained" class="text-sm font-medium text-gray-700">{i18n.t('isTrained')}</label>
-        </div>
 
         <div class="flex gap-3 pt-4">
             <Button variant="outline" onclick={() => isModalOpen = false} className="flex-1">

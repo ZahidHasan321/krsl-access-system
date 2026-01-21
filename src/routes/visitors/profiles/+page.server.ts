@@ -19,7 +19,7 @@ export const actions: Actions = {
         const name = data.get('name') as string;
         const company = data.get('company') as string;
         const contactNo = data.get('contactNo') as string;
-        const visitorType = data.get('visitorType') as 'vendor' | 'transport' | 'guest';
+        const visitorType = data.get('visitorType') as 'vendor' | 'guest';
         const shouldCheckIn = data.get('checkIn') === 'on';
 
         if (!name || !visitorType) {
@@ -63,7 +63,7 @@ export const actions: Actions = {
         const name = data.get('name') as string;
         const company = data.get('company') as string;
         const contactNo = data.get('contactNo') as string;
-        const visitorType = data.get('visitorType') as 'vendor' | 'transport' | 'guest';
+        const visitorType = data.get('visitorType') as 'vendor' | 'guest';
 
         if (!id || !name || !visitorType) {
             return fail(400, { message: 'Missing required fields' });

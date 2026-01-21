@@ -7,6 +7,8 @@
     import Modal from '$lib/components/ui/Modal.svelte';
     import Card from '$lib/components/ui/Card.svelte';
     import Badge from '$lib/components/ui/Badge.svelte';
+    import EmptyState from '$lib/components/ui/EmptyState.svelte';
+    import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
     import { enhance } from '$app/forms';
     import { toast } from 'svelte-sonner';
     import { format } from 'date-fns';
@@ -15,8 +17,12 @@
     let { data, form }: { data: PageData, form: ActionData } = $props();
 
     let isModalOpen = $state(false);
+    let isConfirmOpen = $state(false);
+    let itemToCheckOut = $state<string | null>(null);
     let searchQuery = $state('');
     let typeFilter = $state('all');
+
+    let checkoutForm: HTMLFormElement;
 
     const filteredVehicles = $derived(
         data.activeVehicles.filter((v: any) => {
@@ -55,11 +61,17 @@
     ]);
 </script>
 
+<svelte:head>
+    <title>{i18n.t('vehicles')} - {i18n.t('activeLog')} | {i18n.t('appName')}</title>
+</svelte:head>
+
 <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-black text-gray-900">{i18n.t('vehicles')} - {i18n.t('activeLog')}</h1>
-            <p class="text-gray-500">{data.activeVehicles.length} {i18n.t('vehicles')} {i18n.t('inside')}</p>
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight font-header">
+                {i18n.t('vehicles')} <span class="text-amber-600">/</span> {i18n.t('activeLog')}
+            </h1>
+            <p class="text-slate-600 font-semibold">{data.activeVehicles.length} {i18n.t('vehicles')} {i18n.t('inside')}</p>
         </div>
         <Button onclick={() => isModalOpen = true} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700">
             <LogIn size={20} />
@@ -88,12 +100,11 @@
 
     <div class="grid grid-cols-1 gap-4">
         {#if filteredVehicles.length === 0}
-            <Card className="p-12 text-center">
-                <div class="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
-                    <Truck size={32} />
-                </div>
-                <p class="text-gray-500 font-medium">{i18n.t('noResults')}</p>
-                <p class="text-sm text-gray-400 mt-1">{i18n.t('noData')}</p>
+            <Card>
+                <EmptyState 
+                    title={i18n.t('noResults')} 
+                    icon={Truck}
+                />
             </Card>
         {:else}
             <!-- Desktop Table -->
@@ -114,7 +125,7 @@
                         {#each filteredVehicles as vehicle}
                             <tr class="hover:bg-gray-50/50 transition-colors">
                                 <td class="px-6 py-3 align-middle">
-                                    <p class="text-sm font-black text-indigo-600 font-mono uppercase tracking-widest">{vehicle.vehicleNumber}</p>
+                                    <p class="text-sm font-black text-primary-600 font-mono uppercase tracking-widest">{vehicle.vehicleNumber}</p>
                                 </td>
                                 <td class="px-6 py-3 align-middle">
                                     <Badge>
@@ -129,12 +140,13 @@
                                 <td class="px-6 py-3 text-sm text-gray-600 align-middle">{vehicle.cargoDescription || '-'}</td>
                                 <td class="px-6 py-3 text-sm text-gray-600 align-middle">{format(new Date(vehicle.entryTime), 'p')}</td>
                                 <td class="px-6 py-3 text-right align-middle">
-                                    <form method="POST" action="?/checkOut" use:enhance class="inline-block">
-                                        <input type="hidden" name="id" value={vehicle.id} />
-                                        <Button variant="danger" type="submit" className="px-3 py-1.5 text-sm h-9 whitespace-nowrap">
-                                            <LogOut size={16} /> {i18n.t('checkOut')}
-                                        </Button>
-                                    </form>
+                                    <Button 
+                                        variant="danger" 
+                                        onclick={() => { itemToCheckOut = vehicle.id; isConfirmOpen = true; }} 
+                                        className="px-3 py-1.5 text-sm h-9 whitespace-nowrap"
+                                    >
+                                        <LogOut size={16} /> {i18n.t('checkOut')}
+                                    </Button>
                                 </td>
                             </tr>
                         {/each}
@@ -149,7 +161,7 @@
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">{i18n.t('vehicleNo')}</p>
-                                <p class="text-xl font-black text-indigo-600 font-mono">{vehicle.vehicleNumber}</p>
+                                <p class="text-xl font-black text-primary-600 font-mono">{vehicle.vehicleNumber}</p>
                             </div>
                             <Badge status="on_premises">{i18n.t('onPremises')}</Badge>
                         </div>
@@ -179,12 +191,13 @@
                             </div>
                         {/if}
                         <div class="pt-2 border-t">
-                            <form method="POST" action="?/checkOut" use:enhance>
-                                <input type="hidden" name="id" value={vehicle.id} />
-                                <Button variant="danger" type="submit" className="w-full">
-                                    <LogOut size={16} /> {i18n.t('checkOut')}
-                                </Button>
-                            </form>
+                            <Button 
+                                variant="danger" 
+                                onclick={() => { itemToCheckOut = vehicle.id; isConfirmOpen = true; }} 
+                                className="w-full"
+                            >
+                                <LogOut size={16} /> {i18n.t('checkOut')}
+                            </Button>
                         </div>
                     </Card>
                 {/each}
@@ -226,7 +239,7 @@
             <textarea 
                 id="cargoDescription"
                 name="cargoDescription" 
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
             ></textarea>
         </div>
 
@@ -242,3 +255,20 @@
         </div>
     </form>
 </Modal>
+
+<form 
+    bind:this={checkoutForm}
+    method="POST" 
+    action="?/checkOut" 
+    use:enhance
+>
+    <input type="hidden" name="id" value={itemToCheckOut} />
+</form>
+
+<ConfirmModal
+    bind:open={isConfirmOpen}
+    title={i18n.t('checkOut')}
+    message={i18n.t('confirmCheckOut')}
+    variant="danger"
+    onconfirm={() => checkoutForm.requestSubmit()}
+/>

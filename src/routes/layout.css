@@ -1,2 +1,22 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
+
+@theme {
+    --font-sans: "Plus Jakarta Sans", "Anek Bangla", sans-serif;
+    --font-header: "Plus Jakarta Sans", "Anek Bangla", sans-serif;
+    --font-cursive: "Dancing Script", cursive;
+    --font-bn-stylized: "Galada", cursive;
+
+    /* Custom Steel Blue / Corporate Palette */
+    --color-primary-50: #f0f7ff;
+    --color-primary-100: #e0effe;
+    --color-primary-200: #bae0fd;
+    --color-primary-300: #7cc5fb;
+    --color-primary-400: #36a6f6;
+    --color-primary-500: #0c8ce9;
+    --color-primary-600: #006ec1;
+    --color-primary-700: #00589d;
+    --color-primary-800: #004b83;
+    --color-primary-900: #063f6a;
+    --color-primary-950: #042844;
+}

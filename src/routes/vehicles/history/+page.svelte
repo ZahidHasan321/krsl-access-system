@@ -1,10 +1,12 @@
 <script lang="ts">
     import { i18n } from '$lib/i18n.svelte';
-    import { Search, History, Truck } from 'lucide-svelte';
+    import { Search, History, Truck, Calendar } from 'lucide-svelte';
     import Card from '$lib/components/ui/Card.svelte';
     import Badge from '$lib/components/ui/Badge.svelte';
     import Input from '$lib/components/ui/Input.svelte';
     import Select from '$lib/components/ui/Select.svelte';
+    import DatePicker from '$lib/components/ui/DatePicker.svelte';
+    import EmptyState from '$lib/components/ui/EmptyState.svelte';
     import { format } from 'date-fns';
     import type { PageData } from './$types';
     import { goto } from '$app/navigation';
@@ -12,10 +14,12 @@
     let { data }: { data: PageData } = $props();
 
     let searchQuery = $state('');
+    let selectedDate = $state('');
     let typeFilter = $state('all');
 
     $effect(() => {
         searchQuery = data.query || '';
+        selectedDate = data.date || '';
     });
 
     const typeFilterOptions = $derived([
@@ -30,22 +34,33 @@
             : data.vehicles.filter((v: any) => v.type === typeFilter)
     );
 
-    function handleSearch() {
+    function updateFilters() {
         const url = new URL(window.location.href);
         if (searchQuery) {
             url.searchParams.set('q', searchQuery);
         } else {
             url.searchParams.delete('q');
         }
+
+        if (selectedDate) {
+            url.searchParams.set('date', selectedDate);
+        } else {
+            url.searchParams.delete('date');
+        }
+
         goto(url.toString(), { keepFocus: true, replaceState: true });
     }
 
     let timeout: any;
     function debounceSearch() {
         clearTimeout(timeout);
-        timeout = setTimeout(handleSearch, 300);
+        timeout = setTimeout(updateFilters, 300);
     }
 </script>
+
+<svelte:head>
+    <title>{i18n.t('vehicles')} - {i18n.t('history')} | {i18n.t('appName')}</title>
+</svelte:head>
 
 <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -56,18 +71,31 @@
     </div>
 
     <Card className="p-4">
-        <div class="flex flex-col sm:flex-row gap-4">
-            <div class="relative flex-1">
-                <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                <Input
-                    placeholder={i18n.t('searchPlaceholder')}
-                    bind:value={searchQuery}
-                    oninput={debounceSearch}
-                    className="pl-10"
+        <div class="flex flex-col md:flex-row gap-4">
+            <div class="md:w-64">
+                <DatePicker 
+                    label={i18n.t('date')}
+                    bind:value={selectedDate}
+                    onchange={updateFilters}
                 />
             </div>
-            <div class="sm:w-48">
+            <div class="relative flex-1">
+                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">{i18n.t('vehicleNo')} / {i18n.t('driverName')} / {i18n.t('vendorName')}</label>
+                <div class="relative">
+                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <Input
+                        id="search"
+                        placeholder={i18n.t('searchPlaceholder')}
+                        bind:value={searchQuery}
+                        oninput={debounceSearch}
+                        className="pl-10"
+                    />
+                </div>
+            </div>
+            <div class="md:w-48">
+                <label for="type" class="block text-sm font-medium text-gray-700 mb-1">{i18n.t('type')}</label>
                 <Select
+                    id="type"
                     options={typeFilterOptions}
                     bind:value={typeFilter}
                 />
@@ -77,11 +105,11 @@
 
     <div class="grid grid-cols-1 gap-4">
         {#if filteredVehicles.length === 0}
-            <Card className="p-12 text-center">
-                <div class="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
-                    <Truck size={32} />
-                </div>
-                <p class="text-gray-500 font-medium">{i18n.t('noResults')}</p>
+            <Card>
+                <EmptyState 
+                    title={i18n.t('noResults')} 
+                    icon={Truck}
+                />
             </Card>
         {:else}
             <!-- Desktop Table -->
@@ -102,10 +130,10 @@
                     <tbody class="divide-y divide-gray-50">
                         {#each filteredVehicles as vehicle}
                             <tr class="hover:bg-gray-50/50 transition-colors">
-                                <td class="px-6 py-3 text-sm font-medium text-gray-900 align-middle">
+                                <td class="px-6 py-3 text-sm font-medium text-gray-900 align-middle whitespace-nowrap">
                                     {format(new Date(vehicle.date), 'PPP')}
                                 </td>
-                                <td class="px-6 py-3 text-sm font-black text-indigo-600 font-mono uppercase align-middle">
+                                <td class="px-6 py-3 text-sm font-black text-primary-600 font-mono uppercase align-middle whitespace-nowrap">
                                     {vehicle.vehicleNumber}
                                 </td>
                                 <td class="px-6 py-3 align-middle">
@@ -136,7 +164,7 @@
                     <Card className="p-4 space-y-4">
                         <div class="flex justify-between items-start">
                             <div>
-                                <p class="text-sm font-bold text-indigo-600">{format(new Date(vehicle.date), 'PP')}</p>
+                                <p class="text-sm font-bold text-primary-600">{format(new Date(vehicle.date), 'PP')}</p>
                                 <p class="text-lg font-black text-gray-900 font-mono uppercase">{vehicle.vehicleNumber}</p>
                             </div>
                             <Badge>

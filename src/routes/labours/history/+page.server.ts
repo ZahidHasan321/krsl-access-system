@@ -11,6 +11,7 @@ export const load: PageServerLoad = async ({ url }) => {
     const logs = await db
         .select({
             id: labourLogs.id,
+            labourId: labourLogs.labourId,
             entryTime: labourLogs.entryTime,
             exitTime: labourLogs.exitTime,
             status: labourLogs.status,

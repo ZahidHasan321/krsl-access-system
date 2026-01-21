@@ -16,5 +16,22 @@ export const load: PageServerLoad = async ({ params }) => {
         orderBy: [desc(labourLogs.date), desc(labourLogs.entryTime)]
     });
 
-    return { labour, logs };
+    // Calculate metrics
+    const totalPresentDays = new Set(logs.map(l => l.date)).size;
+    const currentStatus = logs.find(l => l.status === 'on_premises') ? 'on_premises' : 'checked_out';
+    
+    let totalHours = 0;
+    let daysWithHours = 0;
+
+    for (const log of logs) {
+        if (log.exitTime && log.entryTime) {
+            const duration = log.exitTime.getTime() - log.entryTime.getTime();
+            totalHours += duration / (1000 * 60 * 60); // Convert ms to hours
+            daysWithHours++;
+        }
+    }
+
+    const avgWorkingHours = daysWithHours > 0 ? (totalHours / daysWithHours).toFixed(1) : '0';
+
+    return { labour, logs, stats: { totalPresentDays, avgWorkingHours, currentStatus } };
 };

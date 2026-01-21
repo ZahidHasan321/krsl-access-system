@@ -1,12 +1,13 @@
 <script lang="ts">
     import { i18n } from '$lib/i18n.svelte';
-    import { Plus, Search, Edit2, Trash2, User } from 'lucide-svelte';
+    import { Plus, Search, Edit2, Trash2, User, Eye } from 'lucide-svelte';
     import Button from '$lib/components/ui/Button.svelte';
     import Input from '$lib/components/ui/Input.svelte';
     import Select from '$lib/components/ui/Select.svelte';
     import Modal from '$lib/components/ui/Modal.svelte';
     import Card from '$lib/components/ui/Card.svelte';
     import Badge from '$lib/components/ui/Badge.svelte';
+    import EmptyState from '$lib/components/ui/EmptyState.svelte';
     import { enhance } from '$app/forms';
     import { toast } from 'svelte-sonner';
     import type { PageData, ActionData } from './$types';
@@ -46,16 +47,21 @@
 
     const visitorTypeOptions = $derived([
         { value: 'guest', label: i18n.t('guest') },
-        { value: 'vendor', label: i18n.t('vendor') },
-        { value: 'transport', label: i18n.t('transport') }
+        { value: 'vendor', label: i18n.t('vendor') }
     ]);
 </script>
+
+<svelte:head>
+    <title>{i18n.t('visitors')} - {i18n.t('registry')} | {i18n.t('appName')}</title>
+</svelte:head>
 
 <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-black text-gray-900">{i18n.t('visitors')} - {i18n.t('registry')}</h1>
-            <p class="text-gray-500">{data.profiles.length} {i18n.t('visitors')} {i18n.t('noResults').toLowerCase() === 'no results found.' ? 'total' : 'মোট'}</p>
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight font-header">
+                {i18n.t('visitors')} <span class="text-emerald-600">/</span> {i18n.t('registry')}
+            </h1>
+            <p class="text-slate-600 font-semibold">{data.profiles.length} {i18n.t('visitors')} {i18n.t('noResults').toLowerCase() === 'no results found.' ? 'total' : 'মোট'}</p>
         </div>
         <Button onclick={openAddModal} className="w-full sm:w-auto">
             <Plus size={20} />
@@ -76,11 +82,11 @@
 
     <div class="grid grid-cols-1 gap-4">
         {#if filteredProfiles.length === 0}
-            <Card className="p-12 text-center">
-                <div class="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
-                    <User size={32} />
-                </div>
-                <p class="text-gray-500 font-medium">{i18n.t('noResults')}</p>
+            <Card>
+                <EmptyState 
+                    title={i18n.t('noResults')} 
+                    icon={User}
+                />
             </Card>
         {:else}
             <!-- Desktop Table -->
@@ -98,7 +104,11 @@
                     <tbody class="divide-y divide-gray-50">
                         {#each filteredProfiles as profile}
                             <tr class="hover:bg-gray-50/50 transition-colors">
-                                <td class="px-6 py-2 text-sm font-bold text-gray-900 align-middle">{profile.name}</td>
+                                <td class="px-6 py-2 align-middle">
+                                    <a href="/visitors/{profile.id}" class="text-sm font-bold text-gray-900 hover:text-primary-600 transition-colors">
+                                        {profile.name}
+                                    </a>
+                                </td>
                                 <td class="px-6 py-2 text-sm text-gray-600 align-middle">{profile.company || '-'}</td>
                                 <td class="px-6 py-2 text-sm text-gray-600 align-middle">{profile.contactNo || '-'}</td>
                                 <td class="px-6 py-2 align-middle">
@@ -108,6 +118,11 @@
                                 </td>
                                 <td class="px-6 py-2 text-right align-middle">
                                     <div class="flex items-center justify-end gap-2">
+                                        <a href="/visitors/{profile.id}" class="inline-block" title={i18n.t('details')}>
+                                            <Button variant="ghost" className="p-2 h-9 w-9 min-w-0">
+                                                <Eye size={16} class="text-emerald-600" />
+                                            </Button>
+                                        </a>
                                         <Button variant="ghost" onclick={() => openEditModal(profile)} className="p-2 h-9 w-9 min-w-0">
                                             <Edit2 size={16} class="text-amber-600" />
                                         </Button>
@@ -202,7 +217,7 @@
                     type="checkbox" 
                     id="checkIn" 
                     name="checkIn" 
-                    class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
+                    class="w-5 h-5 text-primary-600 rounded focus:ring-primary-500 border-gray-300"
                 />
                 <label for="checkIn" class="text-sm font-medium text-gray-700">{i18n.t('checkInImmediately')}</label>
             </div>

@@ -1,14 +1,16 @@
 import { db } from '$lib/server/db';
 import { visitorLogs, visitorProfiles } from '$lib/server/db/schema';
-import { desc, eq, like, or } from 'drizzle-orm';
+import { desc, eq, like, or, and } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url }) => {
     const query = url.searchParams.get('q') || '';
+    const date = url.searchParams.get('date') || '';
     
     let logsQuery = db
         .select({
             id: visitorLogs.id,
+            visitorId: visitorLogs.visitorId,
             entryTime: visitorLogs.entryTime,
             exitTime: visitorLogs.exitTime,
             purpose: visitorLogs.purpose,
@@ -24,19 +26,27 @@ export const load: PageServerLoad = async ({ url }) => {
         .innerJoin(visitorProfiles, eq(visitorLogs.visitorId, visitorProfiles.id))
         .orderBy(desc(visitorLogs.date), desc(visitorLogs.entryTime));
 
+    const conditions = [];
+
     if (query) {
-        // Unfortunately drizzle-orm with better-sqlite3 select() builder doesn't support easy complex filtering on joined tables in some versions
-        // But we can try:
-        logsQuery = logsQuery.where(
+        conditions.push(
             or(
                 like(visitorProfiles.name, `%${query}%`),
                 like(visitorProfiles.company, `%${query}%`),
                 like(visitorLogs.visitingCardNo, `%${query}%`)
             )
-        ) as any;
+        );
+    }
+
+    if (date) {
+        conditions.push(eq(visitorLogs.date, date));
+    }
+
+    if (conditions.length > 0) {
+        logsQuery = logsQuery.where(and(...conditions)) as any;
     }
 
     const logs = await logsQuery.limit(100);
 
-    return { logs, query };
+    return { logs, query, date };
 };

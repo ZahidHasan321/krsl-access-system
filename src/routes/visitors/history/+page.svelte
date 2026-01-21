@@ -1,21 +1,26 @@
 <script lang="ts">
     import { i18n } from '$lib/i18n.svelte';
-    import { Search, History, User } from 'lucide-svelte';
+    import { Search, History, User, Calendar } from 'lucide-svelte';
     import Card from '$lib/components/ui/Card.svelte';
     import Badge from '$lib/components/ui/Badge.svelte';
     import Input from '$lib/components/ui/Input.svelte';
     import Select from '$lib/components/ui/Select.svelte';
+    import DatePicker from '$lib/components/ui/DatePicker.svelte';
+    import EmptyState from '$lib/components/ui/EmptyState.svelte';
     import { format } from 'date-fns';
+    import { formatDuration } from '$lib/utils';
     import type { PageData } from './$types';
     import { goto } from '$app/navigation';
 
     let { data }: { data: PageData } = $props();
 
     let searchQuery = $state('');
+    let selectedDate = $state('');
     let typeFilter = $state('all');
 
     $effect(() => {
         searchQuery = data.query || '';
+        selectedDate = data.date || '';
     });
 
     const typeFilterOptions = $derived([
@@ -30,22 +35,33 @@
             : data.logs.filter((log: any) => log.visitorType === typeFilter)
     );
 
-    function handleSearch() {
+    function updateFilters() {
         const url = new URL(window.location.href);
         if (searchQuery) {
             url.searchParams.set('q', searchQuery);
         } else {
             url.searchParams.delete('q');
         }
+        
+        if (selectedDate) {
+            url.searchParams.set('date', selectedDate);
+        } else {
+            url.searchParams.delete('date');
+        }
+        
         goto(url.toString(), { keepFocus: true, replaceState: true });
     }
 
     let timeout: any;
     function debounceSearch() {
         clearTimeout(timeout);
-        timeout = setTimeout(handleSearch, 300);
+        timeout = setTimeout(updateFilters, 300);
     }
 </script>
+
+<svelte:head>
+    <title>{i18n.t('visitors')} - {i18n.t('history')} | {i18n.t('appName')}</title>
+</svelte:head>
 
 <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -56,18 +72,31 @@
     </div>
 
     <Card className="p-4">
-        <div class="flex flex-col sm:flex-row gap-4">
-            <div class="relative flex-1">
-                <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                <Input
-                    placeholder={i18n.t('searchPlaceholder')}
-                    bind:value={searchQuery}
-                    oninput={debounceSearch}
-                    className="pl-10"
+        <div class="flex flex-col md:flex-row gap-4">
+            <div class="md:w-64">
+                <DatePicker 
+                    label={i18n.t('date')}
+                    bind:value={selectedDate}
+                    onchange={updateFilters}
                 />
             </div>
-            <div class="sm:w-48">
+            <div class="relative flex-1">
+                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">{i18n.t('name')} / {i18n.t('company')} / {i18n.t('cardNo')}</label>
+                <div class="relative">
+                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <Input
+                        id="search"
+                        placeholder={i18n.t('searchPlaceholder')}
+                        bind:value={searchQuery}
+                        oninput={debounceSearch}
+                        className="pl-10"
+                    />
+                </div>
+            </div>
+            <div class="md:w-48">
+                <label for="type" class="block text-sm font-medium text-gray-700 mb-1">{i18n.t('type')}</label>
                 <Select
+                    id="type"
                     options={typeFilterOptions}
                     bind:value={typeFilter}
                 />
@@ -77,11 +106,11 @@
 
     <div class="grid grid-cols-1 gap-4">
         {#if filteredLogs.length === 0}
-            <Card className="p-12 text-center">
-                <div class="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
-                    <History size={32} />
-                </div>
-                <p class="text-gray-500 font-medium">{i18n.t('noResults')}</p>
+            <Card>
+                <EmptyState 
+                    title={i18n.t('noResults')} 
+                    icon={History}
+                />
             </Card>
         {:else}
             <!-- Desktop Table -->
@@ -96,6 +125,7 @@
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('purpose')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('entryTime')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('exitTime')}</th>
+                            <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('duration')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('status')}</th>
                         </tr>
                     </thead>
@@ -106,8 +136,10 @@
                                     {format(new Date(log.date), 'PPP')}
                                 </td>
                                 <td class="px-6 py-3 align-middle">
-                                    <p class="text-sm font-bold text-gray-900">{log.visitorName}</p>
-                                    <p class="text-xs text-indigo-600 font-mono font-bold">{log.visitingCardNo || '-'}</p>
+                                    <a href="/visitors/{log.visitorId}" class="text-sm font-bold text-gray-900 hover:text-primary-600 transition-colors">
+                                        {log.visitorName}
+                                    </a>
+                                    <p class="text-xs text-primary-600 font-mono font-bold">{log.visitingCardNo || '-'}</p>
                                 </td>
                                 <td class="px-6 py-3 align-middle">
                                     <Badge>
@@ -119,6 +151,9 @@
                                 <td class="px-6 py-3 text-sm text-gray-600 align-middle">{format(new Date(log.entryTime), 'p')}</td>
                                 <td class="px-6 py-3 text-sm text-gray-600 align-middle">
                                     {log.exitTime ? format(new Date(log.exitTime), 'p') : '-'}
+                                </td>
+                                <td class="px-6 py-3 text-sm font-bold text-gray-700 align-middle">
+                                    {formatDuration(log.entryTime, log.exitTime)}
                                 </td>
                                 <td class="px-6 py-3 align-middle">
                                     <Badge status={log.status}>
@@ -137,8 +172,10 @@
                     <Card className="p-4 space-y-4">
                         <div class="flex justify-between items-start">
                             <div>
-                                <p class="text-sm font-bold text-indigo-600">{format(new Date(log.date), 'PP')}</p>
-                                <p class="text-lg font-bold text-gray-900">{log.visitorName}</p>
+                                <p class="text-sm font-bold text-primary-600">{format(new Date(log.date), 'PP')}</p>
+                                <a href="/visitors/{log.visitorId}" class="text-lg font-bold text-gray-900 hover:text-primary-600 transition-colors">
+                                    {log.visitorName}
+                                </a>
                             </div>
                             <Badge>{log.visitorType === 'guest' ? i18n.t('guest') : i18n.t('vendor')}</Badge>
                         </div>

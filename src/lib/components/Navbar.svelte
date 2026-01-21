@@ -1,12 +1,53 @@
 <script lang="ts">
     import { i18n } from '$lib/i18n.svelte';
     import LangSwitch from './LangSwitch.svelte';
-    import { Menu, X, LayoutDashboard, Users, UserCheck, Truck, History, ClipboardList, LogOut } from 'lucide-svelte';
+    import { Menu, X, LayoutDashboard, Users, UserCheck, Truck, Search, Loader2 } from 'lucide-svelte';
     import { page } from '$app/state';
     import { clsx } from 'clsx';
-    import Button from './ui/Button.svelte';
+    import logo from '$lib/assets/logo.png';
 
     let isMobileMenuOpen = $state(false);
+    let searchQuery = $state('');
+    let searchResults = $state<any[]>([]);
+    let isSearching = $state(false);
+    let showResults = $state(false);
+    let debounceTimer: ReturnType<typeof setTimeout>;
+
+    async function handleSearch(e: Event) {
+        const query = (e.target as HTMLInputElement).value;
+        searchQuery = query;
+        
+        clearTimeout(debounceTimer);
+        
+        if (query.length < 2) {
+            searchResults = [];
+            showResults = false;
+            return;
+        }
+
+        isSearching = true;
+        showResults = true;
+
+        debounceTimer = setTimeout(async () => {
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                if (res.ok) {
+                    searchResults = await res.json();
+                }
+            } catch (err) {
+                console.error(err);
+            } finally {
+                isSearching = false;
+            }
+        }, 300);
+    }
+
+    function closeSearch() {
+        // Delay to allow click on result
+        setTimeout(() => {
+            showResults = false;
+        }, 200);
+    }
 
     const navLinks = [
         { href: '/', label: 'dashboard', icon: LayoutDashboard },
@@ -74,8 +115,14 @@
         <div class="flex justify-between h-16">
             <!-- Logo & Desktop Nav -->
             <div class="flex items-center gap-8">
-                <a href="/" class="text-2xl font-black text-indigo-600 tracking-tight shrink-0">
-                    {i18n.t('appName')}
+                <a href="/" class="flex items-center gap-3 text-xl font-bold text-primary-950 tracking-tight shrink-0 hover:opacity-80 transition-opacity">
+                    <img src={logo} alt="Logo" class="h-8 w-auto" />
+                    <span class={clsx(
+                        "hidden sm:inline-block text-2xl normal-case",
+                        i18n.lang === 'en' ? "font-cursive" : "font-bn-stylized pt-1"
+                    )}>
+                        {i18n.t('appName')}
+                    </span>
                 </a>
                 
                 <div class="hidden lg:flex items-center gap-1">
@@ -85,7 +132,7 @@
                                 href={link.href}
                                 class={clsx(
                                     'px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2',
-                                    isActive(link.href) ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'
+                                    isActive(link.href) ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:text-primary-600 hover:bg-gray-50'
                                 )}
                             >
                                 <link.icon size={18} />
@@ -93,7 +140,7 @@
                             </a>
                         {:else}
                             <div class="relative group">
-                                <button class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-indigo-600 hover:bg-gray-50 transition-colors flex items-center gap-2">
+                                <button class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-primary-600 hover:bg-gray-50 transition-colors flex items-center gap-2">
                                     <link.icon size={18} />
                                     {i18n.t(link.label as any)}
                                     <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
@@ -105,7 +152,7 @@
                                                 href={sub.href}
                                                 class={clsx(
                                                     'block px-4 py-2 text-sm transition-colors',
-                                                    isActive(sub.href) ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
+                                                    isActive(sub.href) ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-gray-700 hover:bg-gray-50 hover:text-primary-600'
                                                 )}
                                             >
                                                 {i18n.t(sub.label as any)}
@@ -121,6 +168,66 @@
 
             <!-- Right side -->
             <div class="flex items-center gap-4">
+                <!-- Global Search -->
+                <div class="relative hidden md:block">
+                    <div class="relative">
+                        <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input 
+                            type="text" 
+                            placeholder={i18n.t('searchPlaceholder')} 
+                            class="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white w-64 transition-all"
+                            value={searchQuery}
+                            oninput={handleSearch}
+                            onblur={closeSearch}
+                            onfocus={() => searchQuery.length >= 2 && (showResults = true)}
+                        />
+                        {#if isSearching}
+                            <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                                <Loader2 class="animate-spin text-primary-500" size={16} />
+                            </div>
+                        {/if}
+                    </div>
+
+                    {#if showResults && searchQuery.length >= 2}
+                        <div class="absolute right-0 mt-2 w-80 bg-white border rounded-xl shadow-xl overflow-hidden z-50">
+                            {#if searchResults.length > 0}
+                                <div class="py-2">
+                                    {#each searchResults as result}
+                                        <a 
+                                            href={result.url} 
+                                            class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                                            onclick={() => showResults = false}
+                                        >
+                                            <div class={clsx(
+                                                "p-2 rounded-lg",
+                                                result.category === 'labours' ? "bg-blue-50 text-blue-600" :
+                                                result.category === 'visitors' ? "bg-emerald-50 text-emerald-600" :
+                                                "bg-amber-50 text-amber-600"
+                                            )}>
+                                                {#if result.category === 'labours'}
+                                                    <Users size={16} />
+                                                {:else if result.category === 'visitors'}
+                                                    <UserCheck size={16} />
+                                                {:else}
+                                                    <Truck size={16} />
+                                                {/if}
+                                            </div>
+                                            <div>
+                                                <p class="text-sm font-semibold text-gray-900">{result.title}</p>
+                                                <p class="text-xs text-gray-500">{result.subtitle}</p>
+                                            </div>
+                                        </a>
+                                    {/each}
+                                </div>
+                            {:else if !isSearching}
+                                <div class="p-4 text-center text-gray-500 text-sm">
+                                    {i18n.t('noResults')}
+                                </div>
+                            {/if}
+                        </div>
+                    {/if}
+                </div>
+
                 <LangSwitch />
                 
                 <button 
@@ -148,7 +255,7 @@
                             onclick={() => isMobileMenuOpen = false}
                             class={clsx(
                                 'block px-3 py-3 rounded-md text-base font-semibold flex items-center gap-3',
-                                isActive(link.href) ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'
+                                isActive(link.href) ? 'bg-primary-50 text-primary-700' : 'text-gray-700 hover:bg-gray-50'
                             )}
                         >
                             <link.icon size={20} />
@@ -167,7 +274,7 @@
                                         onclick={() => isMobileMenuOpen = false}
                                         class={clsx(
                                             'block px-3 py-3 rounded-md text-base font-medium transition-colors',
-                                            isActive(sub.href) ? 'text-indigo-700' : 'text-gray-600 hover:bg-gray-50'
+                                            isActive(sub.href) ? 'text-primary-700' : 'text-gray-600 hover:bg-gray-50'
                                         )}
                                     >
                                         {i18n.t(sub.label as any)}

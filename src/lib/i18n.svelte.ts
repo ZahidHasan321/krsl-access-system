@@ -3,7 +3,7 @@ import { browser } from '$app/environment';
 const translations = {
     en: {
         // Navigation
-        appName: 'KR Steel HRM',
+        appName: 'KRM Steel',
         dashboard: 'Dashboard',
         labours: 'Labours',
         visitors: 'Visitors',
@@ -71,6 +71,7 @@ const translations = {
 
         // Search & Empty States
         searchPlaceholder: 'Search...',
+        all: 'All',
         month: 'Month',
         daysPresent: 'Days Present',
         noResults: 'No results found.',
@@ -83,6 +84,7 @@ const translations = {
         successDeleted: 'Deleted successfully!',
         errorGeneric: 'Something went wrong.',
         confirmDelete: 'Are you sure you want to delete this?',
+        confirmCheckOut: 'Are you sure you want to check out?',
         certificateOk: 'Certificate OK',
         noCertificate: 'No Certificate',
         checkInImmediately: 'Check In Immediately',
@@ -92,10 +94,16 @@ const translations = {
         searchVisitor: 'Search Visitor...',
         details: 'Details',
         optional: 'Optional',
+        totalVisits: 'Total Visits',
+        lastVisit: 'Last Visit',
+        totalPresentDays: 'Total Present Days',
+        avgWorkingHours: 'Avg. Working Hours',
+        duration: 'Duration',
+        workingHours: 'Working Hours',
     },
     bn: {
         // Navigation
-        appName: 'কে.আর স্টিল',
+        appName: 'কেআরএম স্টিল',
         dashboard: 'ড্যাশবোর্ড',
         labours: 'শ্রমিক',
         visitors: 'দর্শনার্থী',
@@ -163,6 +171,7 @@ const translations = {
 
         // Search & Empty States
         searchPlaceholder: 'অনুসন্ধান...',
+        all: 'সব',
         month: 'মাস',
         daysPresent: 'উপস্থিত দিন',
         noResults: 'কোনো তথ্য পাওয়া যায়নি।',
@@ -175,6 +184,7 @@ const translations = {
         successDeleted: 'সফলভাবে মুছে ফেলা হয়েছে!',
         errorGeneric: 'কিছু ভুল হয়েছে।',
         confirmDelete: 'আপনি কি নিশ্চিত যে আপনি এটি মুছে ফেলতে চান?',
+        confirmCheckOut: 'আপনি কি নিশ্চিত যে আপনি বের করে দিতে চান?',
         certificateOk: 'সার্টিফিকেট ঠিক আছে',
         noCertificate: 'সার্টিফিকেট নেই',
         checkInImmediately: 'এখনই চেক-ইন করুন',
@@ -184,6 +194,12 @@ const translations = {
         searchVisitor: 'দর্শনার্থী খুঁজুন...',
         details: 'বিবরণ',
         optional: 'ঐচ্ছিক',
+        totalVisits: 'মোট পরিদর্শন',
+        lastVisit: 'শেষ পরিদর্শন',
+        totalPresentDays: 'মোট উপস্থিত দিন',
+        avgWorkingHours: 'গড় কর্মঘণ্টা',
+        duration: 'সময়কাল',
+        workingHours: 'কর্মঘণ্টা',
     }
 };
 

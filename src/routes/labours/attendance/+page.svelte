@@ -1,22 +1,29 @@
 <script lang="ts">
     import { i18n } from '$lib/i18n.svelte';
-    import { LogIn, LogOut, Search, UserCheck, History } from 'lucide-svelte';
+    import { LogIn, LogOut, Search, UserCheck, History, Eye } from 'lucide-svelte';
     import Button from '$lib/components/ui/Button.svelte';
     import Input from '$lib/components/ui/Input.svelte';
     import Combobox from '$lib/components/ui/Combobox.svelte';
     import Modal from '$lib/components/ui/Modal.svelte';
     import Card from '$lib/components/ui/Card.svelte';
     import Badge from '$lib/components/ui/Badge.svelte';
+    import EmptyState from '$lib/components/ui/EmptyState.svelte';
+    import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
     import { enhance } from '$app/forms';
     import { toast } from 'svelte-sonner';
     import { format } from 'date-fns';
+    import { formatDuration } from '$lib/utils';
     import type { PageData, ActionData } from './$types';
 
     let { data, form }: { data: PageData, form: ActionData } = $props();
 
     let isModalOpen = $state(false);
+    let isConfirmOpen = $state(false);
+    let itemToCheckOut = $state<string | null>(null);
     let selectedLabourId = $state('');
     let searchQuery = $state('');
+
+    let checkoutForm: HTMLFormElement;
 
     const labourOptions = $derived(
         data.labours.map((l: any) => ({
@@ -45,11 +52,17 @@
     const todayDate = format(new Date(), 'yyyy-MM-dd');
 </script>
 
+<svelte:head>
+    <title>{i18n.t('labours')} - {i18n.t('attendance')} | {i18n.t('appName')}</title>
+</svelte:head>
+
 <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-black text-gray-900">{i18n.t('labours')} - {i18n.t('attendance')}</h1>
-            <p class="text-gray-500">{format(new Date(), 'PPP')}</p>
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight font-header leading-tight py-1">
+                {i18n.t('labours')} <span class="text-primary-600">/</span> {i18n.t('attendance')}
+            </h1>
+            <p class="text-slate-600 font-semibold leading-relaxed py-0.5">{format(new Date(), 'PPP')}</p>
         </div>
         <Button onclick={() => isModalOpen = true} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700">
             <LogIn size={20} />
@@ -70,11 +83,11 @@
 
     <div class="grid grid-cols-1 gap-4">
         {#if filteredLogs.length === 0}
-            <Card className="p-12 text-center">
-                <div class="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
-                    <UserCheck size={32} />
-                </div>
-                <p class="text-gray-500 font-medium">{i18n.t('noData')}</p>
+            <Card>
+                <EmptyState 
+                    title={i18n.t('noResults')} 
+                    icon={UserCheck}
+                />
             </Card>
         {:else}
             <!-- Desktop Table -->
@@ -87,6 +100,7 @@
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('isTrained')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('entryTime')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('exitTime')}</th>
+                            <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('workingHours')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('status')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider text-right align-middle">{i18n.t('actions')}</th>
                         </tr>
@@ -94,8 +108,12 @@
                     <tbody class="divide-y divide-gray-50">
                         {#each filteredLogs as log}
                             <tr class="hover:bg-gray-50/50 transition-colors">
-                                <td class="px-6 py-2 text-sm font-bold text-gray-900 align-middle">{log.labourName}</td>
-                                <td class="px-6 py-2 text-sm font-mono font-bold text-indigo-600 align-middle">{log.labourCode}</td>
+                                <td class="px-6 py-2 text-sm font-bold text-gray-900 align-middle">
+                                    <a href="/labours/{log.labourId}" class="hover:text-primary-600 transition-colors">
+                                        {log.labourName}
+                                    </a>
+                                </td>
+                                <td class="px-6 py-2 text-sm font-mono font-bold text-primary-600 align-middle">{log.labourCode}</td>
                                 <td class="px-6 py-2 align-middle">
                                     <Badge status={log.isTrained ? 'success' : 'danger'}>
                                         {log.isTrained ? i18n.t('certificateOk') : i18n.t('noCertificate')}
@@ -105,22 +123,28 @@
                                 <td class="px-6 py-2 text-sm text-gray-600 align-middle">
                                     {log.exitTime ? format(new Date(log.exitTime), 'p') : '-'}
                                 </td>
+                                <td class="px-6 py-2 text-sm font-bold text-gray-700 align-middle">
+                                    {formatDuration(log.entryTime, log.exitTime)}
+                                </td>
                                 <td class="px-6 py-2 align-middle">
                                     <Badge status={log.status}>
                                         {log.status === 'on_premises' ? i18n.t('onPremises') : i18n.t('checkedOut')}
                                     </Badge>
                                 </td>
                                 <td class="px-6 py-2 text-right align-middle">
-                                    {#if log.status === 'on_premises'}
-                                        <form method="POST" action="?/checkOut" use:enhance class="inline-block">
-                                            <input type="hidden" name="id" value={log.id} />
-                                            <Button variant="danger" type="submit" className="px-3 py-1.5 text-sm h-9">
+                                    <div class="flex items-center justify-end gap-2">
+                                        {#if log.status === 'on_premises'}
+                                            <Button 
+                                                variant="danger" 
+                                                onclick={() => { itemToCheckOut = log.id; isConfirmOpen = true; }} 
+                                                className="px-3 py-1.5 text-sm h-9"
+                                            >
                                                 <LogOut size={16} /> {i18n.t('checkOut')}
                                             </Button>
-                                        </form>
-                                    {:else}
-                                        <span class="text-gray-400 text-xs font-bold uppercase">{i18n.t('checkedOut')}</span>
-                                    {/if}
+                                        {:else}
+                                            <span class="text-gray-400 text-xs font-bold uppercase">{i18n.t('checkedOut')}</span>
+                                        {/if}
+                                    </div>
                                 </td>
                             </tr>
                         {/each}
@@ -135,7 +159,7 @@
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-lg font-bold text-gray-900">{log.labourName}</p>
-                                <p class="text-xs font-mono font-bold text-indigo-600">{log.labourCode}</p>
+                                <p class="text-xs font-mono font-bold text-primary-600">{log.labourCode}</p>
                             </div>
                             <Badge status={log.status}>
                                 {log.status === 'on_premises' ? i18n.t('onPremises') : i18n.t('checkedOut')}
@@ -155,12 +179,13 @@
                         </div>
                         {#if log.status === 'on_premises'}
                             <div class="pt-2 border-t">
-                                <form method="POST" action="?/checkOut" use:enhance>
-                                    <input type="hidden" name="id" value={log.id} />
-                                    <Button variant="danger" type="submit" className="w-full">
-                                        <LogOut size={16} /> {i18n.t('checkOut')}
-                                    </Button>
-                                </form>
+                                <Button 
+                                    variant="danger" 
+                                    onclick={() => { itemToCheckOut = log.id; isConfirmOpen = true; }} 
+                                    className="w-full"
+                                >
+                                    <LogOut size={16} /> {i18n.t('checkOut')}
+                                </Button>
                             </div>
                         {/if}
                     </Card>
@@ -195,3 +220,20 @@
         </div>
     </form>
 </Modal>
+
+<form 
+    bind:this={checkoutForm}
+    method="POST" 
+    action="?/checkOut" 
+    use:enhance
+>
+    <input type="hidden" name="id" value={itemToCheckOut} />
+</form>
+
+<ConfirmModal
+    bind:open={isConfirmOpen}
+    title={i18n.t('checkOut')}
+    message={i18n.t('confirmCheckOut')}
+    variant="danger"
+    onconfirm={() => checkoutForm.requestSubmit()}
+/>

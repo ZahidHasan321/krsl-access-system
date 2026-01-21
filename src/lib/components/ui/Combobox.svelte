@@ -102,7 +102,7 @@
         updateDropdownPosition();
     }
 
-    const inputClasses = 'w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all';
+    const inputClasses = 'w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all';
 </script>
 
 <svelte:window onscroll={updateDropdownPosition} onresize={updateDropdownPosition} />
@@ -146,7 +146,7 @@
             <button
                 type="button"
                 onmousedown={() => handleSelect(option)}
-                class="w-full px-4 py-2 text-left hover:bg-indigo-50 transition-colors text-sm {option.value === value ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-700'}"
+                class="w-full px-4 py-2 text-left hover:bg-primary-50 transition-colors text-sm {option.value === value ? 'bg-primary-50 text-primary-700 font-medium' : 'text-gray-700'}"
             >
                 {option.text}
             </button>

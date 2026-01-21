@@ -23,9 +23,9 @@
     }: Props = $props();
 
     const variants = {
-        primary: 'bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800',
-        danger: 'bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800',
-        outline: 'border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 active:bg-indigo-100',
+        primary: 'bg-primary-600 text-white shadow-md shadow-primary-600/20 hover:bg-primary-700 hover:shadow-lg hover:shadow-primary-600/30 hover:-translate-y-0.5 active:translate-y-0 active:shadow-md',
+        danger: 'bg-rose-600 text-white shadow-md shadow-rose-600/20 hover:bg-rose-700 hover:shadow-lg hover:shadow-rose-600/30 hover:-translate-y-0.5 active:translate-y-0 active:shadow-md',
+        outline: 'border-2 border-primary-600 text-primary-600 hover:bg-primary-50 active:bg-primary-100',
         ghost: 'text-gray-600 hover:bg-gray-100 active:bg-gray-200'
     };
 

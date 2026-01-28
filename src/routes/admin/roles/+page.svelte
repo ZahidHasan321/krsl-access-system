@@ -35,10 +35,11 @@
         <Card class="p-6">
             <h2 class="text-xl font-semibold mb-4">Create New Role</h2>
             <form method="POST" action="?/createRole" use:enhance={() => {
-                return async ({ result }) => {
+                return async ({ result, update }) => {
                     if (result.type === 'success') {
                         isCreatingRole = false;
                     }
+                    await update();
                 };
             }} class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                 <Input name="id" label="Role ID (e.g., manager)" required />
@@ -85,7 +86,11 @@
                             <p class="text-gray-500 mt-1">{role.description || 'No description provided.'}</p>
                         </div>
                         {#if role.id !== 'admin'}
-                            <form method="POST" action="?/deleteRole" use:enhance>
+                            <form method="POST" action="?/deleteRole" use:enhance={() => {
+                                return async ({ update }) => {
+                                    await update();
+                                };
+                            }}>
                                 <input type="hidden" name="id" value={role.id} />
                                 <Button variant="ghost" class="text-red-600 hover:bg-red-50 hover:text-red-700">
                                     <Trash2 size={18} class="mr-2" />
@@ -95,8 +100,11 @@
                         {/if}
                     </div>
 
-                    <form method="POST" action="?/updatePermissions" use:enhance>
-                        <input type="hidden" name="roleId" value={role.id} />
+                    <form method="POST" action="?/updatePermissions" use:enhance={() => {
+                        return async ({ update }) => {
+                            await update();
+                        };
+                    }}>
                         
                         {#if role.id === 'admin'}
                             <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-800">

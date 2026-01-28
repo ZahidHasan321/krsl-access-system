@@ -1,87 +1,104 @@
 <script lang="ts">
-    import Flatpickr from 'svelte-flatpickr';
-    import 'flatpickr/dist/flatpickr.css';
-    import { twMerge } from 'tailwind-merge';
-    import { X } from 'lucide-svelte';
-    import { onMount } from 'svelte';
+  import { Popover } from "bits-ui";
+  import { Calendar as CalendarIcon, X } from "lucide-svelte";
+  import { CalendarDate, parseDate, getLocalTimeZone, today } from "@internationalized/date";
+  import Calendar from "./Calendar.svelte";
+  import { cn, toCalendarDate } from "$lib/utils";
+  import { i18n } from "$lib/i18n.svelte";
 
-    interface Props {
-        value?: string; // YYYY-MM-DD
-        label?: string;
-        id?: string;
-        className?: string;
-        name?: string;
-        placeholder?: string;
-        onchange?: (value: string) => void;
-    }
+  interface Props {
+    value?: string; // YYYY-MM-DD
+    label?: string;
+    placeholder?: string;
+    id?: string;
+    name?: string;
+    required?: boolean;
+    disabled?: boolean;
+    className?: string;
+    onchange?: (value: string) => void;
+  }
 
-    let { 
-        value = $bindable(), 
-        label, 
-        id = Math.random().toString(36).substring(7), 
-        className = '', 
-        name,
-        placeholder = 'Select date',
-        onchange 
-    }: Props = $props();
+  let { 
+    value = $bindable(), 
+    label, 
+    placeholder = "Select date", 
+    id = Math.random().toString(36).substring(7),
+    name,
+    required = false,
+    disabled = false,
+    className = "",
+    onchange
+  }: Props = $props();
 
-    let mounted = $state(false);
-    onMount(() => { mounted = true; });
+  let open = $state(false);
+  
+  // Internal state for bits-ui
+  let dateValue = $derived.by(() => toCalendarDate(value));
+  let placeholderDate = $state(today(getLocalTimeZone()));
 
-    const options = {
-        dateFormat: 'Y-m-d',
-        altInput: true,
-        altFormat: 'F j, Y',
-        disableMobile: true,
-        allowInput: true,
-    };
+  function handleSelect(v: any) {
+    const newValue = v ? v.toString() : "";
+    value = newValue;
+    onchange?.(newValue);
+    open = false;
+  }
 
-    function handleChange(event: CustomEvent<[Date[], string, any]>) {
-        const [selectedDates, dateStr] = event.detail;
-        value = dateStr;
-        onchange?.(dateStr);
-    }
-
-    function clearDate() {
-        value = '';
-        onchange?.('');
-    }
+  function clearDate(e: MouseEvent) {
+    e.stopPropagation();
+    value = "";
+    onchange?.("");
+  }
 </script>
 
-<div class="w-full">
-    {#if label}
-        <label for={id} class="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-    {/if}
+<div class={cn("flex flex-col gap-1.5", className)}>
+  {#if label}
+    <label for={id} class="text-sm font-medium text-slate-700">
+      {label} {#if required}<span class="text-rose-500">*</span>{/if}
+    </label>
+  {/if}
+
+  <Popover.Root bind:open>
+    <Popover.Trigger
+      {id}
+      {disabled}
+      class={cn(
+        "flex h-10 w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white transition-all placeholder:text-slate-500 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+        !value && "text-slate-500"
+      )}
+    >
+      <div class="flex items-center gap-2 overflow-hidden">
+        <CalendarIcon class="size-4 shrink-0 opacity-50" />
+        <span class="truncate">
+          {value ? value : placeholder}
+        </span>
+      </div>
+      
+      {#if value && !disabled}
+        <button 
+          type="button" 
+          onclick={clearDate}
+          class="rounded-sm p-0.5 opacity-50 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2"
+        >
+          <X class="size-3.5" />
+        </button>
+      {/if}
+    </Popover.Trigger>
     
-    <div class="relative group">
-        {#if mounted}
-            <Flatpickr
-                {options}
-                bind:value
-                {id}
-                {name}
-                class={twMerge(
-                    "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white transition-all",
-                    className
-                )}
-                on:change={handleChange}
-                {placeholder}
-            >{""}</Flatpickr>
-        {:else}
-            <div class={twMerge(
-                "w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 h-10",
-                className
-            )}></div>
-        {/if}
-        {#if value}
-            <button 
-                type="button"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-white p-0.5 rounded-full"
-                onclick={clearDate}
-                aria-label="Clear date"
-            >
-                <X size={16} />
-            </button>
-        {/if}
-    </div>
+    <Popover.Content
+      class="z-50 w-auto rounded-xl border border-slate-200 bg-white p-0 shadow-xl outline-none"
+      sideOffset={4}
+      align="start"
+    >
+      <Calendar 
+        type="single" 
+        value={dateValue} 
+        onValueChange={handleSelect}
+        bind:placeholder={placeholderDate}
+      />
+    </Popover.Content>
+  </Popover.Root>
+  
+  {#if name}
+    <input type="hidden" {name} {value} {required} />
+  {/if}
 </div>

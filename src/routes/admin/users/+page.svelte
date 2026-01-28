@@ -34,10 +34,11 @@
         <Card class="p-6">
             <h2 class="text-xl font-semibold mb-4">Create New User</h2>
             <form method="POST" action="?/createUser" use:enhance={() => {
-                return async ({ result }) => {
+                return async ({ result, update }) => {
                     if (result.type === 'success') {
                         isCreatingUser = false;
                     }
+                    await update();
                 };
             }} class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <Input name="username" label="Username / Email" required />
@@ -83,7 +84,11 @@
                     </div>
 
                     <div class="flex items-center gap-3">
-                        <form method="POST" action="?/updateUserRole" use:enhance class="flex items-center gap-2">
+                        <form method="POST" action="?/updateUserRole" use:enhance={() => {
+                            return async ({ update }) => {
+                                await update();
+                            };
+                        }} class="flex items-center gap-2">
                             <input type="hidden" name="userId" value={u.id} />
                             <select 
                                 name="roleId" 
@@ -98,7 +103,11 @@
                         </form>
                         
                         {#if u.roleId !== 'admin'}
-                            <form method="POST" action="?/deleteUser" use:enhance>
+                            <form method="POST" action="?/deleteUser" use:enhance={() => {
+                                return async ({ update }) => {
+                                    await update();
+                                };
+                            }}>
                                 <input type="hidden" name="id" value={u.id} />
                                 <Button variant="ghost" class="text-red-600 hover:bg-red-50 hover:text-red-700 p-2">
                                     <Trash2 size={18} />

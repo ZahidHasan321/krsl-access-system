@@ -51,6 +51,7 @@ export const actions: Actions = {
                 id: generateUserId(),
                 username,
                 passwordHash,
+                role: (roleId === 'admin' ? 'admin' : 'guard'), // Sync legacy field
                 roleId
             });
         } catch (e: any) {
@@ -74,7 +75,10 @@ export const actions: Actions = {
                 return fail(400, { message: 'Cannot change the role of an Administrator' });
             }
 
-            await db.update(user).set({ roleId }).where(eq(user.id, userId));
+            await db.update(user).set({ 
+                roleId,
+                role: (roleId === 'admin' ? 'admin' : 'guard') // Sync legacy field
+            }).where(eq(user.id, userId));
         } catch (e: any) {
             return fail(500, { message: e.message || 'Failed to update user role' });
         }

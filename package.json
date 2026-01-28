@@ -49,8 +49,10 @@
 		"vite": "^7.2.6"
 	},
 	"dependencies": {
+		"@internationalized/date": "^3.10.1",
 		"@node-rs/argon2": "^2.0.2",
 		"better-sqlite3": "^12.5.0",
+		"bits-ui": "^2.15.4",
 		"clsx": "^2.1.1",
 		"date-fns": "^4.1.0",
 		"flatpickr": "^4.6.13",

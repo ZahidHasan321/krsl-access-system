@@ -7,6 +7,7 @@
     import Select from '$lib/components/ui/Select.svelte';
     import DatePicker from '$lib/components/ui/DatePicker.svelte';
     import EmptyState from '$lib/components/ui/EmptyState.svelte';
+    import Pagination from '$lib/components/ui/Pagination.svelte';
     import { format } from 'date-fns';
     import type { PageData } from './$types';
     import { goto } from '$app/navigation';
@@ -48,6 +49,8 @@
             url.searchParams.delete('date');
         }
 
+        url.searchParams.delete('page');
+        
         goto(url.toString(), { keepFocus: true, replaceState: true });
     }
 
@@ -66,7 +69,13 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
             <h1 class="text-2xl font-black text-gray-900">{i18n.t('vehicles')} - {i18n.t('history')}</h1>
-            <p class="text-gray-500">{i18n.t('history')}</p>
+            <p class="text-gray-500">
+                {#if data.date}
+                    {format(new Date(data.date), 'PPP')}
+                {:else}
+                    {i18n.t('all') + ' ' + i18n.t('history')}
+                {/if}
+            </p>
         </div>
     </div>
 
@@ -80,7 +89,7 @@
                 />
             </div>
             <div class="relative flex-1">
-                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">{i18n.t('vehicleNo')} / {i18n.t('driverName')} / {i18n.t('vendorName')}</label>
+                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">{i18n.t('vehicleNo')} / {i18n.t('driverName')} / {i18n.t('vendorName')} / {i18n.t('cargo')} / {i18n.t('phone')}</label>
                 <div class="relative">
                     <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                     <Input
@@ -89,6 +98,7 @@
                         bind:value={searchQuery}
                         oninput={debounceSearch}
                         className="pl-10"
+                        onclear={() => { searchQuery = ''; updateFilters(); }}
                     />
                 </div>
             </div>
@@ -111,6 +121,13 @@
                     icon={Truck}
                 />
             </Card>
+            {#if data.totalPages > 0 || filteredVehicles.length === 0}
+                 <Pagination 
+                    currentPage={data.currentPage} 
+                    totalPages={data.totalPages} 
+                    pageSize={data.pageSize}
+                />
+            {/if}
         {:else}
             <!-- Desktop Table -->
             <div class="hidden lg:block overflow-hidden rounded-xl border border-gray-100 shadow-sm bg-white">
@@ -122,9 +139,9 @@
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('type')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('driverName')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('vendorName')}</th>
+                            <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('cargo')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('entryTime')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('exitTime')}</th>
-                            <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('status')}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-50">
@@ -141,16 +158,15 @@
                                         {vehicle.type === 'transport' ? i18n.t('transportVehicle') : i18n.t('regularVehicle')}
                                     </Badge>
                                 </td>
-                                <td class="px-6 py-3 text-sm text-gray-900 font-bold align-middle">{vehicle.driverName || '-'}</td>
+                                <td class="px-6 py-3 text-sm text-gray-900 font-bold align-middle">
+                                    {vehicle.driverName || '-'}
+                                    <p class="text-xs text-gray-500 font-normal">{vehicle.mobile || '-'}</p>
+                                </td>
                                 <td class="px-6 py-3 text-sm text-gray-600 align-middle">{vehicle.vendorName || '-'}</td>
+                                <td class="px-6 py-3 text-sm text-gray-600 align-middle">{vehicle.cargoDescription || '-'}</td>
                                 <td class="px-6 py-3 text-sm text-gray-600 align-middle">{format(new Date(vehicle.entryTime), 'p')}</td>
                                 <td class="px-6 py-3 text-sm text-gray-600 align-middle">
                                     {vehicle.exitTime ? format(new Date(vehicle.exitTime), 'p') : '-'}
-                                </td>
-                                <td class="px-6 py-3 align-middle">
-                                    <Badge status={vehicle.status}>
-                                        {vehicle.status === 'on_premises' ? i18n.t('onPremises') : i18n.t('checkedOut')}
-                                    </Badge>
                                 </td>
                             </tr>
                         {/each}
@@ -173,23 +189,28 @@
                         </div>
                         <div class="grid grid-cols-2 gap-2 text-sm">
                             <div class="text-gray-500">{i18n.t('driverName')}</div>
-                            <div class="text-gray-900 font-medium">{vehicle.driverName || '-'}</div>
+                            <div class="text-gray-900 font-medium">
+                                {vehicle.driverName || '-'}
+                                <p class="text-xs text-gray-500 font-normal">{vehicle.mobile || '-'}</p>
+                            </div>
                             <div class="text-gray-500">{i18n.t('vendorName')}</div>
                             <div class="text-gray-900 font-medium">{vehicle.vendorName || '-'}</div>
+                            <div class="text-gray-500">{i18n.t('cargo')}</div>
+                            <div class="text-gray-900 font-medium">{vehicle.cargoDescription || '-'}</div>
                             <div class="text-gray-500">{i18n.t('entryTime')}</div>
                             <div class="text-gray-900 font-medium">{format(new Date(vehicle.entryTime), 'p')}</div>
                             <div class="text-gray-500">{i18n.t('exitTime')}</div>
                             <div class="text-gray-900 font-medium">{vehicle.exitTime ? format(new Date(vehicle.exitTime), 'p') : '-'}</div>
-                            <div class="text-gray-500">{i18n.t('status')}</div>
-                            <div>
-                                <Badge status={vehicle.status}>
-                                    {vehicle.status === 'on_premises' ? i18n.t('onPremises') : i18n.t('checkedOut')}
-                                </Badge>
-                            </div>
                         </div>
                     </Card>
                 {/each}
             </div>
+            
+             <Pagination 
+                currentPage={data.currentPage} 
+                totalPages={data.totalPages} 
+                pageSize={data.pageSize}
+            />
         {/if}
     </div>
 </div>

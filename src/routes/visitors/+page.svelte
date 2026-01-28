@@ -10,10 +10,12 @@
     import Combobox from '$lib/components/ui/Combobox.svelte';
     import EmptyState from '$lib/components/ui/EmptyState.svelte';
     import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
+    import Pagination from '$lib/components/ui/Pagination.svelte';
     import { enhance } from '$app/forms';
     import { toast } from 'svelte-sonner';
     import { format } from 'date-fns';
     import { formatDuration } from '$lib/utils';
+    import { goto } from '$app/navigation';
     import type { PageData, ActionData } from './$types';
 
     let { data, form }: { data: PageData, form: ActionData } = $props();
@@ -31,21 +33,47 @@
     let newVisitorPurpose = $state('');
     let newVisitorCardNo = $state('');
 
-    const filteredLogs = $derived(
-        data.activeLogs.filter((log: any) => {
-            const matchesType = typeFilter === 'all' || log.visitorType === typeFilter;
-            if (!matchesType) return false;
-            if (!searchQuery) return true;
-            const query = searchQuery.toLowerCase();
-            return (
-                log.visitorName?.toLowerCase().includes(query) ||
-                log.visitorCompany?.toLowerCase().includes(query) ||
-                log.visitorContact?.toLowerCase().includes(query) ||
-                log.purpose?.toLowerCase().includes(query) ||
-                log.visitingCardNo?.toLowerCase().includes(query)
-            );
-        })
-    );
+    $effect(() => {
+        searchQuery = data.query || '';
+        typeFilter = data.typeFilter || 'all';
+    });
+
+    $effect(() => {
+        if (form?.success) {
+            isModalOpen = false;
+            isAddModalOpen = false;
+            selectedVisitorId = '';
+            newVisitorPurpose = '';
+            newVisitorCardNo = '';
+            toast.success(form.message || i18n.t('successCheckIn'));
+        } else if (form?.message) {
+            toast.error(form.message);
+        }
+    });
+
+    function updateFilter() {
+        const url = new URL(window.location.href);
+        if (searchQuery) {
+            url.searchParams.set('q', searchQuery);
+        } else {
+            url.searchParams.delete('q');
+        }
+        
+        if (typeFilter !== 'all') {
+            url.searchParams.set('type', typeFilter);
+        } else {
+            url.searchParams.delete('type');
+        }
+
+        url.searchParams.delete('page');
+        goto(url.toString(), { keepFocus: true, replaceState: true });
+    }
+
+    let timeout: any;
+    function debounceSearch() {
+        clearTimeout(timeout);
+        timeout = setTimeout(updateFilter, 300);
+    }
 
     const typeFilterOptions = $derived([
         { value: 'all', label: i18n.t('all') },
@@ -64,6 +92,8 @@
         { value: 'guest', label: i18n.t('guest') },
         { value: 'vendor', label: i18n.t('vendor') }
     ]);
+
+    const canCreate = $derived(data.user?.permissions.includes('visitors.create'));
 </script>
 
 <svelte:head>
@@ -78,45 +108,61 @@
             </h1>
             <p class="text-slate-600 font-semibold">{data.activeLogs.length} {i18n.t('visitors')} {i18n.t('inside')}</p>
         </div>
-        <div class="flex gap-2">
-            <Button onclick={() => isAddModalOpen = true} variant="outline" className="flex-1 sm:flex-none">
-                <Plus size={20} />
-                {i18n.t('addNew')}
-            </Button>
-            <Button onclick={() => isModalOpen = true} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700">
-                <LogIn size={20} />
-                {i18n.t('checkIn')}
-            </Button>
-        </div>
+        {#if canCreate}
+            <div class="flex gap-2">
+                <Button onclick={() => isAddModalOpen = true} variant="outline" className="flex-1 sm:flex-none">
+                    <Plus size={20} />
+                    {i18n.t('addNew')}
+                </Button>
+                <Button onclick={() => isModalOpen = true} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700">
+                    <LogIn size={20} />
+                    {i18n.t('checkIn')}
+                </Button>
+            </div>
+        {/if}
     </div>
 
     <Card className="p-4">
         <div class="flex flex-col sm:flex-row gap-4">
             <div class="relative flex-1">
-                <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                <Input
-                    placeholder={i18n.t('searchPlaceholder')}
-                    bind:value={searchQuery}
-                    className="pl-10"
-                />
+                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">{i18n.t('name')} / {i18n.t('company')} / {i18n.t('cardNo')} / {i18n.t('phone')} / {i18n.t('purpose')}</label>
+                <div class="relative">
+                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <Input
+                        id="search"
+                        placeholder={i18n.t('searchPlaceholder')}
+                        bind:value={searchQuery}
+                        oninput={debounceSearch}
+                        className="pl-10"
+                        onclear={() => { searchQuery = ''; updateFilter(); }}
+                    />
+                </div>
             </div>
-            <div class="sm:w-48">
+            <div class="sm:w-48 sm:self-end">
                 <Select
                     options={typeFilterOptions}
                     bind:value={typeFilter}
+                    onchange={updateFilter}
                 />
             </div>
         </div>
     </Card>
 
     <div class="grid grid-cols-1 gap-4">
-        {#if filteredLogs.length === 0}
+        {#if data.activeLogs.length === 0}
             <Card>
                 <EmptyState 
                     title={i18n.t('noResults')} 
                     icon={UserCheck}
                 />
             </Card>
+            {#if data.totalPages > 0 || data.activeLogs.length === 0}
+                 <Pagination 
+                    currentPage={data.currentPage} 
+                    totalPages={data.totalPages} 
+                    pageSize={data.pageSize}
+                />
+            {/if}
         {:else}
             <!-- Desktop Table -->
             <div class="hidden md:block overflow-hidden rounded-xl border border-gray-100 shadow-sm bg-white">
@@ -134,7 +180,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-50">
-                        {#each filteredLogs as log}
+                        {#each data.activeLogs as log}
                             <tr class="hover:bg-gray-50/50 transition-colors">
                                 <td class="px-6 py-2 align-middle">
                                     <a href="/visitors/{log.visitorId}" class="text-sm font-bold text-gray-900 hover:text-emerald-600 transition-colors">
@@ -155,13 +201,15 @@
                                     {formatDuration(log.entryTime, log.exitTime)}
                                 </td>
                                 <td class="px-6 py-2 text-right align-middle">
-                                    <Button 
-                                        variant="danger" 
-                                        onclick={() => { itemToCheckOut = log.id; isConfirmOpen = true; }} 
-                                        className="px-3 py-1.5 text-sm h-9"
-                                    >
-                                        <LogOut size={16} /> {i18n.t('checkOut')}
-                                    </Button>
+                                    {#if canCreate}
+                                        <Button 
+                                            variant="danger" 
+                                            onclick={() => { itemToCheckOut = log.id; isConfirmOpen = true; }} 
+                                            className="px-3 py-1.5 text-sm h-9"
+                                        >
+                                            <LogOut size={16} /> {i18n.t('checkOut')}
+                                        </Button>
+                                    {/if}
                                 </td>
                             </tr>
                         {/each}
@@ -171,7 +219,7 @@
 
             <!-- Mobile Cards -->
             <div class="md:hidden space-y-4">
-                {#each filteredLogs as log}
+                {#each data.activeLogs as log}
                     <Card className="p-4 space-y-4">
                         <div class="flex justify-between items-start">
                             <div>
@@ -191,17 +239,25 @@
                             <div class="text-gray-900 font-medium">{format(new Date(log.entryTime), 'p')}</div>
                         </div>
                         <div class="pt-2 border-t">
-                            <Button 
-                                variant="danger" 
-                                onclick={() => { itemToCheckOut = log.id; isConfirmOpen = true; }} 
-                                className="w-full"
-                            >
-                                <LogOut size={16} /> {i18n.t('checkOut')}
-                            </Button>
+                            {#if canCreate}
+                                <Button 
+                                    variant="danger" 
+                                    onclick={() => { itemToCheckOut = log.id; isConfirmOpen = true; }} 
+                                    className="w-full"
+                                >
+                                    <LogOut size={16} /> {i18n.t('checkOut')}
+                                </Button>
+                            {/if}
                         </div>
                     </Card>
                 {/each}
             </div>
+
+            <Pagination 
+                currentPage={data.currentPage} 
+                totalPages={data.totalPages} 
+                pageSize={data.pageSize}
+            />
         {/if}
     </div>
 </div>

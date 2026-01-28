@@ -18,8 +18,11 @@
     let { data, form }: { data: PageData, form: ActionData } = $props();
 
     let isModalOpen = $state(false);
+    let labourType = $state('');
 
-    // Remove the $effect that relies on local 'form' prop as it won't work for cross-page actions
+    $effect(() => {
+        labourType = data.labour.type;
+    });
 
     const labourTypeOptions = $derived([
         { value: 'company', label: i18n.t('companyLabour') },
@@ -75,9 +78,14 @@
                         <p class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                             <Info size={14} /> {i18n.t('type')}
                         </p>
-                        <Badge status={data.labour.type === 'company' ? 'on_premises' : 'default'}>
-                            {data.labour.type === 'company' ? i18n.t('companyLabour') : i18n.t('contractorLabour')}
-                        </Badge>
+                        <div class="flex flex-col gap-1 items-start">
+                            <Badge status={data.labour.type === 'company' ? 'on_premises' : 'default'}>
+                                {data.labour.type === 'company' ? i18n.t('companyLabour') : i18n.t('contractorLabour')}
+                            </Badge>
+                            {#if data.labour.type === 'contractor' && data.labour.contractorName}
+                                <span class="text-xs font-bold text-gray-500 uppercase">{data.labour.contractorName}</span>
+                            {/if}
+                        </div>
                     </div>
                     <div class="space-y-1">
                         <p class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
@@ -194,7 +202,7 @@
                     toast.success(i18n.t('successSaved'));
                     await invalidateAll();
                 } else if (result.type === 'failure') {
-                    toast.error(result.data?.message || 'Update failed');
+                    toast.error(String(result.data?.message || 'Update failed'));
                 }
             };
         }} 
@@ -221,8 +229,17 @@
             name="type" 
             required 
             options={labourTypeOptions}
-            value={data.labour.type || 'company'}
+            bind:value={labourType}
         />
+
+        {#if labourType === 'contractor'}
+            <Input 
+                label={i18n.lang === 'bn' ? 'ঠিকাদারের নাম' : 'Contractor Name'} 
+                name="contractorName" 
+                placeholder={i18n.lang === 'bn' ? 'যেমন: এস আর ট্রেডার্স' : 'e.g. SR Traders'}
+                value={data.labour.contractorName || ''} 
+            />
+        {/if}
         
         <Input 
             label={i18n.t('designation')} 

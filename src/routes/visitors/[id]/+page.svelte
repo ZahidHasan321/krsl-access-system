@@ -189,7 +189,7 @@
                     toast.success(i18n.t('successSaved'));
                     await invalidateAll();
                 } else if (result.type === 'failure') {
-                    toast.error(result.data?.message || 'Update failed');
+                    toast.error(String(result.data?.message || 'Update failed'));
                 }
             };
         }} 

@@ -7,6 +7,7 @@
     import Select from '$lib/components/ui/Select.svelte';
     import DatePicker from '$lib/components/ui/DatePicker.svelte';
     import EmptyState from '$lib/components/ui/EmptyState.svelte';
+    import Pagination from '$lib/components/ui/Pagination.svelte';
     import { format } from 'date-fns';
     import { formatDuration } from '$lib/utils';
     import type { PageData } from './$types';
@@ -48,6 +49,8 @@
         } else {
             url.searchParams.delete('date');
         }
+
+        url.searchParams.delete('page');
         
         goto(url.toString(), { keepFocus: true, replaceState: true });
     }
@@ -67,7 +70,13 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
             <h1 class="text-2xl font-black text-gray-900">{i18n.t('visitors')} - {i18n.t('history')}</h1>
-            <p class="text-gray-500">{i18n.t('history')}</p>
+            <p class="text-gray-500">
+                {#if data.date}
+                    {format(new Date(data.date), 'PPP')}
+                {:else}
+                    {i18n.t('all') + ' ' + i18n.t('history')}
+                {/if}
+            </p>
         </div>
     </div>
 
@@ -81,7 +90,7 @@
                 />
             </div>
             <div class="relative flex-1">
-                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">{i18n.t('name')} / {i18n.t('company')} / {i18n.t('cardNo')}</label>
+                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">{i18n.t('name')} / {i18n.t('company')} / {i18n.t('cardNo')} / {i18n.t('phone')} / {i18n.t('purpose')}</label>
                 <div class="relative">
                     <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                     <Input
@@ -90,6 +99,7 @@
                         bind:value={searchQuery}
                         oninput={debounceSearch}
                         className="pl-10"
+                        onclear={() => { searchQuery = ''; updateFilters(); }}
                     />
                 </div>
             </div>
@@ -112,6 +122,13 @@
                     icon={History}
                 />
             </Card>
+            {#if data.totalPages > 0 || filteredLogs.length === 0}
+                 <Pagination 
+                    currentPage={data.currentPage} 
+                    totalPages={data.totalPages} 
+                    pageSize={data.pageSize}
+                />
+            {/if}
         {:else}
             <!-- Desktop Table -->
             <div class="hidden md:block overflow-hidden rounded-xl border border-gray-100 shadow-sm bg-white">
@@ -120,13 +137,13 @@
                         <tr>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('date')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('name')}</th>
+                            <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('cardNo')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('type')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('company')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('purpose')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('entryTime')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('exitTime')}</th>
                             <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('duration')}</th>
-                            <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('status')}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-50">
@@ -139,6 +156,9 @@
                                     <a href="/visitors/{log.visitorId}" class="text-sm font-bold text-gray-900 hover:text-primary-600 transition-colors">
                                         {log.visitorName}
                                     </a>
+                                    <p class="text-xs text-gray-500 font-medium">{log.visitorContact || '-'}</p>
+                                </td>
+                                <td class="px-6 py-3 align-middle">
                                     <p class="text-xs text-primary-600 font-mono font-bold">{log.visitingCardNo || '-'}</p>
                                 </td>
                                 <td class="px-6 py-3 align-middle">
@@ -154,11 +174,6 @@
                                 </td>
                                 <td class="px-6 py-3 text-sm font-bold text-gray-700 align-middle">
                                     {formatDuration(log.entryTime, log.exitTime)}
-                                </td>
-                                <td class="px-6 py-3 align-middle">
-                                    <Badge status={log.status}>
-                                        {log.status === 'on_premises' ? i18n.t('onPremises') : i18n.t('checkedOut')}
-                                    </Badge>
                                 </td>
                             </tr>
                         {/each}
@@ -176,10 +191,13 @@
                                 <a href="/visitors/{log.visitorId}" class="text-lg font-bold text-gray-900 hover:text-primary-600 transition-colors">
                                     {log.visitorName}
                                 </a>
+                                <p class="text-xs text-gray-500 font-medium">{log.visitorContact || '-'}</p>
                             </div>
                             <Badge>{log.visitorType === 'guest' ? i18n.t('guest') : i18n.t('vendor')}</Badge>
                         </div>
                         <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div class="text-gray-500">{i18n.t('cardNo')}</div>
+                            <div class="text-primary-600 font-bold font-mono">{log.visitingCardNo || '-'}</div>
                             <div class="text-gray-500">{i18n.t('company')}</div>
                             <div class="text-gray-900 font-medium">{log.visitorCompany || '-'}</div>
                             <div class="text-gray-500">{i18n.t('purpose')}</div>
@@ -188,16 +206,16 @@
                             <div class="text-gray-900 font-medium">{format(new Date(log.entryTime), 'p')}</div>
                             <div class="text-gray-500">{i18n.t('exitTime')}</div>
                             <div class="text-gray-900 font-medium">{log.exitTime ? format(new Date(log.exitTime), 'p') : '-'}</div>
-                            <div class="text-gray-500">{i18n.t('status')}</div>
-                            <div>
-                                <Badge status={log.status}>
-                                    {log.status === 'on_premises' ? i18n.t('onPremises') : i18n.t('checkedOut')}
-                                </Badge>
-                            </div>
                         </div>
                     </Card>
                 {/each}
             </div>
+
+            <Pagination 
+                currentPage={data.currentPage} 
+                totalPages={data.totalPages} 
+                pageSize={data.pageSize}
+            />
         {/if}
     </div>
 </div>

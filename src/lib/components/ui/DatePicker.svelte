@@ -2,6 +2,7 @@
     import Flatpickr from 'svelte-flatpickr';
     import 'flatpickr/dist/flatpickr.css';
     import { twMerge } from 'tailwind-merge';
+    import { X } from 'lucide-svelte';
 
     interface Props {
         value?: string; // YYYY-MM-DD
@@ -36,6 +37,11 @@
         value = dateStr;
         onchange?.(dateStr);
     }
+
+    function clearDate() {
+        value = '';
+        onchange?.('');
+    }
 </script>
 
 <div class="w-full">
@@ -43,7 +49,7 @@
         <label for={id} class="block text-sm font-medium text-gray-700 mb-1">{label}</label>
     {/if}
     
-    <div class="relative">
+    <div class="relative group">
         <Flatpickr
             {options}
             bind:value
@@ -55,6 +61,16 @@
             )}
             on:change={handleChange}
             {placeholder}
-        />
+        >{""}</Flatpickr>
+        {#if value}
+            <button 
+                type="button"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-white p-0.5 rounded-full"
+                onclick={clearDate}
+                aria-label="Clear date"
+            >
+                <X size={16} />
+            </button>
+        {/if}
     </div>
 </div>

@@ -1,20 +1,55 @@
 import { db } from '$lib/server/db';
 import { visitorProfiles, visitorLogs } from '$lib/server/db/schema';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, and, or, like, count } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
 import { fail, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { requirePermission } from '$lib/server/rbac';
 
-export const load: PageServerLoad = async () => {
-    const allProfiles = await db.query.visitorProfiles.findMany({
-        orderBy: [desc(visitorProfiles.createdAt)]
-    });
-    return { profiles: allProfiles };
+export const load: PageServerLoad = async ({ url, locals }) => {
+    requirePermission(locals, 'visitors.view');
+    const query = url.searchParams.get('q') || '';
+    const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 20));
+    const offset = (page - 1) * pageSize;
+
+    const whereClause = query ? or(
+        like(visitorProfiles.name, `%${query}%`),
+        like(visitorProfiles.company, `%${query}%`),
+        like(visitorProfiles.contactNo, `%${query}%`)
+    ) : undefined;
+
+    // Count Query
+    const [totalCountResult] = await db
+        .select({ count: count() })
+        .from(visitorProfiles)
+        .where(whereClause);
+    
+    const totalCount = totalCountResult?.count || 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    // Data Query
+    const allProfiles = await db
+        .select()
+        .from(visitorProfiles)
+        .where(whereClause)
+        .orderBy(desc(visitorProfiles.createdAt))
+        .limit(pageSize)
+        .offset(offset);
+
+    return { 
+        profiles: allProfiles,
+        query,
+        currentPage: page,
+        totalPages,
+        pageSize
+    };
 };
 
 export const actions: Actions = {
-    create: async ({ request }) => {
+    create: async ({ request, locals }) => {
+        requirePermission(locals, 'visitors.create');
         const data = await request.formData();
         const name = data.get('name') as string;
         const company = data.get('company') as string;
@@ -57,7 +92,8 @@ export const actions: Actions = {
             return fail(500, { message: 'Database error' });
         }
     },
-    update: async ({ request }) => {
+    update: async ({ request, locals }) => {
+        requirePermission(locals, 'visitors.create');
         const data = await request.formData();
         const id = data.get('id') as string;
         const name = data.get('name') as string;
@@ -81,7 +117,8 @@ export const actions: Actions = {
             return fail(500, { message: 'Database error' });
         }
     },
-    delete: async ({ request }) => {
+    delete: async ({ request, locals }) => {
+        requirePermission(locals, 'visitors.create');
         const data = await request.formData();
         const id = data.get('id') as string;
 

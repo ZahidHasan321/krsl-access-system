@@ -1,6 +1,7 @@
 <script lang="ts">
     import { clsx, type ClassValue } from 'clsx';
     import { twMerge } from 'tailwind-merge';
+    import { X } from 'lucide-svelte';
 
     interface Props {
         label?: string;
@@ -12,6 +13,7 @@
         required?: boolean;
         className?: ClassValue;
         containerClass?: ClassValue;
+        onclear?: () => void;
         [key: string]: any;
     }
 
@@ -25,6 +27,7 @@
         required = false,
         className = '',
         containerClass = '',
+        onclear,
         ...rest
     }: Props = $props();
 
@@ -37,14 +40,26 @@
             {label} {#if required}<span class="text-rose-500">*</span>{/if}
         </label>
     {/if}
-    <input
-        {id}
-        {name}
-        {type}
-        {placeholder}
-        {required}
-        bind:value={value}
-        class={twMerge(inputClasses, className as string)}
-        {...rest}
-    />
+    <div class="relative">
+        <input
+            {id}
+            {name}
+            {type}
+            {placeholder}
+            {required}
+            bind:value={value}
+            class={twMerge(inputClasses, onclear ? 'pr-10' : '', className as string)}
+            {...rest}
+        />
+        {#if value && onclear}
+            <button
+                type="button"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent p-1 rounded-full hover:bg-gray-100 transition-colors"
+                onclick={onclear}
+                aria-label="Clear input"
+            >
+                <X size={16} />
+            </button>
+        {/if}
+    </div>
 </div>

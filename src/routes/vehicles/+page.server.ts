@@ -1,21 +1,71 @@
 import { db } from '$lib/server/db';
 import { vehicles } from '$lib/server/db/schema';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, and, or, like, count } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
 import { fail, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { requirePermission } from '$lib/server/rbac';
 
-export const load: PageServerLoad = async () => {
-    const activeVehicles = await db.query.vehicles.findMany({
-        where: eq(vehicles.status, 'on_premises'),
-        orderBy: [desc(vehicles.entryTime)]
-    });
-    return { activeVehicles };
+export const load: PageServerLoad = async ({ url, locals }) => {
+    requirePermission(locals, 'vehicles.view');
+    const query = url.searchParams.get('q') || '';
+    const typeFilter = url.searchParams.get('type') || 'all';
+    const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 20));
+    const offset = (page - 1) * pageSize;
+
+    const conditions = [eq(vehicles.status, 'on_premises')];
+
+    if (typeFilter !== 'all') {
+        conditions.push(eq(vehicles.type, typeFilter as any));
+    }
+
+    if (query) {
+        conditions.push(
+            or(
+                like(vehicles.vehicleNumber, `%${query}%`),
+                like(vehicles.driverName, `%${query}%`),
+                like(vehicles.vendorName, `%${query}%`),
+                like(vehicles.cargoDescription, `%${query}%`),
+                like(vehicles.mobile, `%${query}%`)
+            )!
+        );
+    }
+
+    const whereClause = and(...conditions);
+
+    // Count Query
+    const [totalCountResult] = await db
+        .select({ count: count() })
+        .from(vehicles)
+        .where(whereClause);
+    
+    const totalCount = totalCountResult?.count || 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    // Data Query
+    const activeVehicles = await db
+        .select()
+        .from(vehicles)
+        .where(whereClause)
+        .orderBy(desc(vehicles.entryTime))
+        .limit(pageSize)
+        .offset(offset);
+
+    return { 
+        activeVehicles, 
+        query,
+        typeFilter,
+        currentPage: page,
+        totalPages,
+        pageSize
+    };
 };
 
 export const actions: Actions = {
-    checkIn: async ({ request }) => {
+    checkIn: async ({ request, locals }) => {
+        requirePermission(locals, 'vehicles.create');
         const data = await request.formData();
         const vehicleNumber = data.get('vehicleNumber') as string;
         const type = data.get('type') as 'transport' | 'regular';
@@ -53,7 +103,8 @@ export const actions: Actions = {
             return fail(500, { message: 'Database error' });
         }
     },
-    checkOut: async ({ request }) => {
+    checkOut: async ({ request, locals }) => {
+        requirePermission(locals, 'vehicles.create');
         const data = await request.formData();
         const id = data.get('id') as string;
 

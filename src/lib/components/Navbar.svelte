@@ -54,6 +54,7 @@
         {
             label: 'labours',
             icon: Users,
+            permission: 'labours.view',
             sub: [
                 { href: '/labours/attendance', label: 'attendance' },
                 { href: '/labours', label: 'registry' },
@@ -64,6 +65,7 @@
         { 
             label: 'visitors', 
             icon: UserCheck,
+            permission: 'visitors.view',
             sub: [
                 { href: '/visitors', label: 'activeLog' },
                 { href: '/visitors/profiles', label: 'registry' },
@@ -73,12 +75,22 @@
         { 
             label: 'vehicles', 
             icon: Truck,
+            permission: 'vehicles.view',
             sub: [
                 { href: '/vehicles', label: 'activeLog' },
                 { href: '/vehicles/history', label: 'history' }
             ]
         }
     ];
+
+    const filteredNavLinks = $derived.by(() => {
+        const user = page.data.user;
+        if (!user) return [];
+        return navLinks.filter(link => {
+            if (!link.permission) return true;
+            return user.permissions.includes(link.permission);
+        });
+    });
 
     function isActive(href: string) {
         return activeHref === href;
@@ -88,7 +100,7 @@
         const path = page.url.pathname;
         const allLinks: string[] = [];
         
-        for (const link of navLinks) {
+        for (const link of filteredNavLinks) {
             if (link.href) allLinks.push(link.href);
             if (link.sub) {
                 for (const sub of link.sub) {
@@ -126,7 +138,7 @@
                 </a>
                 
                 <div class="hidden lg:flex items-center gap-1">
-                    {#each navLinks as link}
+                    {#each filteredNavLinks as link}
                         {#if link.href}
                             <a 
                                 href={link.href}
@@ -248,7 +260,7 @@
     {#if isMobileMenuOpen}
         <div class="lg:hidden bg-white border-b absolute w-full shadow-xl">
             <div class="px-4 pt-2 pb-6 space-y-1">
-                {#each navLinks as link}
+                {#each filteredNavLinks as link}
                     {#if link.href}
                         <a 
                             href={link.href}

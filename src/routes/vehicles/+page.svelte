@@ -9,9 +9,11 @@
     import Badge from '$lib/components/ui/Badge.svelte';
     import EmptyState from '$lib/components/ui/EmptyState.svelte';
     import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
+    import Pagination from '$lib/components/ui/Pagination.svelte';
     import { enhance } from '$app/forms';
     import { toast } from 'svelte-sonner';
     import { format } from 'date-fns';
+    import { goto } from '$app/navigation';
     import type { PageData, ActionData } from './$types';
 
     let { data, form }: { data: PageData, form: ActionData } = $props();
@@ -24,27 +26,10 @@
 
     let checkoutForm: HTMLFormElement;
 
-    const filteredVehicles = $derived(
-        data.activeVehicles.filter((v: any) => {
-            const matchesType = typeFilter === 'all' || v.type === typeFilter;
-            if (!matchesType) return false;
-            if (!searchQuery) return true;
-            const query = searchQuery.toLowerCase();
-            return (
-                v.vehicleNumber?.toLowerCase().includes(query) ||
-                v.driverName?.toLowerCase().includes(query) ||
-                v.vendorName?.toLowerCase().includes(query) ||
-                v.cargoDescription?.toLowerCase().includes(query) ||
-                v.mobile?.toLowerCase().includes(query)
-            );
-        })
-    );
-
-    const typeFilterOptions = $derived([
-        { value: 'all', label: i18n.t('all') },
-        { value: 'transport', label: i18n.t('transportVehicle') },
-        { value: 'regular', label: i18n.t('regularVehicle') }
-    ]);
+    $effect(() => {
+        searchQuery = data.query || '';
+        typeFilter = data.typeFilter || 'all';
+    });
 
     $effect(() => {
         if (form?.success) {
@@ -55,10 +40,42 @@
         }
     });
 
+    function updateFilter() {
+        const url = new URL(window.location.href);
+        if (searchQuery) {
+            url.searchParams.set('q', searchQuery);
+        } else {
+            url.searchParams.delete('q');
+        }
+        
+        if (typeFilter !== 'all') {
+            url.searchParams.set('type', typeFilter);
+        } else {
+            url.searchParams.delete('type');
+        }
+
+        url.searchParams.delete('page');
+        goto(url.toString(), { keepFocus: true, replaceState: true });
+    }
+
+    let timeout: any;
+    function debounceSearch() {
+        clearTimeout(timeout);
+        timeout = setTimeout(updateFilter, 300);
+    }
+
+    const typeFilterOptions = $derived([
+        { value: 'all', label: i18n.t('all') },
+        { value: 'transport', label: i18n.t('transportVehicle') },
+        { value: 'regular', label: i18n.t('regularVehicle') }
+    ]);
+
     const vehicleTypeOptions = $derived([
         { value: 'transport', label: i18n.t('transportVehicle') },
         { value: 'regular', label: i18n.t('regularVehicle') }
     ]);
+
+    const canCreate = $derived(data.user?.permissions.includes('vehicles.create'));
 </script>
 
 <svelte:head>
@@ -73,39 +90,55 @@
             </h1>
             <p class="text-slate-600 font-semibold">{data.activeVehicles.length} {i18n.t('vehicles')} {i18n.t('inside')}</p>
         </div>
-        <Button onclick={() => isModalOpen = true} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700">
-            <LogIn size={20} />
-            {i18n.t('checkIn')}
-        </Button>
+        {#if canCreate}
+            <Button onclick={() => isModalOpen = true} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700">
+                <LogIn size={20} />
+                {i18n.t('checkIn')}
+            </Button>
+        {/if}
     </div>
 
     <Card className="p-4">
         <div class="flex flex-col sm:flex-row gap-4">
             <div class="relative flex-1">
-                <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                <Input
-                    placeholder={i18n.t('searchPlaceholder')}
-                    bind:value={searchQuery}
-                    className="pl-10"
-                />
+                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">{i18n.t('vehicleNo')} / {i18n.t('driverName')} / {i18n.t('vendorName')} / {i18n.t('cargo')} / {i18n.t('phone')}</label>
+                <div class="relative">
+                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <Input
+                        id="search"
+                        placeholder={i18n.t('searchPlaceholder')}
+                        bind:value={searchQuery}
+                        oninput={debounceSearch}
+                        className="pl-10"
+                        onclear={() => { searchQuery = ''; updateFilter(); }}
+                    />
+                </div>
             </div>
-            <div class="sm:w-48">
+            <div class="sm:w-48 sm:self-end">
                 <Select
                     options={typeFilterOptions}
                     bind:value={typeFilter}
+                    onchange={updateFilter}
                 />
             </div>
         </div>
     </Card>
 
     <div class="grid grid-cols-1 gap-4">
-        {#if filteredVehicles.length === 0}
+        {#if data.activeVehicles.length === 0}
             <Card>
                 <EmptyState 
                     title={i18n.t('noResults')} 
                     icon={Truck}
                 />
             </Card>
+            {#if data.totalPages > 0 || data.activeVehicles.length === 0}
+                 <Pagination 
+                    currentPage={data.currentPage} 
+                    totalPages={data.totalPages} 
+                    pageSize={data.pageSize}
+                />
+            {/if}
         {:else}
             <!-- Desktop Table -->
             <div class="hidden lg:block overflow-hidden rounded-xl border border-gray-100 shadow-sm bg-white">
@@ -122,7 +155,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-50">
-                        {#each filteredVehicles as vehicle}
+                        {#each data.activeVehicles as vehicle}
                             <tr class="hover:bg-gray-50/50 transition-colors">
                                 <td class="px-6 py-3 align-middle">
                                     <p class="text-sm font-black text-primary-600 font-mono uppercase tracking-widest">{vehicle.vehicleNumber}</p>
@@ -140,13 +173,15 @@
                                 <td class="px-6 py-3 text-sm text-gray-600 align-middle">{vehicle.cargoDescription || '-'}</td>
                                 <td class="px-6 py-3 text-sm text-gray-600 align-middle">{format(new Date(vehicle.entryTime), 'p')}</td>
                                 <td class="px-6 py-3 text-right align-middle">
-                                    <Button 
-                                        variant="danger" 
-                                        onclick={() => { itemToCheckOut = vehicle.id; isConfirmOpen = true; }} 
-                                        className="px-3 py-1.5 text-sm h-9 whitespace-nowrap"
-                                    >
-                                        <LogOut size={16} /> {i18n.t('checkOut')}
-                                    </Button>
+                                    {#if canCreate}
+                                        <Button 
+                                            variant="danger" 
+                                            onclick={() => { itemToCheckOut = vehicle.id; isConfirmOpen = true; }} 
+                                            className="px-3 py-1.5 text-sm h-9 whitespace-nowrap"
+                                        >
+                                            <LogOut size={16} /> {i18n.t('checkOut')}
+                                        </Button>
+                                    {/if}
                                 </td>
                             </tr>
                         {/each}
@@ -156,7 +191,7 @@
 
             <!-- Mobile & Tablet Cards -->
             <div class="lg:hidden space-y-4">
-                {#each filteredVehicles as vehicle}
+                {#each data.activeVehicles as vehicle}
                     <Card className="p-4 space-y-4">
                         <div class="flex justify-between items-start">
                             <div>
@@ -191,17 +226,25 @@
                             </div>
                         {/if}
                         <div class="pt-2 border-t">
-                            <Button 
-                                variant="danger" 
-                                onclick={() => { itemToCheckOut = vehicle.id; isConfirmOpen = true; }} 
-                                className="w-full"
-                            >
-                                <LogOut size={16} /> {i18n.t('checkOut')}
-                            </Button>
+                            {#if canCreate}
+                                <Button 
+                                    variant="danger" 
+                                    onclick={() => { itemToCheckOut = vehicle.id; isConfirmOpen = true; }} 
+                                    className="w-full"
+                                >
+                                    <LogOut size={16} /> {i18n.t('checkOut')}
+                                </Button>
+                            {/if}
                         </div>
                     </Card>
                 {/each}
             </div>
+
+            <Pagination 
+                currentPage={data.currentPage} 
+                totalPages={data.totalPages} 
+                pageSize={data.pageSize}
+            />
         {/if}
     </div>
 </div>

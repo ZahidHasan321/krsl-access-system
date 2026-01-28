@@ -1,14 +1,46 @@
 import { db } from '$lib/server/db';
 import { labourLogs, labours } from '$lib/server/db/schema';
-import { desc, eq, and } from 'drizzle-orm';
+import { desc, eq, and, or, like, count } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
 import { fail, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { requirePermission } from '$lib/server/rbac';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ url, locals }) => {
+    requirePermission(locals, 'labours.view');
     const today = format(new Date(), 'yyyy-MM-dd');
+    const query = url.searchParams.get('q') || '';
+    const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 20));
+    const offset = (page - 1) * pageSize;
+
+    const conditions = [eq(labourLogs.date, today)];
+
+    if (query) {
+        conditions.push(
+            or(
+                like(labours.name, `%${query}%`),
+                like(labours.codeNo, `%${query}%`),
+                like(labours.designation, `%${query}%`),
+                like(labours.contractorName, `%${query}%`)
+            )!
+        );
+    }
+
+    const whereClause = and(...conditions);
+
+    // Count Query
+    const [totalCountResult] = await db
+        .select({ count: count() })
+        .from(labourLogs)
+        .innerJoin(labours, eq(labourLogs.labourId, labours.id))
+        .where(whereClause);
     
+    const totalCount = totalCountResult?.count || 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    // Data Query
     const logs = await db
         .select({
             id: labourLogs.id,
@@ -19,22 +51,35 @@ export const load: PageServerLoad = async () => {
             labourName: labours.name,
             labourCode: labours.codeNo,
             labourId: labours.id,
-            isTrained: labours.isTrained
+            isTrained: labours.isTrained,
+            designation: labours.designation,
+            contractorName: labours.contractorName,
+            labourType: labours.type
         })
         .from(labourLogs)
         .innerJoin(labours, eq(labourLogs.labourId, labours.id))
-        .where(eq(labourLogs.date, today))
-        .orderBy(desc(labourLogs.entryTime));
+        .where(whereClause)
+        .orderBy(desc(labourLogs.entryTime))
+        .limit(pageSize)
+        .offset(offset);
 
     const allLabours = await db.query.labours.findMany({
         orderBy: [labours.name]
     });
 
-    return { logs, labours: allLabours };
+    return { 
+        logs, 
+        labours: allLabours, 
+        query,
+        currentPage: page,
+        totalPages,
+        pageSize
+    };
 };
 
 export const actions: Actions = {
-    checkIn: async ({ request }) => {
+    checkIn: async ({ request, locals }) => {
+        requirePermission(locals, 'labours.create');
         const data = await request.formData();
         const labourId = data.get('labourId') as string;
         
@@ -68,7 +113,8 @@ export const actions: Actions = {
             return fail(500, { message: 'Database error' });
         }
     },
-    checkOut: async ({ request }) => {
+    checkOut: async ({ request, locals }) => {
+        requirePermission(locals, 'labours.create');
         const data = await request.formData();
         const id = data.get('id') as string;
 

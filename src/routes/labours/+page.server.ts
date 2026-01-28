@@ -1,24 +1,61 @@
 import { db } from '$lib/server/db';
 import { labours } from '$lib/server/db/schema';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, like, or, count } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { fail, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { requirePermission } from '$lib/server/rbac';
 
-export const load: PageServerLoad = async () => {
-    const allLabours = await db.query.labours.findMany({
-        orderBy: [desc(labours.createdAt)]
-    });
-    return { labours: allLabours };
+export const load: PageServerLoad = async ({ url, locals }) => {
+    requirePermission(locals, 'labours.view');
+    const query = url.searchParams.get('q') || '';
+    const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 20));
+    const offset = (page - 1) * pageSize;
+
+    const whereClause = query ? or(
+        like(labours.name, `%${query}%`),
+        like(labours.codeNo, `%${query}%`),
+        like(labours.designation, `%${query}%`),
+        like(labours.contractorName, `%${query}%`)
+    ) : undefined;
+
+    // Count Query
+    const [totalCountResult] = await db
+        .select({ count: count() })
+        .from(labours)
+        .where(whereClause);
+    
+    const totalCount = totalCountResult?.count || 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    // Data Query
+    const allLabours = await db
+        .select()
+        .from(labours)
+        .where(whereClause)
+        .orderBy(desc(labours.createdAt))
+        .limit(pageSize)
+        .offset(offset);
+
+    return { 
+        labours: allLabours, 
+        query,
+        currentPage: page,
+        totalPages,
+        pageSize
+    };
 };
 
 export const actions: Actions = {
-    create: async ({ request }) => {
+    create: async ({ request, locals }) => {
+        requirePermission(locals, 'labours.create');
         const data = await request.formData();
         const name = data.get('name') as string;
         const codeNo = data.get('codeNo') as string;
         const type = data.get('type') as 'company' | 'contractor';
         const designation = data.get('designation') as string;
+        const contractorName = data.get('contractorName') as string;
         const joinDateStr = data.get('joinDate') as string;
         const isTrained = data.has('isTrained');
 
@@ -33,6 +70,7 @@ export const actions: Actions = {
                 codeNo,
                 type,
                 designation,
+                contractorName: type === 'contractor' ? contractorName : null,
                 joinDate: joinDateStr ? new Date(joinDateStr) : null,
                 isTrained,
             });
@@ -44,13 +82,15 @@ export const actions: Actions = {
             return fail(500, { message: 'Database error' });
         }
     },
-    update: async ({ request }) => {
+    update: async ({ request, locals }) => {
+        requirePermission(locals, 'labours.edit');
         const data = await request.formData();
         const id = data.get('id') as string;
         const name = data.get('name') as string;
         const codeNo = data.get('codeNo') as string;
         const type = data.get('type') as 'company' | 'contractor';
         const designation = data.get('designation') as string;
+        const contractorName = data.get('contractorName') as string;
         const joinDateStr = data.get('joinDate') as string;
         const isTrained = data.has('isTrained');
 
@@ -64,6 +104,7 @@ export const actions: Actions = {
                 codeNo,
                 type,
                 designation,
+                contractorName: type === 'contractor' ? contractorName : null,
                 joinDate: joinDateStr ? new Date(joinDateStr) : null,
                 isTrained,
             }).where(eq(labours.id, id));
@@ -72,7 +113,8 @@ export const actions: Actions = {
             return fail(500, { message: 'Database error' });
         }
     },
-    delete: async ({ request }) => {
+    delete: async ({ request, locals }) => {
+        requirePermission(locals, 'labours.delete');
         const data = await request.formData();
         const id = data.get('id') as string;
 

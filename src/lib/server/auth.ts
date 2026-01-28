@@ -28,20 +28,40 @@ export async function createSession(token: string, userId: string) {
 
 export async function validateSessionToken(token: string) {
 	const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
-	const [result] = await db
+	const rows = await db
 		.select({
-			// Adjust user table here to tweak returned data
-			user: { id: table.user.id, username: table.user.username },
-			session: table.session
+			user: table.user,
+			session: table.session,
+			role: table.roles,
+			permissionId: table.permissions.id
 		})
 		.from(table.session)
 		.innerJoin(table.user, eq(table.session.userId, table.user.id))
+		.leftJoin(table.roles, eq(table.user.roleId, table.roles.id))
+		.leftJoin(table.rolePermissions, eq(table.roles.id, table.rolePermissions.roleId))
+		.leftJoin(table.permissions, eq(table.rolePermissions.permissionId, table.permissions.id))
 		.where(eq(table.session.id, sessionId));
 
-	if (!result) {
+	if (rows.length === 0) {
 		return { session: null, user: null };
 	}
-	const { session, user } = result;
+
+	const { session, user: userBase, role } = rows[0];
+	const permissions = new Set<string>();
+
+	for (const row of rows) {
+		if (row.permissionId) {
+			permissions.add(row.permissionId);
+		}
+	}
+
+	const user = {
+		id: userBase.id,
+		username: userBase.username,
+		roleId: role?.id ?? null,
+		roleName: role?.name ?? null,
+		permissions: Array.from(permissions)
+	};
 
 	const sessionExpired = Date.now() >= session.expiresAt.getTime();
 	if (sessionExpired) {

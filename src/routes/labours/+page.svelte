@@ -9,26 +9,45 @@
     import Card from '$lib/components/ui/Card.svelte';
     import Badge from '$lib/components/ui/Badge.svelte';
     import EmptyState from '$lib/components/ui/EmptyState.svelte';
+    import Pagination from '$lib/components/ui/Pagination.svelte';
     import { enhance } from '$app/forms';
     import { toast } from 'svelte-sonner';
     import type { PageData, ActionData } from './$types';
     import { format } from 'date-fns';
+    import { goto } from '$app/navigation';
 
     let { data, form }: { data: PageData, form: ActionData } = $props();
 
     let searchQuery = $state('');
     let isModalOpen = $state(false);
     let editingLabour = $state<any>(null);
+    let labourType = $state('company');
 
-    const filteredLabours = $derived(
-        data.labours.filter((l: any) => 
-            l.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            l.codeNo.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-    );
+    $effect(() => {
+        searchQuery = data.query || '';
+    });
+
+    function updateFilter() {
+        const url = new URL(window.location.href);
+        if (searchQuery) {
+            url.searchParams.set('q', searchQuery);
+        } else {
+            url.searchParams.delete('q');
+        }
+        url.searchParams.delete('page');
+        // Keep limit if exists
+        goto(url.toString(), { keepFocus: true, replaceState: true });
+    }
+
+    let timeout: any;
+    function debounceSearch() {
+        clearTimeout(timeout);
+        timeout = setTimeout(updateFilter, 300);
+    }
 
     function openAddModal() {
         editingLabour = null;
+        labourType = 'company';
         isModalOpen = true;
     }
 
@@ -37,6 +56,7 @@
             ...labour,
             joinDate: labour.joinDate ? format(new Date(labour.joinDate), 'yyyy-MM-dd') : ''
         };
+        labourType = labour.type;
         isModalOpen = true;
     }
 
@@ -53,6 +73,10 @@
         { value: 'company', label: i18n.t('companyLabour') },
         { value: 'contractor', label: i18n.t('contractorLabour') }
     ]);
+
+    const canCreate = $derived(data.user?.permissions.includes('labours.create'));
+    const canEdit = $derived(data.user?.permissions.includes('labours.edit'));
+    const canDelete = $derived(data.user?.permissions.includes('labours.delete'));
 </script>
 
 <svelte:head>
@@ -65,33 +89,48 @@
             <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight font-header leading-tight py-1">
                 {i18n.t('labours')} <span class="text-primary-600">/</span> {i18n.t('registry')}
             </h1>
-            <p class="text-slate-600 font-semibold leading-relaxed py-0.5">{data.labours.length} {i18n.t('labours')} {i18n.t('noResults').toLowerCase() === 'no results found.' ? 'total' : 'মোট'}</p>
+            <p class="text-slate-600 font-semibold leading-relaxed py-0.5">
+                {data.labours.length} {i18n.t('labours')} {i18n.t('noResults').toLowerCase() === 'no results found.' ? 'showing' : 'প্রদর্শিত'}
+            </p>
         </div>
-        <Button onclick={openAddModal} className="w-full sm:w-auto">
-            <Plus size={20} />
-            {i18n.t('addNew')}
-        </Button>
+        {#if canCreate}
+            <Button onclick={openAddModal} className="w-full sm:w-auto">
+                <Plus size={20} />
+                {i18n.t('addNew')}
+            </Button>
+        {/if}
     </div>
 
     <Card className="p-4">
+         <label for="search" class="block text-sm font-medium text-gray-700 mb-1">{i18n.t('name')} / {i18n.t('codeNo')} / {i18n.t('designation')} / {i18n.lang === 'bn' ? 'ঠিকাদার' : 'Contractor'}</label>
         <div class="relative">
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <Input 
+                id="search"
                 placeholder={i18n.t('searchPlaceholder')} 
-                bind:value={searchQuery} 
+                bind:value={searchQuery}
+                oninput={debounceSearch}
                 className="pl-10"
+                onclear={() => { searchQuery = ''; updateFilter(); }}
             />
         </div>
     </Card>
 
     <div class="grid grid-cols-1 gap-4">
-        {#if filteredLabours.length === 0}
+        {#if data.labours.length === 0}
             <Card>
                 <EmptyState 
                     title={i18n.t('noResults')} 
                     icon={User}
                 />
             </Card>
+            {#if data.totalPages > 0 || data.labours.length === 0}
+                 <Pagination 
+                    currentPage={data.currentPage} 
+                    totalPages={data.totalPages} 
+                    pageSize={data.pageSize}
+                />
+            {/if}
         {:else}
             <!-- Desktop Table -->
             <div class="hidden md:block overflow-hidden rounded-xl border border-gray-100 shadow-sm bg-white">
@@ -108,7 +147,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-50">
-                        {#each filteredLabours as labour}
+                        {#each data.labours as labour}
                             <tr class="hover:bg-gray-50/50 transition-colors">
                                 <td class="px-6 py-2 text-sm font-mono font-bold text-primary-600 align-middle">{labour.codeNo}</td>
                                 <td class="px-6 py-2 align-middle">
@@ -117,9 +156,14 @@
                                     </a>
                                 </td>
                                 <td class="px-6 py-2 align-middle">
-                                    <Badge status={labour.type === 'company' ? 'on_premises' : 'default'}>
-                                        {labour.type === 'company' ? i18n.t('companyLabour') : i18n.t('contractorLabour')}
-                                    </Badge>
+                                    <div class="flex flex-col gap-1">
+                                        <Badge status={labour.type === 'company' ? 'on_premises' : 'default'}>
+                                            {labour.type === 'company' ? i18n.t('companyLabour') : i18n.t('contractorLabour')}
+                                        </Badge>
+                                        {#if labour.type === 'contractor' && labour.contractorName}
+                                            <span class="text-[10px] font-bold text-gray-500 uppercase">{labour.contractorName}</span>
+                                        {/if}
+                                    </div>
                                 </td>
                                 <td class="px-6 py-2 text-sm text-gray-600 align-middle">{labour.designation || '-'}</td>
                                 <td class="px-6 py-2 align-middle">
@@ -137,15 +181,19 @@
                                                 <Eye size={16} class="text-blue-600" />
                                             </Button>
                                         </a>
-                                        <Button variant="ghost" onclick={() => openEditModal(labour)} className="p-2 h-9 w-9 min-w-0">
-                                            <Edit2 size={16} class="text-amber-600" />
-                                        </Button>
-                                        <form method="POST" action="?/delete" use:enhance class="inline-block">
-                                            <input type="hidden" name="id" value={labour.id} />
-                                            <Button variant="ghost" type="submit" className="p-2 h-9 w-9 min-w-0">
-                                                <Trash2 size={16} class="text-rose-600" />
+                                        {#if canEdit}
+                                            <Button variant="ghost" onclick={() => openEditModal(labour)} className="p-2 h-9 w-9 min-w-0">
+                                                <Edit2 size={16} class="text-amber-600" />
                                             </Button>
-                                        </form>
+                                        {/if}
+                                        {#if canDelete}
+                                            <form method="POST" action="?/delete" use:enhance class="inline-block">
+                                                <input type="hidden" name="id" value={labour.id} />
+                                                <Button variant="ghost" type="submit" className="p-2 h-9 w-9 min-w-0">
+                                                    <Trash2 size={16} class="text-rose-600" />
+                                                </Button>
+                                            </form>
+                                        {/if}
                                     </div>
                                 </td>
                             </tr>
@@ -156,16 +204,21 @@
 
             <!-- Mobile Cards -->
             <div class="md:hidden space-y-4">
-                {#each filteredLabours as labour}
+                {#each data.labours as labour}
                     <Card className="p-4 space-y-4">
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-xs font-mono font-bold text-primary-600">{labour.codeNo}</p>
                                 <a href="/labours/{labour.id}" class="text-lg font-bold text-gray-900">{labour.name}</a>
                             </div>
-                            <Badge status={labour.type === 'company' ? 'on_premises' : 'default'}>
-                                {labour.type === 'company' ? i18n.t('companyLabour') : i18n.t('contractorLabour')}
-                            </Badge>
+                            <div class="flex flex-col items-end gap-1">
+                                <Badge status={labour.type === 'company' ? 'on_premises' : 'default'}>
+                                    {labour.type === 'company' ? i18n.t('companyLabour') : i18n.t('contractorLabour')}
+                                </Badge>
+                                {#if labour.type === 'contractor' && labour.contractorName}
+                                    <span class="text-[10px] font-bold text-gray-500 uppercase">{labour.contractorName}</span>
+                                {/if}
+                            </div>
                         </div>
                         <div class="grid grid-cols-2 gap-2 text-sm">
                             <div class="text-gray-500">{i18n.t('designation')}</div>
@@ -180,19 +233,29 @@
                             <div class="text-gray-900 font-medium">{labour.joinDate ? format(new Date(labour.joinDate), 'PP') : '-'}</div>
                         </div>
                         <div class="flex gap-2 pt-2 border-t">
-                            <Button variant="outline" onclick={() => openEditModal(labour)} className="flex-1">
-                                <Edit2 size={16} /> {i18n.t('edit')}
-                            </Button>
-                            <form method="POST" action="?/delete" use:enhance class="flex-1">
-                                <input type="hidden" name="id" value={labour.id} />
-                                <Button variant="danger" type="submit" className="w-full">
-                                    <Trash2 size={16} /> {i18n.t('delete')}
+                            {#if canEdit}
+                                <Button variant="outline" onclick={() => openEditModal(labour)} className="flex-1">
+                                    <Edit2 size={16} /> {i18n.t('edit')}
                                 </Button>
-                            </form>
+                            {/if}
+                            {#if canDelete}
+                                <form method="POST" action="?/delete" use:enhance class="flex-1">
+                                    <input type="hidden" name="id" value={labour.id} />
+                                    <Button variant="danger" type="submit" className="w-full">
+                                        <Trash2 size={16} /> {i18n.t('delete')}
+                                    </Button>
+                                </form>
+                            {/if}
                         </div>
                     </Card>
                 {/each}
             </div>
+
+             <Pagination 
+                currentPage={data.currentPage} 
+                totalPages={data.totalPages} 
+                pageSize={data.pageSize}
+            />
         {/if}
     </div>
 </div>
@@ -226,8 +289,17 @@
             name="type" 
             required 
             options={labourTypeOptions}
-            value={editingLabour?.type || 'company'}
+            bind:value={labourType}
         />
+
+        {#if labourType === 'contractor'}
+            <Input 
+                label={i18n.lang === 'bn' ? 'ঠিকাদারের নাম' : 'Contractor Name'} 
+                name="contractorName" 
+                placeholder={i18n.lang === 'bn' ? 'যেমন: এস আর ট্রেডার্স' : 'e.g. SR Traders'}
+                value={editingLabour?.contractorName || ''} 
+            />
+        {/if}
         
         <Input 
             label={i18n.t('designation')} 

@@ -3,7 +3,7 @@ import { browser } from '$app/environment';
 const translations = {
     en: {
         // Navigation
-        appName: 'KRM Steel',
+        appName: 'KR Steel',
         dashboard: 'Dashboard',
         labours: 'Labours',
         visitors: 'Visitors',
@@ -103,7 +103,7 @@ const translations = {
     },
     bn: {
         // Navigation
-        appName: 'কেআরএম স্টিল',
+        appName: 'কেআর স্টিল',
         dashboard: 'ড্যাশবোর্ড',
         labours: 'শ্রমিক',
         visitors: 'দর্শনার্থী',

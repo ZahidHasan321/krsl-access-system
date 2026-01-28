@@ -3,8 +3,10 @@ import { visitorProfiles, visitorLogs } from '$lib/server/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { requirePermission } from '$lib/server/rbac';
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
+    requirePermission(locals, 'visitors.view');
     const visitor = await db.query.visitorProfiles.findFirst({
         where: eq(visitorProfiles.id, params.id)
     });
@@ -19,7 +21,7 @@ export const load: PageServerLoad = async ({ params }) => {
     const totalVisits = logs.length;
     // Calculate last visit (if any)
     const lastVisit = logs.length > 0 ? logs[0].date : null;
-    const currentStatus = logs.find(l => l.status === 'on_premises') ? 'on_premises' : 'checked_out';
+    const currentStatus: 'on_premises' | 'checked_out' = logs.find(l => l.status === 'on_premises') ? 'on_premises' : 'checked_out';
 
     return { visitor, logs, stats: { totalVisits, lastVisit, currentStatus } };
 };

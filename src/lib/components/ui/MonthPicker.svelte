@@ -53,6 +53,6 @@
             )}
             on:change={handleChange}
             placeholder="Select month"
-        />
+        >{""}</Flatpickr>
     </div>
 </div>

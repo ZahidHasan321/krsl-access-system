@@ -1,10 +1,11 @@
 <script lang="ts">
     import { i18n } from '$lib/i18n.svelte';
     import LangSwitch from './LangSwitch.svelte';
-    import { Menu, X, LayoutDashboard, Users, UserCheck, Truck, Search, Loader2, ShieldCheck } from 'lucide-svelte';
+    import { Menu, X, LayoutDashboard, Users, UserCheck, Truck, Search, Loader2, ShieldCheck, Layout, LogOut } from 'lucide-svelte';
     import { page } from '$app/state';
     import { clsx } from 'clsx';
     import logo from '$lib/assets/logo.png';
+    import { enhance } from '$app/forms';
 
     let isMobileMenuOpen = $state(false);
     let searchQuery = $state('');
@@ -16,12 +17,14 @@
     async function handleSearch(e: Event) {
         const query = (e.target as HTMLInputElement).value;
         searchQuery = query;
+        const trimmedQuery = query.trim();
         
         clearTimeout(debounceTimer);
         
-        if (query.length < 2) {
+        if (trimmedQuery.length < 2) {
             searchResults = [];
             showResults = false;
+            isSearching = false;
             return;
         }
 
@@ -29,10 +32,17 @@
         showResults = true;
 
         debounceTimer = setTimeout(async () => {
+            if (searchQuery.trim().length < 2) {
+                isSearching = false;
+                return;
+            }
             try {
-                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const res = await fetch(`/api/search?q=${encodeURIComponent(trimmedQuery)}`);
                 if (res.ok) {
-                    searchResults = await res.json();
+                    // Only update if current query still matches or is relevant
+                    if (searchQuery.trim() === trimmedQuery) {
+                        searchResults = await res.json();
+                    }
                 }
             } catch (err) {
                 console.error(err);
@@ -89,8 +99,22 @@
                 { href: '/admin/users', label: 'userManagement' },
                 { href: '/admin/roles', label: 'roleManagement' }
             ]
+        },
+        {
+            label: 'labours',
+            icon: Layout,
+            isPortal: true,
+            permission: 'labours.portal',
+            sub: [
+                { href: '/portal/labours/attendance', label: 'attendance' },
+                { href: '/portal/labours', label: 'registry' },
+                { href: '/portal/labours/history', label: 'history' },
+                { href: '/portal/labours/reports', label: 'monthlyReport' }
+            ]
         }
     ];
+
+    const isPortalActive = $derived(page.url.pathname.startsWith('/portal'));
 
     const filteredNavLinks = $derived.by(() => {
         const user = page.data.user;
@@ -132,39 +156,43 @@
 </script>
 
 <nav class="bg-white border-b sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
             <!-- Logo & Desktop Nav -->
-            <div class="flex items-center gap-8">
+            <div class="flex items-center gap-4 xl:gap-6 min-w-0">
                 <a href="/" class="flex items-center gap-3 text-xl font-bold text-primary-950 tracking-tight shrink-0 hover:opacity-80 transition-opacity">
                     <img src={logo} alt="Logo" class="h-8 w-auto" />
                     <span class={clsx(
-                        "hidden sm:inline-block text-2xl normal-case",
+                        "hidden xl:inline-block text-2xl normal-case",
                         i18n.lang === 'en' ? "font-cursive" : "font-bn-stylized pt-1"
                     )}>
                         {i18n.t('appName')}
                     </span>
                 </a>
                 
-                <div class="hidden lg:flex items-center gap-1">
+                <div class="hidden lg:flex items-center gap-0.5">
                     {#each filteredNavLinks as link}
                         {#if link.href}
                             <a 
                                 href={link.href}
                                 class={clsx(
-                                    'px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2',
+                                    'px-2.5 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap',
                                     isActive(link.href) ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:text-primary-600 hover:bg-gray-50'
                                 )}
                             >
-                                <link.icon size={18} />
+                                <link.icon size={16} />
                                 {i18n.t(link.label as any)}
                             </a>
                         {:else}
+                            {@const isSubActive = link.sub?.some(s => isActive(s.href))}
                             <div class="relative group">
-                                <button class="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-primary-600 hover:bg-gray-50 transition-colors flex items-center gap-2">
-                                    <link.icon size={18} />
-                                    {i18n.t(link.label as any)}
-                                    <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                                <button class={clsx(
+                                    "px-2.5 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap",
+                                    isSubActive ? 'text-primary-700 font-bold bg-primary-50' : 'text-gray-600 hover:text-primary-600 hover:bg-gray-50'
+                                )}>
+                                    <link.icon size={16} />
+                                    {i18n.t(link.label === 'portal' ? 'labours' : link.label as any)}
+                                    <svg class="w-4 h-4 opacity-50" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                                 </button>
                                 <div class="absolute left-0 mt-0 w-48 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                                     <div class="py-1">
@@ -188,15 +216,15 @@
             </div>
 
             <!-- Right side -->
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 xl:gap-4 shrink-0">
                 <!-- Global Search -->
-                <div class="relative hidden md:block">
-                    <div class="relative">
+                <div class="relative hidden 2xl:block w-64 xl:w-80">
+                    <div class="relative w-full">
                         <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         <input 
                             type="text" 
                             placeholder={i18n.t('searchPlaceholder')} 
-                            class="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white w-64 transition-all"
+                            class="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white w-full transition-all"
                             value={searchQuery}
                             oninput={handleSearch}
                             onblur={closeSearch}
@@ -209,9 +237,21 @@
                         {/if}
                     </div>
 
-                    {#if showResults && searchQuery.length >= 2}
-                        <div class="absolute right-0 mt-2 w-80 bg-white border rounded-xl shadow-xl overflow-hidden z-50">
-                            {#if searchResults.length > 0}
+                    {#if showResults && searchQuery.trim().length >= 2}
+                        <div class="absolute right-0 mt-2 w-full bg-white border rounded-xl shadow-xl overflow-hidden z-50">
+                            {#if isSearching}
+                                <div class="py-2">
+                                    {#each Array(3) as _}
+                                        <div class="flex items-center gap-3 px-4 py-3 animate-pulse">
+                                            <div class="size-9 bg-gray-100 rounded-lg"></div>
+                                            <div class="flex-1 space-y-2">
+                                                <div class="h-3 bg-gray-100 rounded w-3/4"></div>
+                                                <div class="h-2 bg-gray-50 rounded w-1/2"></div>
+                                            </div>
+                                        </div>
+                                    {/each}
+                                </div>
+                            {:else if searchResults.length > 0}
                                 <div class="py-2">
                                     {#each searchResults as result}
                                         <a 
@@ -240,7 +280,7 @@
                                         </a>
                                     {/each}
                                 </div>
-                            {:else if !isSearching}
+                            {:else}
                                 <div class="p-4 text-center text-gray-500 text-sm">
                                     {i18n.t('noResults')}
                                 </div>
@@ -251,6 +291,24 @@
 
                 <LangSwitch />
                 
+                {#if page.data.user}
+                    <div class="hidden md:flex items-center gap-3 pl-4 border-l border-gray-100 ml-2">
+                        <div class="text-right">
+                            <p class="text-xs font-bold text-gray-900 leading-none">{page.data.user.username}</p>
+                            <p class="text-[10px] text-gray-400 font-medium uppercase tracking-wider mt-1">{page.data.user.roleName || 'User'}</p>
+                        </div>
+                        <form method="POST" action="/logout" use:enhance>
+                            <button 
+                                type="submit" 
+                                class="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                title={i18n.t('logout')}
+                            >
+                                <LogOut size={18} />
+                            </button>
+                        </form>
+                    </div>
+                {/if}
+
                 <button 
                     class="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-md"
                     onclick={() => isMobileMenuOpen = !isMobileMenuOpen}

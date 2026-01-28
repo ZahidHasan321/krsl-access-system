@@ -103,6 +103,8 @@ const translations = {
         admin: 'Admin',
         userManagement: 'User Management',
         roleManagement: 'Role Management',
+        portal: 'Portal',
+        logout: 'Logout',
     },
     bn: {
         // Navigation
@@ -206,6 +208,8 @@ const translations = {
         admin: 'অ্যাডমিন',
         userManagement: 'ইউজার ম্যানেজমেন্ট',
         roleManagement: 'রোল ম্যানেজমেন্ট',
+        portal: 'পোর্টাল',
+        logout: 'লগআউট',
     }
 };
 

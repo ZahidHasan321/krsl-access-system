@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { roles, permissions, rolePermissions, user } from '$lib/server/db/schema';
-import { eq, isNull } from 'drizzle-orm';
+import { eq, isNull, and } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
 
 export async function GET() {
@@ -32,7 +32,8 @@ export async function GET() {
             { id: 'visitors.create', description: 'Add visitor entries' },
             { id: 'visitors.edit', description: 'Edit visitor entries' },
             { id: 'visitors.delete', description: 'Delete visitor entries' },
-            { id: 'users.manage', description: 'Manage system users and roles' }
+            { id: 'users.manage', description: 'Manage system users and roles' },
+            { id: 'labours.portal', description: 'Access the Portal (faked times) view' }
         ];
 
         for (const permission of permissionsToSeed) {
@@ -60,10 +61,26 @@ export async function GET() {
         const allRolePermissions = [...adminPermissions, ...guardPermissions];
 
         for (const rp of allRolePermissions) {
-            await db.insert(rolePermissions).values(rp).onConflictDoNothing();
+            await db.insert(rolePermissions)
+                .values(rp)
+                .onConflictDoNothing();
         }
 
-        return json({ message: 'RBAC seeding completed successfully' });
+        // 4. Force specific update for the new portal permission to ensure it's assigned to admin
+        await db.insert(rolePermissions)
+            .values({ roleId: 'admin', permissionId: 'labours.portal' })
+            .onConflictDoNothing();
+
+        // 5. Migrate Users: Link legacy roles to new RBAC roles
+        await db.update(user)
+            .set({ roleId: 'admin' })
+            .where(and(eq(user.role, 'admin'), isNull(user.roleId)));
+        
+        await db.update(user)
+            .set({ roleId: 'guard' })
+            .where(and(eq(user.role, 'guard'), isNull(user.roleId)));
+
+        return json({ message: 'RBAC seeding and user migration completed successfully' });
     } catch (e: any) {
         console.error('RBAC Seed Error:', e);
         return json({ error: e.message }, { status: 500 });

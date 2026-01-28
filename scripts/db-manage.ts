@@ -55,7 +55,9 @@ const PERMISSIONS = [
 	{ id: 'visitors.view', description: 'View visitors' },
 	{ id: 'visitors.create', description: 'Create visitors' },
 	{ id: 'visitors.edit', description: 'Edit visitors' },
-	{ id: 'users.manage', description: 'Manage users, reset passwords' }
+	{ id: 'visitors.delete', description: 'Delete visitors' },
+	{ id: 'users.manage', description: 'Manage users, reset passwords' },
+	{ id: 'labours.portal', description: 'Access the Portal (faked times) view' }
 ];
 
 // admin gets everything, guard gets view + create only

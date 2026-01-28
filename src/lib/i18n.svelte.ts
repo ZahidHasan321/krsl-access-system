@@ -100,6 +100,9 @@ const translations = {
         avgWorkingHours: 'Avg. Working Hours',
         duration: 'Duration',
         workingHours: 'Working Hours',
+        admin: 'Admin',
+        userManagement: 'User Management',
+        roleManagement: 'Role Management',
     },
     bn: {
         // Navigation
@@ -200,6 +203,9 @@ const translations = {
         avgWorkingHours: 'গড় কর্মঘণ্টা',
         duration: 'সময়কাল',
         workingHours: 'কর্মঘণ্টা',
+        admin: 'অ্যাডমিন',
+        userManagement: 'ইউজার ম্যানেজমেন্ট',
+        roleManagement: 'রোল ম্যানেজমেন্ট',
     }
 };
 

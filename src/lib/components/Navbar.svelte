@@ -1,7 +1,7 @@
 <script lang="ts">
     import { i18n } from '$lib/i18n.svelte';
     import LangSwitch from './LangSwitch.svelte';
-    import { Menu, X, LayoutDashboard, Users, UserCheck, Truck, Search, Loader2 } from 'lucide-svelte';
+    import { Menu, X, LayoutDashboard, Users, UserCheck, Truck, Search, Loader2, ShieldCheck } from 'lucide-svelte';
     import { page } from '$app/state';
     import { clsx } from 'clsx';
     import logo from '$lib/assets/logo.png';
@@ -79,6 +79,15 @@
             sub: [
                 { href: '/vehicles', label: 'activeLog' },
                 { href: '/vehicles/history', label: 'history' }
+            ]
+        },
+        {
+            label: 'admin',
+            icon: ShieldCheck,
+            permission: 'users.manage',
+            sub: [
+                { href: '/admin/users', label: 'userManagement' },
+                { href: '/admin/roles', label: 'roleManagement' }
             ]
         }
     ];

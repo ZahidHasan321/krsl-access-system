@@ -6,20 +6,22 @@
         children: any;
         type?: 'button' | 'submit' | 'reset';
         variant?: 'primary' | 'danger' | 'outline' | 'ghost';
+        class?: ClassValue;
         className?: ClassValue;
         disabled?: boolean;
         onclick?: (event: MouseEvent) => void;
         [key: string]: any;
     }
 
-    let { 
-        children, 
-        type = 'button', 
-        variant = 'primary', 
-        className = '', 
-        disabled = false, 
+    let {
+        children,
+        type = 'button',
+        variant = 'primary',
+        class: cls = '',
+        className = '',
+        disabled = false,
         onclick,
-        ...rest 
+        ...rest
     }: Props = $props();
 
     const variants = {
@@ -36,7 +38,7 @@
     {type}
     {disabled}
     {onclick}
-    class={twMerge(baseClasses, variants[variant], className as string)}
+    class={twMerge(baseClasses, variants[variant], cls as string, className as string)}
     {...rest}
 >
     {@render children()}

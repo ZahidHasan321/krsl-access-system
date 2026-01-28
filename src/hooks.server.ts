@@ -22,6 +22,15 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 	event.locals.user = user;
 	event.locals.session = session;
 
+	// Protect routes - redirect to login if not authenticated
+	// Exempt /login and /api routes from this check
+	if (!event.locals.user && !event.url.pathname.startsWith('/login') && !event.url.pathname.startsWith('/api')) {
+		return new Response(null, {
+			status: 302,
+			headers: { location: '/login' }
+		});
+	}
+
 	return resolve(event);
 };
 

@@ -11,20 +11,22 @@
         id?: string;
         name?: string;
         required?: boolean;
+        class?: ClassValue;
         className?: ClassValue;
         containerClass?: ClassValue;
         onclear?: () => void;
         [key: string]: any;
     }
 
-    let { 
-        label, 
-        value = $bindable(), 
-        type = 'text', 
-        placeholder = '', 
+    let {
+        label,
+        value = $bindable(),
+        type = 'text',
+        placeholder = '',
         id = Math.random().toString(36).substring(7),
         name,
         required = false,
+        class: cls = '',
         className = '',
         containerClass = '',
         onclear,
@@ -48,7 +50,7 @@
             {placeholder}
             {required}
             bind:value={value}
-            class={twMerge(inputClasses, onclear ? 'pr-10' : '', className as string)}
+            class={twMerge(inputClasses, onclear ? 'pr-10' : '', cls as string, className as string)}
             {...rest}
         />
         {#if value && onclear}

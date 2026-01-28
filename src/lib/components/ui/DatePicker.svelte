@@ -3,6 +3,7 @@
     import 'flatpickr/dist/flatpickr.css';
     import { twMerge } from 'tailwind-merge';
     import { X } from 'lucide-svelte';
+    import { onMount } from 'svelte';
 
     interface Props {
         value?: string; // YYYY-MM-DD
@@ -23,6 +24,9 @@
         placeholder = 'Select date',
         onchange 
     }: Props = $props();
+
+    let mounted = $state(false);
+    onMount(() => { mounted = true; });
 
     const options = {
         dateFormat: 'Y-m-d',
@@ -50,18 +54,25 @@
     {/if}
     
     <div class="relative group">
-        <Flatpickr
-            {options}
-            bind:value
-            {id}
-            {name}
-            class={twMerge(
-                "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white transition-all",
+        {#if mounted}
+            <Flatpickr
+                {options}
+                bind:value
+                {id}
+                {name}
+                class={twMerge(
+                    "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white transition-all",
+                    className
+                )}
+                on:change={handleChange}
+                {placeholder}
+            >{""}</Flatpickr>
+        {:else}
+            <div class={twMerge(
+                "w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 h-10",
                 className
-            )}
-            on:change={handleChange}
-            {placeholder}
-        >{""}</Flatpickr>
+            )}></div>
+        {/if}
         {#if value}
             <button 
                 type="button"

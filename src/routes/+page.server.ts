@@ -1,113 +1,118 @@
+import { redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { labourLogs, visitorLogs, vehicles } from '$lib/server/db/schema';
-import { count, eq, gte, sql } from 'drizzle-orm';
-import { format, subDays, eachDayOfInterval, startOfMonth } from 'date-fns';
+import { count, eq, sql, and, gte } from 'drizzle-orm';
+import { format, subDays } from 'date-fns';
 import type { PageServerLoad } from './$types';
-import { redirect } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ locals }) => {
-    if (!locals.user) {
-        throw redirect(302, '/demo/lucia/login');
-    }
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const thirtyDaysAgo = format(subDays(new Date(), 29), 'yyyy-MM-dd');
-    const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+export const load: PageServerLoad = async (event) => {
+	if (!event.locals.user) {
+		return redirect(302, '/login');
+	}
 
-    // Current On-Premises Counts
-    const [laboursInsideCount] = await db
-        .select({ value: count() })
-        .from(labourLogs)
-        .where(eq(labourLogs.status, 'on_premises'));
+	const today = format(new Date(), 'yyyy-MM-dd');
+	const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+	const monthStart = format(new Date(), 'yyyy-MM-01');
 
-    const [visitorsInsideCount] = await db
-        .select({ value: count() })
-        .from(visitorLogs)
-        .where(eq(visitorLogs.status, 'on_premises'));
+	// Current on-premises counts
+	const [laboursCount] = await db
+		.select({ value: count() })
+		.from(labourLogs)
+		.where(eq(labourLogs.status, 'on_premises'));
 
-    const [vehiclesInsideCount] = await db
-        .select({ value: count() })
-        .from(vehicles)
-        .where(eq(vehicles.status, 'on_premises'));
+	const [visitorsCount] = await db
+		.select({ value: count() })
+		.from(visitorLogs)
+		.where(eq(visitorLogs.status, 'on_premises'));
 
-    // Today's Total Entries
-    const [laboursToday] = await db
-        .select({ value: count() })
-        .from(labourLogs)
-        .where(eq(labourLogs.date, today));
+	const [vehiclesCount] = await db
+		.select({ value: count() })
+		.from(vehicles)
+		.where(eq(vehicles.status, 'on_premises'));
 
-    const [visitorsToday] = await db
-        .select({ value: count() })
-        .from(visitorLogs)
-        .where(eq(visitorLogs.date, today));
+	// Today's entry counts
+	const [todayLabours] = await db
+		.select({ value: count() })
+		.from(labourLogs)
+		.where(eq(labourLogs.date, today));
 
-    const [vehiclesToday] = await db
-        .select({ value: count() })
-        .from(vehicles)
-        .where(eq(vehicles.date, today));
+	const [todayVisitors] = await db
+		.select({ value: count() })
+		.from(visitorLogs)
+		.where(eq(visitorLogs.date, today));
 
-    // Monthly Total Traffic
-    const [labourMonthlyTraffic] = await db
-        .select({ value: count() })
-        .from(labourLogs)
-        .where(gte(labourLogs.date, monthStart));
+	const [todayVehicles] = await db
+		.select({ value: count() })
+		.from(vehicles)
+		.where(eq(vehicles.date, today));
 
-    const [visitorMonthlyTraffic] = await db
-        .select({ value: count() })
-        .from(visitorLogs)
-        .where(gte(visitorLogs.date, monthStart));
+	// 30-day trends
+	const labourTrends = await db
+		.select({ date: labourLogs.date, value: count() })
+		.from(labourLogs)
+		.where(gte(labourLogs.date, thirtyDaysAgo))
+		.groupBy(labourLogs.date);
 
-    const [vehicleMonthlyTraffic] = await db
-        .select({ value: count() })
-        .from(vehicles)
-        .where(gte(vehicles.date, monthStart));
+	const visitorTrends = await db
+		.select({ date: visitorLogs.date, value: count() })
+		.from(visitorLogs)
+		.where(gte(visitorLogs.date, thirtyDaysAgo))
+		.groupBy(visitorLogs.date);
 
-    // 30 Day Trends
-    const labourTrendsRaw = await db
-        .select({ date: labourLogs.date, count: count() })
-        .from(labourLogs)
-        .where(gte(labourLogs.date, thirtyDaysAgo))
-        .groupBy(labourLogs.date);
+	const vehicleTrends = await db
+		.select({ date: vehicles.date, value: count() })
+		.from(vehicles)
+		.where(gte(vehicles.date, thirtyDaysAgo))
+		.groupBy(vehicles.date);
 
-    const visitorTrendsRaw = await db
-        .select({ date: visitorLogs.date, count: count() })
-        .from(visitorLogs)
-        .where(gte(visitorLogs.date, thirtyDaysAgo))
-        .groupBy(visitorLogs.date);
+	// Build trend array for the last 30 days
+	const labourMap = new Map(labourTrends.map((r) => [r.date, r.value]));
+	const visitorMap = new Map(visitorTrends.map((r) => [r.date, r.value]));
+	const vehicleMap = new Map(vehicleTrends.map((r) => [r.date, r.value]));
 
-    const vehicleTrendsRaw = await db
-        .select({ date: vehicles.date, count: count() })
-        .from(vehicles)
-        .where(gte(vehicles.date, thirtyDaysAgo))
-        .groupBy(vehicles.date);
+	const trends = [];
+	for (let i = 30; i >= 0; i--) {
+		const date = format(subDays(new Date(), i), 'yyyy-MM-dd');
+		trends.push({
+			date,
+			labours: labourMap.get(date) || 0,
+			visitors: visitorMap.get(date) || 0,
+			vehicles: vehicleMap.get(date) || 0
+		});
+	}
 
-    const dateInterval = eachDayOfInterval({
-        start: subDays(new Date(), 29),
-        end: new Date()
-    }).map(d => format(d, 'yyyy-MM-dd'));
+	// Current month traffic
+	const [monthLabours] = await db
+		.select({ value: count() })
+		.from(labourLogs)
+		.where(gte(labourLogs.date, monthStart));
 
-    const trends = dateInterval.map(date => ({
-        date,
-        labours: labourTrendsRaw.find(t => t.date === date)?.count || 0,
-        visitors: visitorTrendsRaw.find(t => t.date === date)?.count || 0,
-        vehicles: vehicleTrendsRaw.find(t => t.date === date)?.count || 0
-    }));
+	const [monthVisitors] = await db
+		.select({ value: count() })
+		.from(visitorLogs)
+		.where(gte(visitorLogs.date, monthStart));
 
-    return {
-        counts: {
-            labours: laboursInsideCount.value,
-            visitors: visitorsInsideCount.value,
-            vehicles: vehiclesInsideCount.value
-        },
-        today: {
-            labours: laboursToday.value,
-            visitors: visitorsToday.value,
-            vehicles: vehiclesToday.value
-        },
-        monthlyTraffic: {
-            labours: labourMonthlyTraffic.value,
-            visitors: visitorMonthlyTraffic.value,
-            vehicles: vehicleMonthlyTraffic.value
-        },
-        trends
-    };
+	const [monthVehicles] = await db
+		.select({ value: count() })
+		.from(vehicles)
+		.where(gte(vehicles.date, monthStart));
+
+	return {
+		counts: {
+			labours: laboursCount.value,
+			visitors: visitorsCount.value,
+			vehicles: vehiclesCount.value
+		},
+		today: {
+			labours: todayLabours.value,
+			visitors: todayVisitors.value,
+			vehicles: todayVehicles.value
+		},
+		trends,
+		monthlyTraffic: {
+			labours: monthLabours.value,
+			visitors: monthVisitors.value,
+			vehicles: monthVehicles.value
+		}
+	};
 };

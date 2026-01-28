@@ -5,8 +5,11 @@
     import { initI18n } from '$lib/i18n.svelte';
     import Navbar from '$lib/components/Navbar.svelte';
 	import favicon from '$lib/assets/favicon.svg';
+    import { page } from '$app/state';
 
 	let { children } = $props();
+
+    let isLoginPage = $derived(page.url.pathname === '/login');
 
     onMount(() => {
         initI18n();
@@ -21,9 +24,11 @@
 </svelte:head>
 
 <div class="min-h-screen bg-slate-50 flex flex-col">
-    <Navbar />
+    {#if !isLoginPage}
+        <Navbar />
+    {/if}
     
-    <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main class={isLoginPage ? "flex-1 w-full" : "flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"}>
         {@render children()}
     </main>
 

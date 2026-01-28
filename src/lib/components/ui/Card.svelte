@@ -4,12 +4,13 @@
 
     interface Props {
         children: any;
+        class?: ClassValue;
         className?: ClassValue;
     }
 
-    let { children, className = '' }: Props = $props();
+    let { children, class: cls = '', className = '' }: Props = $props();
 </script>
 
-<div class={twMerge('bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden hover:shadow-md transition-all duration-300', className as string)}>
+<div class={twMerge('bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden hover:shadow-md transition-all duration-300', cls as string, className as string)}>
     {@render children()}
 </div>

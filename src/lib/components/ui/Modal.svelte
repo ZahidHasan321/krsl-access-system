@@ -1,7 +1,7 @@
 <script lang="ts">
     import { fade, scale } from 'svelte/transition';
     import { X } from 'lucide-svelte';
-    import Button from './Button.svelte';
+    import { Button } from '$lib/components/ui/button';
 
     interface Props {
         children: any;
@@ -53,7 +53,7 @@
                 <h3 class="text-lg font-bold text-gray-900">
                     {title || ''}
                 </h3>
-                <Button variant="ghost" onclick={handleClose} className="p-1 rounded-full h-8 w-8 min-w-0">
+                <Button variant="ghost" onclick={handleClose} class="p-1 rounded-full h-8 w-8 min-w-0">
                     <X size={20} />
                 </Button>
             </div>

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { page } from '$app/stores';
     import { goto } from '$app/navigation';
-    import Button from './Button.svelte';
+    import { Button } from '$lib/components/ui/button';
     import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-svelte';
     import { i18n } from '$lib/i18n.svelte';
 
@@ -98,7 +98,7 @@
     <div class="flex items-center gap-2">
         <Button 
             variant="outline" 
-            className="w-10 h-10 p-0" 
+            class="w-10 h-10 p-0" 
             onclick={() => changePage(1)} 
             disabled={currentPage === 1}
             aria-label="First page"
@@ -107,7 +107,7 @@
         </Button>
         <Button 
             variant="outline" 
-            className="w-10 h-10 p-0" 
+            class="w-10 h-10 p-0" 
             onclick={() => changePage(currentPage - 1)} 
             disabled={currentPage === 1}
             aria-label="Previous page"
@@ -122,8 +122,8 @@
                         <span class="px-2 py-2 text-gray-400">...</span>
                     {:else}
                         <Button 
-                            variant={p === currentPage ? 'primary' : 'outline'} 
-                            className="w-10 h-10 p-0" 
+                            variant={p === currentPage ? 'default' : 'outline'} 
+                            class="w-10 h-10 p-0" 
                             onclick={() => changePage(p)}
                         >
                             {p}
@@ -139,7 +139,7 @@
 
         <Button 
             variant="outline" 
-            className="w-10 h-10 p-0" 
+            class="w-10 h-10 p-0" 
             onclick={() => changePage(currentPage + 1)} 
             disabled={currentPage === totalPages || totalPages === 0}
             aria-label="Next page"
@@ -148,7 +148,7 @@
         </Button>
         <Button 
             variant="outline" 
-            className="w-10 h-10 p-0" 
+            class="w-10 h-10 p-0" 
             onclick={() => changePage(totalPages)} 
             disabled={currentPage === totalPages || totalPages === 0}
             aria-label="Last page"

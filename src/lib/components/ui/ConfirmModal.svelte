@@ -1,7 +1,7 @@
 <script lang="ts">
     import { fade, scale } from 'svelte/transition';
     import { AlertTriangle } from 'lucide-svelte';
-    import Button from './Button.svelte';
+    import { Button } from '$lib/components/ui/button';
 
     interface Props {
         open?: boolean;
@@ -84,10 +84,10 @@
             </div>
 
             <div class="flex gap-3 p-4 bg-gray-50 border-t">
-                <Button variant="outline" onclick={handleCancel} className="flex-1">
+                <Button variant="outline" onclick={handleCancel} class="flex-1">
                     {cancelText}
                 </Button>
-                <Button onclick={handleConfirm} className="flex-1 {variantStyles[variant]}">
+                <Button onclick={handleConfirm} class="flex-1 {variantStyles[variant]}">
                     {confirmText}
                 </Button>
             </div>

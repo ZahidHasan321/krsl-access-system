@@ -1,7 +1,7 @@
 import { sqliteTable, text, integer, index, primaryKey } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
-// --- RBAC (New) ---
+// --- RBAC ---
 export const roles = sqliteTable('roles', {
     id: text('id').primaryKey(), // 'admin', 'guard'
     name: text('name').notNull().unique(), // Display name
@@ -9,7 +9,7 @@ export const roles = sqliteTable('roles', {
 });
 
 export const permissions = sqliteTable('permissions', {
-    id: text('id').primaryKey(), // 'labour.view', 'labour.create'
+    id: text('id').primaryKey(), // 'people.view', 'people.create', etc.
     description: text('description')
 });
 
@@ -20,97 +20,91 @@ export const rolePermissions = sqliteTable('role_permissions', {
     pk: primaryKey({ columns: [table.roleId, table.permissionId] })
 }));
 
-// --- Auth (Existing & Required) ---
-// Kept compatible with src/lib/server/auth.ts
+// --- Auth ---
 export const user = sqliteTable('user', {
     id: text('id').primaryKey(),
     username: text('username').notNull().unique(),
     passwordHash: text('password_hash').notNull(),
-    // Extended fields for HRM
-    role: text('role', { enum: ['admin', 'guard'] }).default('guard').notNull(), // Legacy: to be migrated
-    roleId: text('role_id').references(() => roles.id), // New RBAC Link
+    roleId: text('role_id').notNull().references(() => roles.id),
     createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
 });
 
 export const session = sqliteTable('session', {
     id: text('id').primaryKey(),
-    userId: text('user_id').notNull().references(() => user.id),
+    userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
     expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
 });
 
 export type Session = typeof session.$inferSelect;
 export type User = typeof user.$inferSelect;
 
-// --- Labours (Registry) ---
-export const labours = sqliteTable('labours', {
-    id: text('id').primaryKey(), // Generate using uuid v4
-    name: text('name').notNull(),
-    codeNo: text('code_no').notNull().unique(), // Employee ID
-    joinDate: integer('join_date', { mode: 'timestamp' }),
-    designation: text('designation'),
-    // Store as boolean (0 or 1). Default to 1 (true) as requested.
-    isTrained: integer('is_trained', { mode: 'boolean' }).default(true).notNull(),
-    type: text('type', { enum: ['company', 'contractor'] }).notNull(),
-    contractorName: text('contractor_name'),
+// --- People Category System ---
+export const personCategories = sqliteTable('person_categories', {
+    id: text('id').primaryKey(), // uuid
+    name: text('name').notNull(), // e.g. "Customer", "Dokandari", "Employee"
+    slug: text('slug').notNull().unique(), // url-safe: "customer", "dokandari"
+    parentId: text('parent_id').references((): any => personCategories.id, { onDelete: 'cascade' }), // null = root category
+    sortOrder: integer('sort_order').default(0), // ordering within siblings
     createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
 }, (table) => ({
-    nameIdx: index('labour_name_idx').on(table.name),
-    codeIdx: index('labour_code_idx').on(table.codeNo),
-    designationIdx: index('labour_designation_idx').on(table.designation),
-    contractorIdx: index('labour_contractor_idx').on(table.contractorName),
-    createdAtIdx: index('labour_created_at_idx').on(table.createdAt),
+    parentIdIdx: index('category_parent_id_idx').on(table.parentId),
+    slugIdx: index('category_slug_idx').on(table.slug),
 }));
 
-// --- Labour Logs (Attendance) ---
-export const labourLogs = sqliteTable('labour_logs', {
-    id: text('id').primaryKey(),
-    labourId: text('labour_id').references(() => labours.id, { onDelete: 'restrict' }).notNull(),
-    entryTime: integer('entry_time', { mode: 'timestamp' }).notNull(),
-    exitTime: integer('exit_time', { mode: 'timestamp' }), // Null = Currently Inside
-    status: text('status', { enum: ['on_premises', 'checked_out'] }).notNull(),
-    // Use date-fns to format as 'YYYY-MM-DD' strictly
-    date: text('date').notNull() 
-}, (table) => ({
-    labourIdIdx: index('log_labour_id_idx').on(table.labourId),
-    statusIdx: index('log_status_idx').on(table.status),
-    dateIdx: index('log_date_idx').on(table.date),
-    entryTimeIdx: index('log_entry_time_idx').on(table.entryTime),
-}));
-
-// --- Visitor Profiles (Master) ---
-export const visitorProfiles = sqliteTable('visitor_profiles', {
-    id: text('id').primaryKey(),
+// --- People Table ---
+export const people = sqliteTable('people', {
+    id: text('id').primaryKey(), // uuid
     name: text('name').notNull(),
+    categoryId: text('category_id').notNull().references(() => personCategories.id),
+
+    // Identification
+    codeNo: text('code_no').unique(), // employee ID / visitor card number
+    cardNo: text('card_no'), // RFID/NFC card number
+    biometricId: text('biometric_id'), // device ID
+    photoUrl: text('photo_url'), // path to stored photo
+
+    // Contact & details
     company: text('company'),
-    contactNo: text('contact_no').unique(),
-    visitorType: text('visitor_type', { enum: ['vendor', 'guest'] }).default('guest'),
+    contactNo: text('contact_no'),
+    designation: text('designation'),
+
+    // Training
+    isTrained: integer('is_trained', { mode: 'boolean' }).notNull().default(false),
+
+    // Metadata
+    joinDate: integer('join_date', { mode: 'timestamp' }),
+    notes: text('notes'),
     createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
 }, (table) => ({
-    contactIdx: index('visitor_contact_idx').on(table.contactNo),
-    nameIdx: index('visitor_name_idx').on(table.name),
-    companyIdx: index('visitor_company_idx').on(table.company),
-    createdAtIdx: index('visitor_created_at_idx').on(table.createdAt),
+    nameIdx: index('people_name_idx').on(table.name),
+    categoryIdx: index('people_category_id_idx').on(table.categoryId),
+    codeIdx: index('people_code_no_idx').on(table.codeNo),
+    cardIdx: index('people_card_no_idx').on(table.cardNo),
+    biometricIdx: index('people_biometric_id_idx').on(table.biometricId),
+    contactIdx: index('people_contact_no_idx').on(table.contactNo),
+    companyIdx: index('people_company_idx').on(table.company),
 }));
 
-// --- Visitor Logs (Visits) ---
-export const visitorLogs = sqliteTable('visitor_logs', {
+// --- Attendance Logs ---
+export const attendanceLogs = sqliteTable('attendance_logs', {
     id: text('id').primaryKey(),
-    visitorId: text('visitor_id').references(() => visitorProfiles.id, { onDelete: 'restrict' }).notNull(),
-    purpose: text('purpose'),
-    visitingCardNo: text('visiting_card_no'), 
+    personId: text('person_id').notNull().references(() => people.id, { onDelete: 'restrict' }),
     entryTime: integer('entry_time', { mode: 'timestamp' }).notNull(),
-    exitTime: integer('exit_time', { mode: 'timestamp' }),
+    exitTime: integer('exit_time', { mode: 'timestamp' }), // null = currently inside
     status: text('status', { enum: ['on_premises', 'checked_out'] }).notNull(),
-    date: text('date').notNull() 
+    date: text('date').notNull(), // 'YYYY-MM-DD'
+    purpose: text('purpose'), // Reason for visit (for non-employees)
+    notes: text('notes'),
+    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
 }, (table) => ({
-    visitorIdIdx: index('vlog_visitor_id_idx').on(table.visitorId),
-    statusIdx: index('vlog_status_idx').on(table.status),
-    dateIdx: index('vlog_date_idx').on(table.date),
-    vCardIdx: index('vlog_card_no_idx').on(table.visitingCardNo),
-    entryTimeIdx: index('vlog_entry_time_idx').on(table.entryTime),
+    personIdIdx: index('attendance_person_id_idx').on(table.personId),
+    statusIdx: index('attendance_status_idx').on(table.status),
+    dateIdx: index('attendance_date_idx').on(table.date),
+    entryTimeIdx: index('attendance_entry_time_idx').on(table.entryTime),
+    personStatusIdx: index('attendance_person_status_idx').on(table.personId, table.status),
 }));
 
-// --- Vehicles (Logs) ---
+// --- Vehicles ---
 export const vehicles = sqliteTable('vehicles', {
     id: text('id').primaryKey(),
     vehicleNumber: text('vehicle_number').notNull(),

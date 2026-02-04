@@ -1,354 +1,537 @@
 <script lang="ts">
-    import { i18n } from '$lib/i18n.svelte';
-    import Card from '$lib/components/ui/Card.svelte';
-    import { Users, UserCheck, Truck, ArrowRight, TrendingUp, Calendar, MousePointer2 } from 'lucide-svelte';
-    import type { PageData } from './$types';
-    import { format, parseISO } from 'date-fns';
+	import { i18n } from '$lib/i18n.svelte';
+	import * as Card from '$lib/components/ui/card';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Button } from '$lib/components/ui/button';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import {
+		Users,
+		UserCheck,
+		Truck,
+		TrendingUp,
+		Calendar,
+		PlusCircle,
+		PlayCircle,
+		Clock,
+		ArrowRight,
+		ChevronRight,
+		LogOut,
+		CornerDownRight,
+		Layers,
+		CircleDot,
+		UserPlus
+	} from 'lucide-svelte';
+	import type { PageData } from './$types';
+	import { format, parseISO } from 'date-fns';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { clsx } from 'clsx';
+	import { cn, getCategoryLevelClass, statusBadgeClasses, getCategoryColorClass } from '$lib/utils';
+	import CheckInDialog from '$lib/components/CheckInDialog.svelte';
+	import VehicleCheckInDialog from '$lib/components/VehicleCheckInDialog.svelte';
+	import RegisterDialog from './people/RegisterDialog.svelte';
+	import { getCategoryById } from '$lib/constants/categories';
 
-    let { data }: { data: PageData } = $props();
+	let { data }: { data: PageData } = $props();
 
-    const stats = $derived([
-        { 
-            label: 'labours', 
-            count: data.counts.labours, 
-            today: data.today.labours,
-            icon: Users, 
-            href: '/labours/attendance',
-            color: 'text-primary-600',
-            bg: 'bg-primary-50'
-        },
-        { 
-            label: 'visitors', 
-            count: data.counts.visitors, 
-            today: data.today.visitors,
-            icon: UserCheck, 
-            href: '/visitors',
-            color: 'text-emerald-600',
-            bg: 'bg-emerald-50'
-        },
-        { 
-            label: 'vehicles', 
-            count: data.counts.vehicles, 
-            today: data.today.vehicles,
-            icon: Truck, 
-            href: '/vehicles',
-            color: 'text-amber-600',
-            bg: 'bg-amber-50'
-        }
-    ]);
+	// Real-time updates using Server-Sent Events
+	$effect(() => {
+		const eventSource = new EventSource('/api/events');
 
-    // Chart logic
-    let chartWidth = $state(800);
-    let chartHeight = $state(300);
-    const padding = { top: 20, right: 20, bottom: 40, left: 40 };
+		eventSource.onmessage = (event) => {
+			if (event.data === 'update') {
+				invalidateAll();
+			}
+		};
 
-    const maxCount = $derived(
-        Math.max(...data.trends.flatMap(t => [t.labours, t.visitors, t.vehicles]), 5)
-    );
+		eventSource.onerror = () => {
+			// If connection drops, retry after a delay
+			setTimeout(() => {
+				if (eventSource.readyState === EventSource.CLOSED) {
+					// Svelte will re-run effect if we trigger a change or just let it naturally reconnect
+				}
+			}, 5000);
+		};
 
-    const lastIdx = $derived(data.trends.length - 1);
+		return () => eventSource.close();
+	});
 
-    function getX(index: number) {
-        return padding.left + (index / (data.trends.length - 1)) * (chartWidth - padding.left - padding.right);
-    }
+	let isCheckInTypeSelectOpen = $state(false);
+	let isPersonCheckInOpen = $state(false);
+	let isVehicleCheckInOpen = $state(false);
+	let isRegisterOpen = $state(false);
 
-    function getY(count: number) {
-        return (chartHeight - padding.bottom) - (count / maxCount) * (chartHeight - padding.top - padding.bottom);
-    }
+	const trendMax = $derived(Math.max(...data.trend7Day.map((d) => d.count), 1));
+	const trendTotal = $derived(data.trend7Day.reduce((a, d) => a + d.count, 0));
 
-    const labourPath = $derived(
-        data.trends.map((t, i) => `${getX(i)},${getY(t.labours)}`).join(' L ')
-    );
-    const visitorPath = $derived(
-        data.trends.map((t, i) => `${getX(i)},${getY(t.visitors)}`).join(' L ')
-    );
-    const vehiclePath = $derived(
-        data.trends.map((t, i) => `${getX(i)},${getY(t.vehicles)}`).join(' L ')
-    );
+	function dayLabel(dateStr: string) {
+		const d = parseISO(dateStr);
+		const today = new Date();
+		if (format(d, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')) return 'Today';
+		return format(d, 'EEE');
+	}
 
-    // Click detail logic
-    let selectedPoint = $state<any>(null);
+	function openPersonCheckIn() {
+		isCheckInTypeSelectOpen = false;
+		isPersonCheckInOpen = true;
+	}
 
-    function handlePointClick(trend: any) {
-        selectedPoint = trend;
-    }
-
-    // Traffic Summary Logic
-    const totalTraffic = $derived(data.trends.reduce((sum, t) => sum + t.labours + t.visitors + t.vehicles, 0));
-    const labourTraffic = $derived(data.trends.reduce((sum, t) => sum + t.labours, 0));
-    const visitorTraffic = $derived(data.trends.reduce((sum, t) => sum + t.visitors, 0));
-    const vehicleTraffic = $derived(data.trends.reduce((sum, t) => sum + t.vehicles, 0));
-
-    const totalMonthlyTraffic = $derived(data.monthlyTraffic.labours + data.monthlyTraffic.visitors + data.monthlyTraffic.vehicles);
+	function openVehicleCheckIn() {
+		isCheckInTypeSelectOpen = false;
+		isVehicleCheckInOpen = true;
+	}
 </script>
 
 <svelte:head>
-    <title>{i18n.t('dashboard')} | {i18n.t('appName')}</title>
+	<title>{i18n.t('dashboard')} | {i18n.t('appName')}</title>
 </svelte:head>
 
-<div class="space-y-10 pb-10">
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div class="space-y-1">
-            <h1 class="text-4xl font-black text-slate-900 tracking-tight font-header leading-tight">
-                {i18n.t('dashboard')}
-            </h1>
-            <div class="flex items-center gap-2 text-slate-500 font-bold">
-                <Calendar size={18} />
-                <span>{new Date().toLocaleDateString(i18n.lang === 'bn' ? 'bn-BD' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-            </div>
-        </div>
-    </div>
+<!-- Recursive Snippet for Category Tree -->
+{#snippet categoryRow(category: any, level: number)}
+	{@const catInfo = getCategoryById(category.id)}
+	{@const Icon = catInfo?.icon || Layers}
+	<div class={clsx('relative', level > 0 && 'ml-6 border-l-2 border-slate-200 pl-4')}>
+		<div
+			class={clsx(
+				'flex items-center justify-between rounded-xl border px-4 py-3 transition-all',
+				level === 0
+					? 'mb-2 border-slate-200 bg-slate-100/50'
+					: 'mb-1 border-transparent hover:border-slate-100 hover:bg-slate-50'
+			)}
+		>
+			<!-- Left: Icon & Name -->
+			<div class="flex items-center gap-3">
+				{#if level === 0}
+					<div
+						class={cn(
+							'flex size-10 items-center justify-center rounded-lg border-2 shadow-sm transition-transform group-hover:scale-110',
+							getCategoryColorClass(category.color)
+						)}
+					>
+						<Icon size={20} strokeWidth={2.5} />
+					</div>
+				{:else}
+					<div class="relative">
+						<CornerDownRight
+							size={14}
+							class="absolute top-1/2 -left-6 -translate-y-1/2 text-slate-400"
+						/>
+						<div
+							class={cn(
+								'flex size-8 items-center justify-center rounded-lg border shadow-sm',
+								getCategoryColorClass(category.color)
+							)}
+						>
+							<Icon size={16} strokeWidth={2} />
+						</div>
+					</div>
+				{/if}
 
-    <!-- Top Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {#each stats as stat}
-            <a href={stat.href} class="block group">
-                <Card className="p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-95 border-2 border-transparent hover:border-primary-100">
-                    <div class="flex items-start justify-between">
-                        <div class={stat.bg + " p-4 rounded-2xl " + stat.color}>
-                            <stat.icon size={32} />
-                        </div>
-                        <div class="text-right">
-                            <p class="text-sm font-bold text-gray-500 uppercase tracking-wider">
-                                {i18n.t(stat.label as any)}
-                            </p>
-                            <p class="text-4xl font-black text-gray-900 mt-1">
-                                {stat.count}
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-8 flex items-center justify-between">
-                        <div class="space-y-1">
-                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{i18n.lang === 'bn' ? 'আজকের মোট' : "Today's Total"}</p>
-                            <p class="text-lg font-black text-slate-700">{stat.today}</p>
-                        </div>
-                        <div class="flex items-center gap-2 text-primary-600 font-bold group-hover:gap-3 transition-all">
-                            <span class="text-sm">{i18n.t('inside')}</span>
-                            <ArrowRight size={18} />
-                        </div>
-                    </div>
-                </Card>
-            </a>
-        {/each}
-    </div>
+				<div>
+					<div class="flex items-center gap-2">
+						<span
+							class={clsx(
+								'text-slate-900',
+								level === 0 ? 'text-base font-black' : 'text-sm font-bold'
+							)}>{i18n.t(category.slug as any) || category.name}</span
+						>
+					</div>
+					{#if level === 0 && category.children.length > 0}
+						<div class="text-[10px] font-black tracking-wider text-slate-500 uppercase">
+							{category.children.length} Sub-categories
+						</div>
+					{/if}
+				</div>
+			</div>
 
-    <!-- Chart Section -->
-    <div class="space-y-6">
-        <div class="flex items-center justify-between px-1">
-            <div class="flex items-center gap-3">
-                <div class="p-2 bg-primary-100 text-primary-600 rounded-lg">
-                    <TrendingUp size={20} />
-                </div>
-                <h2 class="text-xl font-black text-slate-900 uppercase tracking-tight">
-                    {i18n.lang === 'bn' ? 'গত ৩০ দিনের প্রবেশ' : 'Last 30 Days Entries'}
-                </h2>
-            </div>
-            {#if selectedPoint}
-                <div class="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 animate-in fade-in zoom-in slide-in-from-right-4 duration-300 shadow-xl border border-slate-700">
-                    <span class="text-slate-400">{format(parseISO(selectedPoint.date), 'PP')}</span>
-                    <div class="flex flex-wrap gap-x-4 gap-y-1 sm:border-l sm:border-white/10 sm:pl-4">
-                        <div class="flex items-center gap-1.5">
-                            <div class="w-2 h-2 rounded-full bg-blue-500"></div>
-                            <span>{i18n.t('labours')}: <span class="text-white font-black">{selectedPoint.labours}</span></span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-                            <span>{i18n.t('visitors')}: <span class="text-white font-black">{selectedPoint.visitors}</span></span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <div class="w-2 h-2 rounded-full bg-amber-500"></div>
-                            <span>{i18n.t('vehicles')}: <span class="text-white font-black">{selectedPoint.vehicles}</span></span>
-                        </div>
-                    </div>
-                    <button onclick={() => selectedPoint = null} class="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-lg hover:bg-rose-600 transition-colors">
-                        <ArrowRight size={12} class="rotate-45" />
-                    </button>
-                </div>
-            {:else}
-                <div class="hidden sm:flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                    <MousePointer2 size={14} />
-                    <span>{i18n.lang === 'bn' ? 'তথ্য দেখতে ক্লিক করুন' : 'Click points for details'}</span>
-                </div>
-            {/if}
-        </div>
+			<!-- Right: Counts -->
+			<div class="flex items-center gap-3">
+				{#if category.count > 0}
+					<div
+						class={cn(
+							'flex h-8 min-w-8 items-center justify-center rounded-lg border-2 px-2 text-sm font-black shadow-sm',
+							getCategoryColorClass(category.color)
+						)}
+					>
+						{category.count}
+					</div>
+				{:else}
+					<span class="text-xs font-bold text-slate-400">0</span>
+				{/if}
+			</div>
+		</div>
 
-        <Card className="p-6 overflow-hidden">
-            <div class="mb-8 flex flex-wrap gap-6 text-sm font-bold">
-                <div class="flex items-center gap-2">
-                    <div class="w-3 h-3 rounded-full bg-primary-500"></div>
-                    <span class="text-slate-600">{i18n.t('labours')}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
-                    <span class="text-slate-600">{i18n.t('visitors')}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <div class="w-3 h-3 rounded-full bg-amber-500"></div>
-                    <span class="text-slate-600">{i18n.t('vehicles')}</span>
-                </div>
-            </div>
+		<!-- Render Children -->
+		{#if category.children && category.children.length > 0}
+			<div class="mt-1">
+				{#each category.children as child}
+					{@render categoryRow(child, level + 1)}
+				{/each}
+			</div>
+		{/if}
+	</div>
+{/snippet}
 
-            <div class="relative w-full overflow-x-auto overflow-y-hidden pt-2" bind:clientWidth={chartWidth}>
-                <svg width={chartWidth} height={chartHeight} class="overflow-visible">
-                    {#each [0, 0.25, 0.5, 0.75, 1] as tick}
-                        {@const y = getY(tick * maxCount)}
-                        <line x1={padding.left} y1={y} x2={chartWidth - padding.right} y2={y} stroke="#f1f5f9" stroke-width="1" />
-                        <text x={padding.left - 10} y={y} text-anchor="end" dominant-baseline="middle" class="text-[10px] font-bold fill-slate-400">
-                            {Math.round(tick * maxCount)}
-                        </text>
-                    {/each}
+<div class="space-y-6">
+	<!-- Header -->
+	<div class="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+		<div class="space-y-1">
+			<div class="flex items-center gap-3">
+				<h1 class="text-3xl leading-tight font-black tracking-tight text-slate-900">
+					{i18n.t('dashboard')}
+				</h1>
+				<div
+					class="flex animate-pulse items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-emerald-600"
+				>
+					<div class="size-1.5 rounded-full bg-emerald-500"></div>
+					<span class="text-[10px] font-black tracking-widest uppercase">Live</span>
+				</div>
+			</div>
+			<div class="flex items-center gap-2 font-bold text-slate-500">
+				<Calendar size={16} />
+				<span class="text-sm"
+					>{new Date().toLocaleDateString(i18n.lang === 'bn' ? 'bn-BD' : 'en-US', {
+						weekday: 'long',
+						year: 'numeric',
+						month: 'long',
+						day: 'numeric'
+					})}</span
+				>
+			</div>
+		</div>
+		<div class="flex items-center gap-2">
+			{#if data.user?.permissions.includes('people.create')}
+				<Button
+					variant="default"
+					class="h-10 gap-2 px-5 font-bold shadow-lg shadow-primary-200"
+					onclick={() => (isCheckInTypeSelectOpen = true)}
+				>
+					<PlayCircle size={18} />
+					{i18n.t('checkIn')}
+				</Button>
+				<Button
+					variant="outline"
+					class="h-10 gap-2 border-2 bg-white px-5 font-bold"
+					onclick={() => (isRegisterOpen = true)}
+				>
+					<PlusCircle size={18} />
+					{i18n.t('register')}
+				</Button>
+			{/if}
+		</div>
+	</div>
 
-                    {#each data.trends as trend, i}
-                        {#if i % 5 === 0 || i === data.trends.length - 1}
-                            <text x={getX(i)} y={chartHeight - padding.bottom + 20} text-anchor="middle" class="text-[10px] font-bold fill-slate-400">
-                                {format(parseISO(trend.date), 'MMM d')}
-                            </text>
-                        {/if}
-                    {/each}
+	<div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+		<!-- Left Column: Currently Inside -->
+		<div class="space-y-6 lg:col-span-2">
+			<Card.Root class="overflow-hidden border-2 border-slate-200 bg-white shadow-sm">
+				<Card.Header class="px-4 py-3">
+					<div class="flex items-center justify-between">
+						<div class="space-y-1">
+							<Card.Title
+								class="flex items-center gap-2 text-lg font-black tracking-tight text-slate-900"
+							>
+								<Users size={20} class="text-primary-600" />
+								{i18n.t('currentlyInside')}
+							</Card.Title>
+						</div>
+						<div
+							class="flex flex-col items-end rounded-xl border-2 border-primary-100 bg-primary-50 px-3 py-1.5"
+						>
+							<span class="text-xl leading-none font-black text-primary-700"
+								>{data.currentlyInside.totalPeople}</span
+							>
+							<span class="text-[9px] font-black tracking-widest text-primary-500 uppercase"
+								>Total People</span
+							>
+						</div>
+					</div>
+				</Card.Header>
+				<Card.Content class="p-4 pt-0">
+					<div class="space-y-1">
+						{#each data.currentlyInside.categoryTree as root}
+							{@render categoryRow(root, 0)}
+						{:else}
+							<div
+								class="py-10 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50"
+							>
+								<UserCheck size={40} class="mx-auto text-slate-300 mb-2" />
+								<p class="text-slate-500 font-bold text-sm">No one currently on premises</p>
+							</div>
+						{/each}
+					</div>
 
-                    <path d={`M ${labourPath}`} fill="none" stroke="#3b82f6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="transition-all duration-1000 opacity-80" />
-                    <path d={`M ${visitorPath}`} fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="transition-all duration-1000 opacity-80" />
-                    <path d={`M ${vehiclePath}`} fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="transition-all duration-1000 opacity-80" />
+					<!-- Vehicles Section -->
+					<div class="mt-6 border-t-2 border-slate-100 pt-4">
+						<div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+							<!-- Total Vehicles -->
+							<div
+								class="flex items-center justify-between rounded-xl border-2 border-amber-100 bg-amber-50 p-3 shadow-sm"
+							>
+								<div class="flex items-center gap-3">
+									<div
+										class="flex size-10 shrink-0 items-center justify-center rounded-lg border border-amber-200 bg-amber-100 text-amber-700"
+									>
+										<Truck size={20} />
+									</div>
+									<div>
+										<h3 class="text-sm font-black text-slate-900">{i18n.t('vehicles')}</h3>
+										<p class="text-[9px] font-black tracking-widest text-amber-600 uppercase">
+											On Premises
+										</p>
+									</div>
+								</div>
+								<div class="text-right">
+									<span class="block text-xl leading-none font-black text-amber-700"
+										>{data.currentlyInside.vehicleStats.total}</span
+									>
+								</div>
+							</div>
 
-                    {#each data.trends as trend, i}
-                        {@const lx = getX(i)}
-                        <!-- Transparent hover target -->
-                        <rect 
-                            x={lx - 10} y={padding.top} width="20" height={chartHeight - padding.top - padding.bottom} 
-                            fill="transparent" 
-                            class="cursor-pointer hover:fill-slate-50/50 outline-none"
-                            role="button"
-                            tabindex="0"
-                            onclick={() => handlePointClick(trend)}
-                            onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && handlePointClick(trend)}
-                        />
-                        
-                        <!-- Invisible dots that show on hover or stay if selected -->
-                        <circle cx={lx} cy={getY(trend.labours)} r="4" fill="#3b82f6" class="opacity-0 group-hover:opacity-100 {selectedPoint?.date === trend.date ? 'opacity-100' : ''} pointer-events-none" />
-                        <circle cx={lx} cy={getY(trend.visitors)} r="4" fill="#10b981" class="opacity-0 group-hover:opacity-100 {selectedPoint?.date === trend.date ? 'opacity-100' : ''} pointer-events-none" />
-                        <circle cx={lx} cy={getY(trend.vehicles)} r="4" fill="#f59e0b" class="opacity-0 group-hover:opacity-100 {selectedPoint?.date === trend.date ? 'opacity-100' : ''} pointer-events-none" />
-                    {/each}
-                </svg>
-            </div>
-        </Card>
-    </div>
+							<!-- Transport Vehicles -->
+							<div
+								class="flex items-center justify-between rounded-xl border-2 border-blue-100 bg-blue-50 p-3 shadow-sm"
+							>
+								<div class="flex items-center gap-3">
+									<div
+										class="flex size-9 shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-blue-100 text-blue-700"
+									>
+										<Truck size={16} />
+									</div>
+									<div>
+										<h3 class="text-xs font-black text-slate-800">{i18n.t('transportVehicle')}</h3>
+										<p class="text-[8px] font-black tracking-widest text-blue-600 uppercase">
+											Logistics
+										</p>
+									</div>
+								</div>
+								<div class="text-right">
+									<span class="block text-lg leading-none font-black text-blue-700"
+										>{data.currentlyInside.vehicleStats.transport}</span
+									>
+								</div>
+							</div>
 
-    <!-- Traffic Summary Section -->
-    <div class="space-y-6">
-        <div class="flex items-center gap-3 px-1">
-            <div class="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
-                <TrendingUp size={20} />
-            </div>
-            <h2 class="text-xl font-black text-slate-900 uppercase tracking-tight">
-                {i18n.lang === 'bn' ? 'ট্রাফিক সারসংক্ষেপ' : "Traffic Summary"}
-            </h2>
-        </div>
+							<!-- Regular Vehicles -->
+							<div
+								class="flex items-center justify-between rounded-xl border-2 border-indigo-100 bg-indigo-50 p-3 shadow-sm"
+							>
+								<div class="flex items-center gap-3">
+									<div
+										class="flex size-9 shrink-0 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-100 text-indigo-700"
+									>
+										<Truck size={16} />
+									</div>
+									<div>
+										<h3 class="text-xs font-black text-slate-800">{i18n.t('regularVehicle')}</h3>
+										<p class="text-[8px] font-black tracking-widest text-indigo-600 uppercase">
+											Personal
+										</p>
+									</div>
+								</div>
+								<div class="text-right">
+									<span class="block text-lg leading-none font-black text-indigo-700"
+										>{data.currentlyInside.vehicleStats.regular}</span
+									>
+								</div>
+							</div>
+						</div>
+					</div>
+				</Card.Content>
+			</Card.Root>
+		</div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Total Traffic Summary (30 Days) -->
-            <Card className="p-8 border-2 border-slate-100 hover:border-primary-100 transition-colors relative overflow-hidden group">
-                <div class="relative z-10">
-                    <div class="flex items-center justify-between mb-8">
-                        <div>
-                            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">
-                                {i18n.lang === 'bn' ? 'মোট প্রবেশ (গত ৩০ দিন)' : 'Total Visits (Last 30d)'}
-                            </h3>
-                            <p class="text-5xl font-black text-slate-900">
-                                {totalTraffic}
-                            </p>
-                        </div>
-                        <div class="p-4 bg-slate-900 text-white rounded-2xl group-hover:scale-110 transition-transform duration-500">
-                            <TrendingUp size={32} />
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-3 gap-4">
-                        <div class="p-4 bg-primary-50 rounded-2xl border border-primary-100">
-                            <p class="text-[10px] font-black text-primary-600 uppercase tracking-wider mb-1">{i18n.t('labours')}</p>
-                            <p class="text-2xl font-black text-primary-700">{labourTraffic}</p>
-                        </div>
-                        <div class="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-                            <p class="text-[10px] font-black text-emerald-600 uppercase tracking-wider mb-1">{i18n.t('visitors')}</p>
-                            <p class="text-2xl font-black text-emerald-700">{visitorTraffic}</p>
-                        </div>
-                        <div class="p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                            <p class="text-[10px] font-black text-amber-600 uppercase tracking-wider mb-1">{i18n.t('vehicles')}</p>
-                            <p class="text-2xl font-black text-amber-700">{vehicleTraffic}</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="absolute -right-20 -bottom-20 opacity-[0.03] text-slate-900 transform -rotate-12 pointer-events-none">
-                    <TrendingUp size={320} />
-                </div>
-            </Card>
+		<!-- Right Column: Activity & Stats -->
+		<div class="space-y-6">
+			<!-- Quick Stats Mini-Grid -->
+			<div class="grid grid-cols-2 gap-3">
+				<div class="rounded-xl border-2 border-emerald-100 bg-white p-3 shadow-sm">
+					<div class="mb-1.5 flex items-center gap-2 text-emerald-700">
+						<ArrowRight size={14} />
+						<span class="text-[9px] font-black tracking-widest uppercase">Today's Entries</span>
+					</div>
+					<span class="text-xl font-black text-slate-900">{data.todayActivity.entries}</span>
+				</div>
+				<div class="rounded-xl border-2 border-rose-100 bg-white p-3 shadow-sm">
+					<div class="mb-1.5 flex items-center gap-2 text-rose-700">
+						<LogOut size={14} />
+						<span class="text-[9px] font-black tracking-widest uppercase">Today's Exits</span>
+					</div>
+					<span class="text-xl font-black text-slate-900">{data.todayActivity.exits}</span>
+				</div>
+			</div>
 
-            <!-- Current Month Traffic breakdown -->
-            <Card className="p-8 border-2 border-slate-100 hover:border-indigo-100 transition-colors relative overflow-hidden group">
-                <div class="relative z-10">
-                    <div class="flex items-center justify-between mb-2">
-                        <div>
-                            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">
-                                {i18n.lang === 'bn' ? 'চলতি মাসের ট্রাফিক' : 'Current Month Traffic'}
-                            </h3>
-                            <div class="flex items-center gap-2 text-indigo-600 font-black text-sm mb-4">
-                                <Calendar size={14} />
-                                <span>{format(new Date(), 'MMMM yyyy')}</span>
-                            </div>
-                            <p class="text-5xl font-black text-slate-900">
-                                {totalMonthlyTraffic}
-                            </p>
-                        </div>
-                        <div class="p-4 bg-indigo-600 text-white rounded-2xl group-hover:scale-110 transition-transform duration-500 shadow-lg shadow-indigo-100">
-                            <TrendingUp size={32} />
-                        </div>
-                    </div>
+			<!-- Recent Activity -->
+			<Card.Root class="border-2 border-slate-200 bg-white shadow-sm">
+				<Card.Header class="px-4 py-3">
+					<div class="flex items-center justify-between">
+						<Card.Title
+							class="flex items-center gap-2 text-xs font-black tracking-widest text-slate-600 uppercase"
+						>
+							<Clock size={14} />
+							Recent Activity
+						</Card.Title>
+						<Button
+							variant="ghost"
+							size="sm"
+							class="h-7 text-[10px] font-black text-primary-600 hover:bg-primary-50"
+							href="/attendance"
+						>
+							View all
+						</Button>
+					</div>
+				</Card.Header>
+				<Card.Content class="p-0">
+					<div class="divide-y-2 divide-slate-50">
+						{#each data.recentLogs as log}
+							<button
+								class="group flex w-full items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-slate-50"
+								onclick={() => goto(`/people/${log.personId}`)}
+							>
+								<div class="flex min-w-0 items-center gap-3">
+									<div
+										class="size-7 rounded-full {log.status === 'on_premises'
+											? 'border border-emerald-200 bg-emerald-100 text-emerald-700'
+											: 'border border-slate-200 bg-slate-100 text-slate-500'} flex shrink-0 items-center justify-center transition-colors group-hover:scale-110"
+									>
+										{#if log.status === 'on_premises'}
+											<ArrowRight size={12} />
+										{:else}
+											<LogOut size={12} />
+										{/if}
+									</div>
+									<div class="min-w-0">
+										<p class="truncate text-xs font-bold text-slate-900">{log.personName}</p>
+										<div class="flex items-center gap-1.5">
+											<p
+												class="truncate text-[9px] font-black tracking-wider text-slate-500 uppercase"
+											>
+												{log.categoryName}
+											</p>
+										</div>
+									</div>
+								</div>
+								<div class="shrink-0 pl-2 text-right">
+									<p class="text-[10px] font-black text-slate-900">
+										{format(log.entryTime, 'hh:mm a')}
+									</p>
+									{#if log.status === 'on_premises'}
+										<span
+											class={cn(
+												'rounded-md border px-1 py-0.5 text-[8px] font-black tracking-wide uppercase',
+												statusBadgeClasses.on_premises
+											)}>In</span
+										>
+									{:else}
+										<span
+											class={cn(
+												'rounded-md border px-1 py-0.5 text-[8px] font-black tracking-wide uppercase',
+												statusBadgeClasses.checked_out
+											)}>Out</span
+										>
+									{/if}
+								</div>
+							</button>
+						{:else}
+							<div class="p-6 text-center text-slate-500 text-sm font-bold">No activity today</div>
+						{/each}
+					</div>
+				</Card.Content>
+			</Card.Root>
 
-                    <div class="mb-8">
-                        <div class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                            <span class="relative flex h-2 w-2">
-                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                                <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                            </span>
-                            {i18n.lang === 'bn' ? `দৈনিক গড়: ${(totalMonthlyTraffic / (new Date().getDate() || 1)).toFixed(1)}` : `Daily Avg: ${(totalMonthlyTraffic / (new Date().getDate() || 1)).toFixed(1)}`}
-                        </div>
-                    </div>
+			<!-- 7-Day Trend -->
+			<Card.Root class="border-2 border-slate-200 bg-white shadow-sm">
+				<Card.Header class="px-4 py-3">
+					<div class="flex items-center justify-between">
+						<Card.Title
+							class="flex items-center gap-2 text-xs font-black tracking-widest text-slate-600 uppercase"
+						>
+							<TrendingUp size={14} />
+							{i18n.t('trend7Day')}
+						</Card.Title>
+						<span class="text-[10px] font-black text-slate-500">{trendTotal} total</span>
+					</div>
+				</Card.Header>
+				<Card.Content class="p-4 pt-0">
+					<div class="flex h-28 items-end gap-2 pt-2">
+						{#each data.trend7Day as day, i}
+							{@const isToday = i === data.trend7Day.length - 1}
+							{@const pct = trendMax > 0 ? (day.count / trendMax) * 100 : 0}
+							<div class="group flex flex-1 flex-col items-center gap-1">
+								<!-- Tooltip-ish Value -->
+								<div
+									class="pointer-events-none absolute z-10 -mt-6 rounded bg-slate-900 px-1.5 py-0.5 text-[9px] font-black text-white opacity-0 transition-opacity group-hover:opacity-100"
+								>
+									{day.count}
+								</div>
 
-                    <div class="space-y-5">
-                        <div class="space-y-2">
-                            <div class="flex justify-between text-xs font-bold uppercase tracking-wider">
-                                <span class="text-slate-500">{i18n.t('labours')}</span>
-                                <span class="text-slate-900">{data.monthlyTraffic.labours} <span class="text-slate-400 font-medium ml-1">({((data.monthlyTraffic.labours / (totalMonthlyTraffic || 1)) * 100).toFixed(1)}%)</span></span>
-                            </div>
-                            <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                                <div class="bg-primary-500 h-full rounded-full transition-all duration-1000" style="width: {(data.monthlyTraffic.labours / (totalMonthlyTraffic || 1) * 100).toFixed(0)}%"></div>
-                            </div>
-                        </div>
-                        <div class="space-y-2">
-                            <div class="flex justify-between text-xs font-bold uppercase tracking-wider">
-                                <span class="text-slate-500">{i18n.t('visitors')}</span>
-                                <span class="text-slate-900">{data.monthlyTraffic.visitors} <span class="text-slate-400 font-medium ml-1">({((data.monthlyTraffic.visitors / (totalMonthlyTraffic || 1)) * 100).toFixed(1)}%)</span></span>
-                            </div>
-                            <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                                <div class="bg-emerald-500 h-full rounded-full transition-all duration-1000" style="width: {(data.monthlyTraffic.visitors / (totalMonthlyTraffic || 1) * 100).toFixed(0)}%"></div>
-                            </div>
-                        </div>
-                        <div class="space-y-2">
-                            <div class="flex justify-between text-xs font-bold uppercase tracking-wider">
-                                <span class="text-slate-500">{i18n.t('vehicles')}</span>
-                                <span class="text-slate-900">{data.monthlyTraffic.vehicles} <span class="text-slate-400 font-medium ml-1">({((data.monthlyTraffic.vehicles / (totalMonthlyTraffic || 1)) * 100).toFixed(1)}%)</span></span>
-                            </div>
-                            <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                                <div class="bg-amber-500 h-full rounded-full transition-all duration-1000" style="width: {(data.monthlyTraffic.vehicles / (totalMonthlyTraffic || 1) * 100).toFixed(0)}%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="absolute -right-20 -bottom-20 opacity-[0.03] text-indigo-900 transform -rotate-12 pointer-events-none">
-                    <Calendar size={320} />
-                </div>
-            </Card>
-        </div>
-    </div>
+								<!-- Bar -->
+								<div class="flex h-full w-full items-end">
+									<div
+										class={clsx(
+											'w-full rounded-t-sm transition-all duration-500',
+											isToday ? 'bg-primary-600' : 'bg-slate-200 group-hover:bg-primary-400'
+										)}
+										style="height: {Math.max(pct, 5)}%"
+									></div>
+								</div>
+								<!-- Day label -->
+								<span
+									class={clsx(
+										'w-full truncate text-center text-[8px] font-black uppercase',
+										isToday ? 'text-primary-700' : 'text-slate-500'
+									)}
+								>
+									{dayLabel(day.date).slice(0, 3)}
+								</span>
+							</div>
+						{/each}
+					</div>
+				</Card.Content>
+			</Card.Root>
+		</div>
+	</div>
 </div>
+
+<!-- Check-in Type Selection Dialog -->
+<Dialog.Root bind:open={isCheckInTypeSelectOpen}>
+	<Dialog.Content class="sm:max-w-112.5">
+		<Dialog.Header>
+			<Dialog.Title class="text-2xl font-black">Choose Entry Type</Dialog.Title>
+			<Dialog.Description class="text-xs font-bold tracking-widest text-slate-500 uppercase">
+				Select the type of entry to record
+			</Dialog.Description>
+		</Dialog.Header>
+		<div class="grid grid-cols-2 gap-4 py-4">
+			<button
+				class="group flex flex-col items-center justify-center rounded-3xl border-2 border-slate-100 p-6 transition-all hover:border-primary-500 hover:bg-primary-50"
+				onclick={openPersonCheckIn}
+			>
+				<div
+					class="mb-4 flex size-16 items-center justify-center rounded-2xl bg-slate-50 text-slate-400 transition-all group-hover:bg-primary-100 group-hover:text-primary-600"
+				>
+					<Users size={32} />
+				</div>
+				<span class="font-black text-slate-900">{i18n.t('personLabel')}</span>
+			</button>
+
+			<button
+				class="group flex flex-col items-center justify-center rounded-3xl border-2 border-slate-100 p-6 transition-all hover:border-amber-500 hover:bg-amber-50"
+				onclick={openVehicleCheckIn}
+			>
+				<div
+					class="mb-4 flex size-16 items-center justify-center rounded-2xl bg-slate-50 text-slate-400 transition-all group-hover:bg-amber-100 group-hover:text-amber-600"
+				>
+					<Truck size={32} />
+				</div>
+				<span class="font-black text-slate-900">{i18n.t('vehicles')}</span>
+			</button>
+		</div>
+	</Dialog.Content>
+</Dialog.Root>
+
+<CheckInDialog
+	bind:open={isPersonCheckInOpen}
+/>
+<VehicleCheckInDialog bind:open={isVehicleCheckInOpen} />
+<RegisterDialog bind:open={isRegisterOpen} />
+

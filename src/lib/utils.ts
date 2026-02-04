@@ -1,41 +1,66 @@
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-import { CalendarDate, parseDate } from '@internationalized/date';
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
 
-export function formatDuration(entry: Date | number, exit: Date | number | null) {
-    const entryTime = typeof entry === 'number' ? entry : entry.getTime();
-    const exitTime = exit ? (typeof exit === 'number' ? exit : exit.getTime()) : Date.now();
-    
-    const diffMs = exitTime - entryTime;
-    if (diffMs < 0) return '0m';
-    
-    const totalMinutes = Math.floor(diffMs / (1000 * 60));
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    
-    if (hours === 0) return `${minutes}m`;
-    return `${hours}h ${minutes}m`;
-}
-
 /**
- * Converts a YYYY-MM-DD string to a CalendarDate
+ * High-contrast color mapping for category badges
  */
-export function toCalendarDate(dateStr: string | null | undefined): CalendarDate | undefined {
-    if (!dateStr) return undefined;
-    try {
-        return parseDate(dateStr.split('T')[0]);
-    } catch {
-        return undefined;
+export function getCategoryBadgeClass(slug: string | undefined): string {
+    switch (slug) {
+        case 'employee':
+            return "bg-blue-100 text-blue-700 border-blue-200";
+        case 'vendor':
+            return "bg-orange-100 text-orange-700 border-orange-200";
+        case 'supplier':
+            return "bg-amber-100 text-amber-700 border-amber-200";
+        case '3rd-party':
+            return "bg-orange-50 text-orange-600 border-orange-100";
+        case 'customer':
+            return "bg-emerald-100 text-emerald-700 border-emerald-200";
+        default:
+            return "bg-slate-100 text-slate-700 border-slate-200";
     }
 }
 
 /**
- * Converts a Date object to a CalendarDate
+ * Status badge colors
  */
-export function fromDate(date: Date): CalendarDate {
-    return new CalendarDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
+export const statusBadgeClasses = {
+    on_premises: "bg-emerald-100 text-emerald-700 border-emerald-200 shadow-sm",
+    checked_out: "bg-slate-100 text-slate-600 border-slate-200",
+};
+
+/**
+ * Level-based color mapping for category depth
+ */
+export function getCategoryLevelClass(level: number): string {
+    switch (level) {
+        case 0: // Root Category
+            return "bg-slate-100 text-slate-700 border-slate-200";
+        case 1: // Subcategory
+            return "bg-slate-50 text-slate-600 border-slate-100";
+        default:
+            return "bg-white text-slate-500 border-slate-100";
+    }
+}
+
+/**
+ * Color mapping based on category color name
+ */
+export function getCategoryColorClass(color: string): string {
+    switch (color) {
+        case 'blue': return "bg-blue-50 text-blue-700 border-blue-200";
+        case 'orange': return "bg-orange-50 text-orange-700 border-orange-200";
+        case 'amber': return "bg-amber-50 text-amber-700 border-amber-200";
+        case 'emerald': return "bg-emerald-50 text-emerald-700 border-emerald-200";
+        case 'sky': return "bg-sky-50 text-sky-700 border-sky-200";
+        case 'indigo': return "bg-indigo-50 text-indigo-700 border-indigo-200";
+        case 'cyan': return "bg-cyan-50 text-cyan-700 border-cyan-200";
+        case 'teal': return "bg-teal-50 text-teal-700 border-teal-200";
+        case 'green': return "bg-green-50 text-green-700 border-green-200";
+        default: return "bg-slate-50 text-slate-700 border-slate-200";
+    }
 }

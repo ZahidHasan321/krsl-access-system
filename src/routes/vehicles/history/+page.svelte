@@ -1,216 +1,282 @@
 <script lang="ts">
     import { i18n } from '$lib/i18n.svelte';
-    import { Search, History, Truck, Calendar } from 'lucide-svelte';
-    import Card from '$lib/components/ui/Card.svelte';
-    import Badge from '$lib/components/ui/Badge.svelte';
-    import Input from '$lib/components/ui/Input.svelte';
-    import Select from '$lib/components/ui/Select.svelte';
-    import DatePicker from '$lib/components/ui/DatePicker.svelte';
-    import EmptyState from '$lib/components/ui/EmptyState.svelte';
-    import Pagination from '$lib/components/ui/Pagination.svelte';
-    import { format } from 'date-fns';
+    import { Search, History, Truck, Calendar, Filter, User, Package, Clock, LogOut, RotateCcw, ArrowLeft, X } from 'lucide-svelte';
+    import * as Card from '$lib/components/ui/card';
+    import * as Table from '$lib/components/ui/table';
+    import { Badge } from '$lib/components/ui/badge';
+    import { Input } from '$lib/components/ui/input';
+    import { Button } from '$lib/components/ui/button';
+    import { format, parseISO } from 'date-fns';
     import type { PageData } from './$types';
     import { goto } from '$app/navigation';
+    import { page } from '$app/state';
+    import { cn } from '$lib/utils';
 
     let { data }: { data: PageData } = $props();
 
-    let searchQuery = $state('');
-    let selectedDate = $state('');
-    let typeFilter = $state('all');
+    // Form input state - synced with data
+    let searchQuery = $state(data.query || '');
+    let dateFrom = $state(data.dateFrom || '');
+    let dateTo = $state(data.dateTo || '');
+    let typeFilter = $state(data.typeFilter || 'all');
+    let debounceTimer: any;
 
+    function handleInput() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(updateFilters, 400);
+    }
+
+    // Sync state when data changes (e.g., after navigation)
     $effect(() => {
         searchQuery = data.query || '';
-        selectedDate = data.date || '';
+        dateFrom = data.dateFrom || '';
+        dateTo = data.dateTo || '';
+        typeFilter = data.typeFilter || 'all';
     });
 
-    const typeFilterOptions = $derived([
-        { value: 'all', label: i18n.t('all') },
-        { value: 'transport', label: i18n.t('transportVehicle') },
-        { value: 'regular', label: i18n.t('regularVehicle') }
-    ]);
-
-    const filteredVehicles = $derived(
-        typeFilter === 'all'
-            ? data.vehicles
-            : data.vehicles.filter((v: any) => v.type === typeFilter)
-    );
-
     function updateFilters() {
-        const url = new URL(window.location.href);
-        if (searchQuery) {
-            url.searchParams.set('q', searchQuery);
-        } else {
-            url.searchParams.delete('q');
-        }
+        const url = new URL(page.url);
+        if (searchQuery) url.searchParams.set('q', searchQuery);
+        else url.searchParams.delete('q');
 
-        if (selectedDate) {
-            url.searchParams.set('date', selectedDate);
-        } else {
-            url.searchParams.delete('date');
-        }
+        if (dateFrom) url.searchParams.set('from', dateFrom);
+        else url.searchParams.delete('from');
 
-        url.searchParams.delete('page');
-        
-        goto(url.toString(), { keepFocus: true, replaceState: true });
+        if (dateTo) url.searchParams.set('to', dateTo);
+        else url.searchParams.delete('to');
+
+        if (typeFilter !== 'all') url.searchParams.set('type', typeFilter);
+        else url.searchParams.delete('type');
+
+        url.searchParams.set('page', '1');
+        goto(url.toString(), { keepFocus: true, noScroll: true });
     }
 
-    let timeout: any;
-    function debounceSearch() {
-        clearTimeout(timeout);
-        timeout = setTimeout(updateFilters, 300);
+    function clearFilters() {
+        searchQuery = '';
+        dateFrom = '';
+        dateTo = '';
+        updateFilters();
     }
+
+    // Use data props for hasActiveFilters to ensure it reflects actual URL state
+    const hasActiveFilters = $derived(
+        !!data.query || !!data.dateFrom || !!data.dateTo
+    );
 </script>
 
 <svelte:head>
     <title>{i18n.t('vehicles')} - {i18n.t('history')} | {i18n.t('appName')}</title>
 </svelte:head>
 
-<div class="space-y-6">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-black text-gray-900">{i18n.t('vehicles')} - {i18n.t('history')}</h1>
-            <p class="text-gray-500">
-                {#if data.date}
-                    {format(new Date(data.date), 'PPP')}
-                {:else}
-                    {i18n.t('all') + ' ' + i18n.t('history')}
-                {/if}
-            </p>
+<div class="space-y-6 pb-20">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div class="flex items-center gap-4">
+            <Button variant="ghost" size="icon" class="shrink-0" onclick={() => goto('/vehicles')}>
+                <ArrowLeft size={20} />
+            </Button>
+            <div>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight">{i18n.t('vehicles')} <span class="text-slate-300">/</span> {i18n.t('history')}</h1>
+                <p class="text-slate-500 font-bold text-sm uppercase tracking-widest mt-1">
+                    {#if data.dateFrom && data.dateTo}
+                        {format(parseISO(data.dateFrom), 'PP')} - {format(parseISO(data.dateTo), 'PP')}
+                    {:else if data.dateFrom}
+                        From {format(parseISO(data.dateFrom), 'PP')}
+                    {:else if data.dateTo}
+                        Until {format(parseISO(data.dateTo), 'PP')}
+                    {:else}
+                        {i18n.t('all')} {i18n.t('history')}
+                    {/if}
+                </p>
+            </div>
         </div>
     </div>
 
-    <Card className="p-4">
-        <div class="flex flex-col md:flex-row gap-4">
-            <div class="md:w-64">
-                <DatePicker 
-                    label={i18n.t('date')}
-                    bind:value={selectedDate}
-                    onchange={updateFilters}
-                />
+    <!-- Filters Bar -->
+    <div class="flex flex-col xl:flex-row gap-3">
+        <!-- Search Section -->
+        <div class="flex-1 relative group">
+            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors">
+                <Search size={20} />
             </div>
-            <div class="relative flex-1">
-                <label for="search" class="block text-sm font-medium text-gray-700 mb-1">{i18n.t('vehicleNo')} / {i18n.t('driverName')} / {i18n.t('vendorName')} / {i18n.t('cargo')} / {i18n.t('phone')}</label>
-                <div class="relative">
-                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                    <Input
-                        id="search"
-                        placeholder={i18n.t('searchPlaceholder')}
-                        bind:value={searchQuery}
-                        oninput={debounceSearch}
-                        className="pl-10"
-                        onclear={() => { searchQuery = ''; updateFilters(); }}
-                    />
+            <Input 
+                bind:value={searchQuery}
+                oninput={handleInput}
+                placeholder={i18n.t('searchPlaceholder')}
+                class="h-14 pl-12 pr-12 bg-white border-2 border-slate-200 rounded-2xl focus-visible:border-primary-500 focus-visible:ring-0 shadow-sm font-bold text-base"
+            />
+            {#if searchQuery}
+                <button 
+                    class="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors"
+                    onclick={() => { searchQuery = ''; updateFilters(); }}
+                >
+                    <X size={16} />
+                </button>
+            {/if}
+        </div>
+
+        <!-- Date Range Section -->
+        <div class="flex flex-col sm:flex-row items-center bg-white border-2 border-slate-200 rounded-2xl min-h-14 px-4 shadow-sm gap-4">
+            <div class="flex items-center gap-2 text-slate-400 shrink-0 border-r-2 border-slate-100 pr-4 h-8">
+                 <Calendar size={18} />
+                 <span class="text-[10px] font-black uppercase tracking-widest">Date Range</span>
+            </div>
+            <div class="flex items-center gap-3 py-2 sm:py-0">
+                <div class="flex flex-col">
+                    <span class="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">From</span>
+                    <input type="date" bind:value={dateFrom} onchange={updateFilters} class="text-sm font-black text-slate-700 bg-transparent focus:outline-none cursor-pointer" />
+                </div>
+                <div class="w-4 h-0.5 bg-slate-200 rounded-full"></div>
+                <div class="flex flex-col">
+                    <span class="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">To</span>
+                    <input type="date" bind:value={dateTo} onchange={updateFilters} class="text-sm font-black text-slate-700 bg-transparent focus:outline-none cursor-pointer" />
                 </div>
             </div>
-            <div class="md:w-48">
-                <label for="type" class="block text-sm font-medium text-gray-700 mb-1">{i18n.t('type')}</label>
-                <Select
-                    id="type"
-                    options={typeFilterOptions}
-                    bind:value={typeFilter}
-                />
-            </div>
         </div>
-    </Card>
 
-    <div class="grid grid-cols-1 gap-4">
-        {#if filteredVehicles.length === 0}
-            <Card>
-                <EmptyState 
-                    title={i18n.t('noResults')} 
-                    icon={Truck}
-                />
-            </Card>
-            {#if data.totalPages > 0 || filteredVehicles.length === 0}
-                 <Pagination 
-                    currentPage={data.currentPage} 
-                    totalPages={data.totalPages} 
-                    pageSize={data.pageSize}
-                />
-            {/if}
-        {:else}
-            <!-- Desktop Table -->
-            <div class="hidden lg:block overflow-hidden rounded-xl border border-gray-100 shadow-sm bg-white">
-                <table class="w-full text-left border-collapse">
-                    <thead class="bg-gray-50 border-b border-gray-100">
-                        <tr>
-                            <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('date')}</th>
-                            <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('vehicleNo')}</th>
-                            <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('type')}</th>
-                            <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('driverName')}</th>
-                            <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('vendorName')}</th>
-                            <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('cargo')}</th>
-                            <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('entryTime')}</th>
-                            <th class="px-6 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider align-middle">{i18n.t('exitTime')}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-50">
-                        {#each filteredVehicles as vehicle}
-                            <tr class="hover:bg-gray-50/50 transition-colors">
-                                <td class="px-6 py-3 text-sm font-medium text-gray-900 align-middle whitespace-nowrap">
-                                    {format(new Date(vehicle.date), 'PPP')}
-                                </td>
-                                <td class="px-6 py-3 text-sm font-black text-primary-600 font-mono uppercase align-middle whitespace-nowrap">
-                                    {vehicle.vehicleNumber}
-                                </td>
-                                <td class="px-6 py-3 align-middle">
-                                    <Badge>
-                                        {vehicle.type === 'transport' ? i18n.t('transportVehicle') : i18n.t('regularVehicle')}
-                                    </Badge>
-                                </td>
-                                <td class="px-6 py-3 text-sm text-gray-900 font-bold align-middle">
-                                    {vehicle.driverName || '-'}
-                                    <p class="text-xs text-gray-500 font-normal">{vehicle.mobile || '-'}</p>
-                                </td>
-                                <td class="px-6 py-3 text-sm text-gray-600 align-middle">{vehicle.vendorName || '-'}</td>
-                                <td class="px-6 py-3 text-sm text-gray-600 align-middle">{vehicle.cargoDescription || '-'}</td>
-                                <td class="px-6 py-3 text-sm text-gray-600 align-middle">{format(new Date(vehicle.entryTime), 'p')}</td>
-                                <td class="px-6 py-3 text-sm text-gray-600 align-middle">
-                                    {vehicle.exitTime ? format(new Date(vehicle.exitTime), 'p') : '-'}
-                                </td>
-                            </tr>
-                        {/each}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Mobile Cards -->
-            <div class="lg:hidden space-y-4">
-                {#each filteredVehicles as vehicle}
-                    <Card className="p-4 space-y-4">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-sm font-bold text-primary-600">{format(new Date(vehicle.date), 'PP')}</p>
-                                <p class="text-lg font-black text-gray-900 font-mono uppercase">{vehicle.vehicleNumber}</p>
-                            </div>
-                            <Badge>
-                                {vehicle.type === 'transport' ? i18n.t('transportVehicle') : i18n.t('regularVehicle')}
-                            </Badge>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2 text-sm">
-                            <div class="text-gray-500">{i18n.t('driverName')}</div>
-                            <div class="text-gray-900 font-medium">
-                                {vehicle.driverName || '-'}
-                                <p class="text-xs text-gray-500 font-normal">{vehicle.mobile || '-'}</p>
-                            </div>
-                            <div class="text-gray-500">{i18n.t('vendorName')}</div>
-                            <div class="text-gray-900 font-medium">{vehicle.vendorName || '-'}</div>
-                            <div class="text-gray-500">{i18n.t('cargo')}</div>
-                            <div class="text-gray-900 font-medium">{vehicle.cargoDescription || '-'}</div>
-                            <div class="text-gray-500">{i18n.t('entryTime')}</div>
-                            <div class="text-gray-900 font-medium">{format(new Date(vehicle.entryTime), 'p')}</div>
-                            <div class="text-gray-500">{i18n.t('exitTime')}</div>
-                            <div class="text-gray-900 font-medium">{vehicle.exitTime ? format(new Date(vehicle.exitTime), 'p') : '-'}</div>
-                        </div>
-                    </Card>
-                {/each}
-            </div>
-            
-             <Pagination 
-                currentPage={data.currentPage} 
-                totalPages={data.totalPages} 
-                pageSize={data.pageSize}
-            />
+        {#if hasActiveFilters}
+            <Button 
+                variant="ghost" 
+                class="h-14 px-6 rounded-2xl font-black text-rose-500 hover:bg-rose-50 hover:text-rose-600 gap-2 border-2 border-transparent hover:border-rose-100 transition-all animate-in zoom-in duration-200" 
+                onclick={clearFilters}
+            >
+                <RotateCcw size={18} />
+                Reset
+            </Button>
         {/if}
     </div>
+
+    <!-- Type Filter Pills -->
+    <div class="flex flex-wrap items-center gap-2 pt-2">
+        <Button
+            variant={data.typeFilter === 'all' ? "default" : "outline"}
+            size="sm"
+            class={cn(
+                "rounded-full font-bold px-4 transition-all",
+                data.typeFilter === 'all' ? "bg-primary-600 text-white border-primary-600 shadow-md shadow-primary-100" : "bg-white text-slate-600 border-slate-200"
+            )}
+            onclick={() => { typeFilter = 'all'; updateFilters(); }}
+        >
+            <div class="flex items-center gap-2">
+                {#if data.typeFilter === 'all'}
+                    <div class="size-1.5 rounded-full bg-white animate-pulse"></div>
+                {/if}
+                {i18n.t('all')}
+            </div>
+        </Button>
+        <Button
+            variant={data.typeFilter === 'transport' ? "default" : "outline"}
+            size="sm"
+            class={cn(
+                "rounded-full font-bold px-4 transition-all",
+                data.typeFilter === 'transport' ? "bg-primary-600 text-white border-primary-600 shadow-md shadow-primary-100" : "bg-white text-slate-600 border-slate-200"
+            )}
+            onclick={() => { typeFilter = 'transport'; updateFilters(); }}
+        >
+            <div class="flex items-center gap-2">
+                {#if data.typeFilter === 'transport'}
+                    <div class="size-1.5 rounded-full bg-white animate-pulse"></div>
+                {/if}
+                {i18n.t('transportVehicle')}
+            </div>
+        </Button>
+        <Button
+            variant={data.typeFilter === 'regular' ? "default" : "outline"}
+            size="sm"
+            class={cn(
+                "rounded-full font-bold px-4 transition-all",
+                data.typeFilter === 'regular' ? "bg-primary-600 text-white border-primary-600 shadow-md shadow-primary-100" : "bg-white text-slate-600 border-slate-200"
+            )}
+            onclick={() => { typeFilter = 'regular'; updateFilters(); }}
+        >
+            <div class="flex items-center gap-2">
+                {#if data.typeFilter === 'regular'}
+                    <div class="size-1.5 rounded-full bg-white animate-pulse"></div>
+                {/if}
+                {i18n.t('regularVehicle')}
+            </div>
+        </Button>
+    </div>
+
+    <Card.Root class="overflow-hidden">
+        <Table.Root>
+            <Table.Header>
+                <Table.Row class="bg-slate-50/50 hover:bg-transparent">
+                    <Table.Head class="font-black text-slate-900">{i18n.t('vehicleNo')}</Table.Head>
+                    <Table.Head class="font-black text-slate-900">{i18n.t('vehicleType')}</Table.Head>
+                    <Table.Head class="font-black text-slate-900">{i18n.t('driverName')}</Table.Head>
+                    <Table.Head class="font-black text-slate-900">{i18n.t('vendorName')}</Table.Head>
+                    <Table.Head class="font-black text-slate-900">{i18n.t('date')}</Table.Head>
+                    <Table.Head class="font-black text-slate-900">{i18n.t('entryTime')}</Table.Head>
+                    <Table.Head class="font-black text-slate-900">{i18n.t('exitTime')}</Table.Head>
+                    <Table.Head class="font-black text-slate-900">{i18n.t('status')}</Table.Head>
+                </Table.Row>
+            </Table.Header>
+            <Table.Body>
+                {#each data.vehicles as vehicle}
+                    <Table.Row class="cursor-pointer group" onclick={() => goto(`/vehicles/${vehicle.id}`)}>
+                        <Table.Cell class="font-black tracking-widest font-mono uppercase text-slate-900">
+                            {vehicle.vehicleNumber}
+                        </Table.Cell>
+                        <Table.Cell>
+                            <Badge variant="secondary" class="text-[10px] font-bold uppercase tracking-wider bg-slate-100">
+                                {vehicle.type === 'transport' ? i18n.t('transportVehicle') : i18n.t('regularVehicle')}
+                            </Badge>
+                        </Table.Cell>
+                        <Table.Cell class="font-bold text-slate-600">
+                            {vehicle.driverName || '-'}
+                        </Table.Cell>
+                        <Table.Cell class="font-bold text-slate-600">
+                            {vehicle.vendorName || '-'}
+                        </Table.Cell>
+                        <Table.Cell class="font-bold text-slate-600">
+                            {format(parseISO(vehicle.date), 'PP')}
+                        </Table.Cell>
+                        <Table.Cell class="font-black text-slate-700">
+                            {format(new Date(vehicle.entryTime), 'hh:mm a')}
+                        </Table.Cell>
+                        <Table.Cell class="font-black text-slate-700">
+                            {vehicle.exitTime ? format(new Date(vehicle.exitTime), 'hh:mm a') : '-'}
+                        </Table.Cell>
+                        <Table.Cell>
+                            {#if vehicle.status === 'on_premises'}
+                                <Badge class="bg-emerald-50 text-emerald-700 border-emerald-100 text-[10px] font-bold uppercase">
+                                    {i18n.t('inside')}
+                                </Badge>
+                            {:else}
+                                <Badge variant="outline" class="text-[10px] font-bold uppercase text-slate-400">
+                                    {i18n.t('checkedOut')}
+                                </Badge>
+                            {/if}
+                        </Table.Cell>
+                    </Table.Row>
+                {:else}
+                    <Table.Row>
+                        <Table.Cell colspan={8} class="h-64 text-center">
+                            <div class="flex flex-col items-center gap-2 text-slate-400">
+                                <History size={40} />
+                                <p class="font-bold">{i18n.t('noResults')}</p>
+                            </div>
+                        </Table.Cell>
+                    </Table.Row>
+                {/each}
+            </Table.Body>
+        </Table.Root>
+    </Card.Root>
+
+    {#if data.totalPages > 1}
+        <div class="flex items-center justify-center gap-2 mt-8">
+            <Button variant="outline" size="sm" disabled={data.currentPage === 1} onclick={() => {
+                const url = new URL(page.url);
+                url.searchParams.set('page', (data.currentPage - 1).toString());
+                goto(url.toString());
+            }}>Previous</Button>
+            <div class="text-sm font-bold text-slate-500 px-4">Page {data.currentPage} of {data.totalPages}</div>
+            <Button variant="outline" size="sm" disabled={data.currentPage === data.totalPages} onclick={() => {
+                const url = new URL(page.url);
+                url.searchParams.set('page', (data.currentPage + 1).toString());
+                goto(url.toString());
+            }}>Next</Button>
+        </div>
+    {/if}
 </div>

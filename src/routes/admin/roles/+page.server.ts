@@ -3,8 +3,10 @@ import { roles, permissions, rolePermissions } from '$lib/server/db/schema';
 import { error, fail } from '@sveltejs/kit';
 import { eq, and } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
+import { requirePermission } from '$lib/server/rbac';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async (event) => {
+    requirePermission(event.locals, 'users.manage');
     const allRoles = await db.select().from(roles);
     const allPermissions = await db.select().from(permissions);
     const allRolePermissions = await db.select().from(rolePermissions);

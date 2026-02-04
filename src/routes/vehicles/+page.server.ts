@@ -1,11 +1,11 @@
 import { db } from '$lib/server/db';
 import { vehicles } from '$lib/server/db/schema';
 import { desc, eq, and, or, like, count } from 'drizzle-orm';
-import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
 import { fail, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { requirePermission } from '$lib/server/rbac';
+import { notifyChange } from '$lib/server/events';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
     requirePermission(locals, 'vehicles.view');
@@ -85,7 +85,7 @@ export const actions: Actions = {
 
         try {
             await db.insert(vehicles).values({
-                id: uuidv4(),
+                id: crypto.randomUUID(),
                 vehicleNumber,
                 type,
                 vendorName,
@@ -98,6 +98,7 @@ export const actions: Actions = {
                 status: 'on_premises',
                 date: today
             });
+            notifyChange();
             return { success: true };
         } catch (error) {
             return fail(500, { message: 'Database error' });
@@ -117,6 +118,7 @@ export const actions: Actions = {
                     status: 'checked_out'
                 })
                 .where(eq(vehicles.id, id));
+            notifyChange();
             return { success: true };
         } catch (error) {
             return fail(500, { message: 'Database error' });

@@ -15,10 +15,10 @@
     let { data }: { data: PageData } = $props();
 
     // Form input state - synced with data
-    let searchQuery = $state(data.query || '');
-    let dateFrom = $state(data.dateFrom || '');
-    let dateTo = $state(data.dateTo || '');
-    let typeFilter = $state(data.typeFilter || 'all');
+    let searchQuery = $state('');
+    let dateFrom = $state('');
+    let dateTo = $state('');
+    let typeFilter = $state('all');
     let debounceTimer: any;
 
     function handleInput() {
@@ -153,7 +153,7 @@
             size="sm"
             class={cn(
                 "rounded-full font-bold px-4 transition-all",
-                data.typeFilter === 'all' ? "bg-primary-600 text-white border-primary-600 shadow-md shadow-primary-100" : "bg-white text-slate-600 border-slate-200"
+                data.typeFilter === 'all' ? "bg-primary-600 text-white border-primary-600 shadow-md" : "bg-white text-slate-600 border-slate-200"
             )}
             onclick={() => { typeFilter = 'all'; updateFilters(); }}
         >
@@ -169,7 +169,7 @@
             size="sm"
             class={cn(
                 "rounded-full font-bold px-4 transition-all",
-                data.typeFilter === 'transport' ? "bg-primary-600 text-white border-primary-600 shadow-md shadow-primary-100" : "bg-white text-slate-600 border-slate-200"
+                data.typeFilter === 'transport' ? "bg-primary-600 text-white border-primary-600 shadow-md" : "bg-white text-slate-600 border-slate-200"
             )}
             onclick={() => { typeFilter = 'transport'; updateFilters(); }}
         >
@@ -185,7 +185,7 @@
             size="sm"
             class={cn(
                 "rounded-full font-bold px-4 transition-all",
-                data.typeFilter === 'regular' ? "bg-primary-600 text-white border-primary-600 shadow-md shadow-primary-100" : "bg-white text-slate-600 border-slate-200"
+                data.typeFilter === 'regular' ? "bg-primary-600 text-white border-primary-600 shadow-md" : "bg-white text-slate-600 border-slate-200"
             )}
             onclick={() => { typeFilter = 'regular'; updateFilters(); }}
         >
@@ -269,13 +269,13 @@
             <Button variant="outline" size="sm" disabled={data.currentPage === 1} onclick={() => {
                 const url = new URL(page.url);
                 url.searchParams.set('page', (data.currentPage - 1).toString());
-                goto(url.toString());
+                goto(url.toString(), { keepFocus: true, noScroll: true });
             }}>Previous</Button>
             <div class="text-sm font-bold text-slate-500 px-4">Page {data.currentPage} of {data.totalPages}</div>
             <Button variant="outline" size="sm" disabled={data.currentPage === data.totalPages} onclick={() => {
                 const url = new URL(page.url);
                 url.searchParams.set('page', (data.currentPage + 1).toString());
-                goto(url.toString());
+                goto(url.toString(), { keepFocus: true, noScroll: true });
             }}>Next</Button>
         </div>
     {/if}

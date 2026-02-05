@@ -8,6 +8,7 @@
     import { Label } from '$lib/components/ui/label';
     import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
     import { Shield, UserPlus, Users, Trash2, Mail, Calendar, Key, MoreVertical } from 'lucide-svelte';
+    import { clsx } from 'clsx';
     import { enhance } from '$app/forms';
     import { toast } from 'svelte-sonner';
     import { format } from 'date-fns';
@@ -44,7 +45,7 @@
                 {data.users.length} System Users
             </p>
         </div>
-        <Button class="font-black gap-2 h-11 px-6 shadow-lg shadow-primary-100" onclick={() => isCreateDialogOpen = true}>
+        <Button class="font-black gap-2 h-11 px-6 shadow-lg" onclick={() => isCreateDialogOpen = true}>
             <UserPlus size={20} />
             Add User
         </Button>

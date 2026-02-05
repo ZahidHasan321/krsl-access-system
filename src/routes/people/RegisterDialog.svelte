@@ -219,18 +219,6 @@
                             </p>
                         </div>
 
-                        {#if autoCheckIn && needsPurpose}
-                            <div class="space-y-2" transition:slide>
-                                <Label for="reg-purpose" class="font-black text-[10px] uppercase tracking-widest text-primary-700">{i18n.t('purpose')}</Label>
-                                <Input
-                                    id="reg-purpose"
-                                    bind:value={purpose}
-                                    placeholder="Reason for visit (Optional)"
-                                    class="h-11 border-2 bg-white"
-                                />
-                            </div>
-                        {/if}
-
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="space-y-2">
                                 <Label for="reg-name" class="font-bold uppercase text-[10px] tracking-widest text-slate-500">{i18n.t('name')} *</Label>
@@ -280,7 +268,19 @@
                             </button>
                         </div>
 
-                        <Button type="submit" disabled={!canSubmit} class="w-full h-14 text-sm font-black gap-2 shadow-lg shadow-primary-100 uppercase tracking-widest">
+                        {#if autoCheckIn && needsPurpose}
+                            <div class="space-y-2" transition:slide>
+                                <Label for="reg-purpose" class="font-black text-[10px] uppercase tracking-widest text-primary-700">{i18n.t('purpose')}</Label>
+                                <Input
+                                    id="reg-purpose"
+                                    bind:value={purpose}
+                                    placeholder="Reason for visit (Optional)"
+                                    class="h-11 border-2 bg-white"
+                                />
+                            </div>
+                        {/if}
+
+                        <Button type="submit" disabled={!canSubmit} class="w-full h-14 text-sm font-black gap-2 shadow-lg uppercase tracking-widest">
                             <Save size={20} />
                             {i18n.t('save')}
                         </Button>

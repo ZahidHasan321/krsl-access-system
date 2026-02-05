@@ -79,7 +79,7 @@
 
                     <Button 
                         type="submit" 
-                        class="w-full h-14 text-lg font-bold transition-all rounded-xl shadow-lg shadow-primary-100 flex items-center justify-center gap-3"
+                        class="w-full h-14 text-lg font-bold transition-all rounded-xl shadow-lg flex items-center justify-center gap-3"
                         disabled={isLoading}
                     >
                         {#if isLoading}

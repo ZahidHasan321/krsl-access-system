@@ -29,6 +29,7 @@
 	import CheckInDialog from '$lib/components/CheckInDialog.svelte';
 	import VehicleCheckInDialog from '$lib/components/VehicleCheckInDialog.svelte';
 	import RegisterDialog from './people/RegisterDialog.svelte';
+	import DashboardCategoryRow from '$lib/components/DashboardCategoryRow.svelte';
 	import { getCategoryById } from '$lib/constants/categories';
 
 	let { data }: { data: PageData } = $props();
@@ -85,92 +86,6 @@
 	<title>{i18n.t('dashboard')} | {i18n.t('appName')}</title>
 </svelte:head>
 
-<!-- Recursive Snippet for Category Tree -->
-{#snippet categoryRow(category: any, level: number)}
-	{@const catInfo = getCategoryById(category.id)}
-	{@const Icon = catInfo?.icon || Layers}
-	<div class={clsx('relative', level > 0 && 'ml-6 border-l-2 border-slate-200 pl-4')}>
-		<div
-			class={clsx(
-				'flex items-center justify-between rounded-xl border px-4 py-3 transition-all',
-				level === 0
-					? 'mb-2 border-slate-200 bg-slate-100/50'
-					: 'mb-1 border-transparent hover:border-slate-100 hover:bg-slate-50'
-			)}
-		>
-			<!-- Left: Icon & Name -->
-			<div class="flex items-center gap-3">
-				{#if level === 0}
-					<div
-						class={cn(
-							'flex size-10 items-center justify-center rounded-lg border-2 shadow-sm transition-transform group-hover:scale-110',
-							getCategoryColorClass(category.color)
-						)}
-					>
-						<Icon size={20} strokeWidth={2.5} />
-					</div>
-				{:else}
-					<div class="relative">
-						<CornerDownRight
-							size={14}
-							class="absolute top-1/2 -left-6 -translate-y-1/2 text-slate-400"
-						/>
-						<div
-							class={cn(
-								'flex size-8 items-center justify-center rounded-lg border shadow-sm',
-								getCategoryColorClass(category.color)
-							)}
-						>
-							<Icon size={16} strokeWidth={2} />
-						</div>
-					</div>
-				{/if}
-
-				<div>
-					<div class="flex items-center gap-2">
-						<span
-							class={clsx(
-								'text-slate-900',
-								level === 0 ? 'text-base font-black' : 'text-sm font-bold'
-							)}>{i18n.t(category.slug as any) || category.name}</span
-						>
-					</div>
-					{#if level === 0 && category.children.length > 0}
-						<div class="text-[10px] font-black tracking-wider text-slate-500 uppercase">
-							{category.children.length} Sub-categories
-						</div>
-					{/if}
-				</div>
-			</div>
-
-			<!-- Right: Counts -->
-			<div class="flex items-center gap-3">
-				{#if category.count > 0}
-					<div
-						class={cn(
-							'flex h-8 min-w-8 items-center justify-center rounded-lg border-2 px-2 text-sm font-black shadow-sm',
-							getCategoryColorClass(category.color)
-						)}
-					>
-						{category.count}
-					</div>
-				{:else}
-					<span class="text-xs font-bold text-slate-400">0</span>
-				{/if}
-			</div>
-		</div>
-
-		<!-- Render Children -->
-		{#if category.children && category.children.length > 0}
-			<div class="mt-1">
-				{#each category.children as child}
-					{@render categoryRow(child, level + 1)}
-				{/each}
-			</div>
-		{/if}
-	</div>
-{/snippet}
-
 <div class="space-y-6">
 	<!-- Header -->
 	<div class="flex flex-col justify-between gap-4 md:flex-row md:items-end">
@@ -202,7 +117,7 @@
 			{#if data.user?.permissions.includes('people.create')}
 				<Button
 					variant="default"
-					class="h-10 gap-2 px-5 font-bold shadow-lg shadow-primary-200"
+					class="h-10 gap-2 px-5 font-bold shadow-lg"
 					onclick={() => (isCheckInTypeSelectOpen = true)}
 				>
 					<PlayCircle size={18} />
@@ -249,7 +164,7 @@
 				<Card.Content class="p-4 pt-0">
 					<div class="space-y-1">
 						{#each data.currentlyInside.categoryTree as root}
-							{@render categoryRow(root, 0)}
+							<DashboardCategoryRow category={root} level={0} />
 						{:else}
 							<div
 								class="py-10 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50"

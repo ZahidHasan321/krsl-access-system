@@ -152,7 +152,7 @@
                 Organize people structure
             </p>
         </div>
-        <Button class="font-black gap-2 h-11 px-6 shadow-lg shadow-primary-100" onclick={() => openAdd(null, null, 0)}>
+        <Button class="font-black gap-2 h-11 px-6 shadow-lg" onclick={() => openAdd(null, null, 0)}>
             <Plus size={20} />
             Add Main Category
         </Button>

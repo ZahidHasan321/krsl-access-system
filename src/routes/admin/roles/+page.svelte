@@ -38,7 +38,7 @@
                 {data.roles.length} System Roles
             </p>
         </div>
-        <Button class="font-black gap-2 h-11 px-6 shadow-lg shadow-primary-100" onclick={() => isCreateDialogOpen = true}>
+        <Button class="font-black gap-2 h-11 px-6 shadow-lg" onclick={() => isCreateDialogOpen = true}>
             <Plus size={20} />
             Create Role
         </Button>
@@ -135,7 +135,7 @@
 
                             {#if role.id !== 'admin'}
                                 <div class="mt-10 flex justify-end">
-                                    <Button type="submit" class="h-12 px-8 font-black text-base gap-2 shadow-lg shadow-primary-100">
+                                    <Button type="submit" class="h-12 px-8 font-black text-base gap-2 shadow-lg">
                                         <Save size={20} />
                                         Save Permissions
                                     </Button>

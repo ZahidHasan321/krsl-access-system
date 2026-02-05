@@ -4,73 +4,152 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ============================================
+   KR STEEL CRM - THEME CONFIGURATION
+
+   To change the theme, modify the --theme-hue value.
+   Blue theme: 220 (current)
+   Teal theme: 180
+   Purple theme: 270
+   Green theme: 150
+   Indigo theme: 240
+   ============================================ */
+
 :root {
+  /* ===========================================
+     THEME HUE - Change this to change the entire theme!
+     =========================================== */
+  --theme-hue: 220; /* Blue theme - change this value to switch themes */
+  --theme-saturation: 90%;
+
+  /* ===========================================
+     TYPOGRAPHY SCALE
+     =========================================== */
+  --text-micro: 0.5625rem;   /* 9px */
+  --text-tiny: 0.625rem;     /* 10px */
+  --text-xs: 0.75rem;        /* 12px */
+  --text-sm: 0.875rem;       /* 14px */
+  --text-base: 1rem;         /* 16px */
+  --text-lg: 1.125rem;       /* 18px */
+  --text-xl: 1.25rem;        /* 20px */
+  --text-2xl: 1.5rem;        /* 24px */
+  --text-3xl: 1.875rem;      /* 30px */
+
+  /* ===========================================
+     SPACING SCALE
+     =========================================== */
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+
+  /* ===========================================
+     BUTTON HEIGHTS
+     =========================================== */
+  --btn-sm: 2rem;       /* 32px - small/icon buttons */
+  --btn-md: 2.5rem;     /* 40px - default buttons */
+  --btn-lg: 3rem;       /* 48px - large buttons */
+  --btn-xl: 3.5rem;     /* 56px - CTA buttons */
+
+  /* ===========================================
+     BORDER RADIUS
+     =========================================== */
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* ===========================================
+     GENERATED THEME COLORS (from hue)
+     =========================================== */
+  --background: oklch(0.99 0.005 var(--theme-hue));
+  --foreground: oklch(0.15 0.04 var(--theme-hue));
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
+  --card-foreground: oklch(0.15 0.04 var(--theme-hue));
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
+  --popover-foreground: oklch(0.15 0.04 var(--theme-hue));
+
+  /* Primary - Main theme color */
+  --primary: oklch(0.45 0.15 var(--theme-hue));
+  --primary-foreground: oklch(0.98 0.005 var(--theme-hue));
+
+  /* Secondary */
+  --secondary: oklch(0.96 0.02 var(--theme-hue));
+  --secondary-foreground: oklch(0.25 0.05 var(--theme-hue));
+
+  /* Muted */
+  --muted: oklch(0.96 0.015 var(--theme-hue));
+  --muted-foreground: oklch(0.55 0.03 var(--theme-hue));
+
+  /* Accent */
+  --accent: oklch(0.95 0.03 var(--theme-hue));
+  --accent-foreground: oklch(0.25 0.05 var(--theme-hue));
+
+  /* Destructive - Red, independent of theme */
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+
+  /* Borders & Inputs */
+  --border: oklch(0.92 0.015 var(--theme-hue));
+  --input: oklch(0.92 0.015 var(--theme-hue));
+  --ring: oklch(0.55 0.12 var(--theme-hue));
+
+  /* Charts */
+  --chart-1: oklch(0.55 0.18 var(--theme-hue));
+  --chart-2: oklch(0.6 0.15 calc(var(--theme-hue) + 60));
+  --chart-3: oklch(0.5 0.12 calc(var(--theme-hue) - 40));
+  --chart-4: oklch(0.7 0.15 calc(var(--theme-hue) + 120));
+  --chart-5: oklch(0.65 0.18 calc(var(--theme-hue) - 80));
+
+  /* Sidebar */
+  --sidebar: oklch(0.98 0.008 var(--theme-hue));
+  --sidebar-foreground: oklch(0.15 0.04 var(--theme-hue));
+  --sidebar-primary: oklch(0.45 0.15 var(--theme-hue));
+  --sidebar-primary-foreground: oklch(0.98 0.005 var(--theme-hue));
+  --sidebar-accent: oklch(0.95 0.025 var(--theme-hue));
+  --sidebar-accent-foreground: oklch(0.25 0.05 var(--theme-hue));
+  --sidebar-border: oklch(0.92 0.015 var(--theme-hue));
+  --sidebar-ring: oklch(0.55 0.12 var(--theme-hue));
 }
 
 .dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
+  --background: oklch(0.13 0.03 var(--theme-hue));
+  --foreground: oklch(0.98 0.005 var(--theme-hue));
+  --card: oklch(0.18 0.035 var(--theme-hue));
+  --card-foreground: oklch(0.98 0.005 var(--theme-hue));
+  --popover: oklch(0.18 0.035 var(--theme-hue));
+  --popover-foreground: oklch(0.98 0.005 var(--theme-hue));
+  --primary: oklch(0.65 0.15 var(--theme-hue));
+  --primary-foreground: oklch(0.12 0.03 var(--theme-hue));
+  --secondary: oklch(0.25 0.04 var(--theme-hue));
+  --secondary-foreground: oklch(0.98 0.005 var(--theme-hue));
+  --muted: oklch(0.25 0.04 var(--theme-hue));
+  --muted-foreground: oklch(0.7 0.04 var(--theme-hue));
+  --accent: oklch(0.25 0.04 var(--theme-hue));
+  --accent-foreground: oklch(0.98 0.005 var(--theme-hue));
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
+  --ring: oklch(0.55 0.08 var(--theme-hue));
+  --chart-1: oklch(0.55 0.18 var(--theme-hue));
+  --chart-2: oklch(0.6 0.15 calc(var(--theme-hue) + 60));
+  --chart-3: oklch(0.65 0.15 calc(var(--theme-hue) - 40));
+  --chart-4: oklch(0.6 0.2 calc(var(--theme-hue) + 120));
+  --chart-5: oklch(0.65 0.2 calc(var(--theme-hue) - 80));
+  --sidebar: oklch(0.18 0.035 var(--theme-hue));
+  --sidebar-foreground: oklch(0.98 0.005 var(--theme-hue));
+  --sidebar-primary: oklch(0.55 0.18 var(--theme-hue));
+  --sidebar-primary-foreground: oklch(0.98 0.005 var(--theme-hue));
+  --sidebar-accent: oklch(0.25 0.04 var(--theme-hue));
+  --sidebar-accent-foreground: oklch(0.98 0.005 var(--theme-hue));
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  --sidebar-ring: oklch(0.55 0.08 var(--theme-hue));
 }
 
 @theme inline {
@@ -80,17 +159,18 @@
   --font-bn-stylized: "Galada", cursive;
   --font-cursive: "Dancing Script", cursive;
 
-  --color-primary-50: oklch(0.971 0.013 255.544);
-  --color-primary-100: oklch(0.929 0.013 255.508);
-  --color-primary-200: oklch(0.869 0.022 252.894);
-  --color-primary-300: oklch(0.704 0.04 256.788);
-  --color-primary-400: oklch(0.554 0.046 257.417);
-  --color-primary-500: oklch(0.488 0.045 256.742);
-  --color-primary-600: oklch(0.398 0.045 256.342);
-  --color-primary-700: oklch(0.33 0.045 255.842);
-  --color-primary-800: oklch(0.25 0.045 255.342);
-  --color-primary-900: oklch(0.18 0.045 254.842);
-  --color-primary-950: oklch(0.12 0.045 254.342);
+  /* Primary color scale - uses theme hue for consistency */
+  --color-primary-50: oklch(0.97 0.02 220);
+  --color-primary-100: oklch(0.93 0.04 220);
+  --color-primary-200: oklch(0.87 0.08 220);
+  --color-primary-300: oklch(0.75 0.12 220);
+  --color-primary-400: oklch(0.62 0.15 220);
+  --color-primary-500: oklch(0.52 0.17 220);
+  --color-primary-600: oklch(0.45 0.17 220);
+  --color-primary-700: oklch(0.38 0.15 220);
+  --color-primary-800: oklch(0.30 0.12 220);
+  --color-primary-900: oklch(0.22 0.08 220);
+  --color-primary-950: oklch(0.15 0.06 220);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -130,17 +210,150 @@
 }
 
 @layer base {
-
   * {
-
     @apply border-border outline-ring/50;
-
   }
 
   body {
-
     @apply bg-background text-foreground font-sans;
+  }
+}
 
+/* ===========================================
+   PRINT STYLES
+   =========================================== */
+@page {
+  size: auto;
+  margin: 0;
+}
+
+@media print {
+  body {
+    margin: 1cm;
+  }
+  /* Hide browser default headers/footers - user may need to disable in print dialog */
+  @page {
+    margin: 0;
   }
 
+  /* Hide navigation and non-essential elements */
+  nav,
+  .no-print,
+  button:not(.print-only),
+  .fixed,
+  .sticky {
+    display: none !important;
+  }
+
+  /* Reset background colors for print */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Ensure content takes full width */
+  main {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Print-specific styles */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Page break handling */
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid;
+  }
+
+  /* Table print optimization */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+  }
+
+  th {
+    background-color: #f5f5f5 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Header for print */
+  .print-header {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 2px solid #333;
+    margin-bottom: 1rem;
+  }
+
+  .print-footer {
+    display: block !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 10px;
+    color: #666;
+    padding: 0.5rem;
+    border-top: 1px solid #ddd;
+  }
+}
+
+/* Hide print-only elements in screen view */
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}
+
+/* ===========================================
+   UTILITY CLASSES
+   =========================================== */
+
+/* Text sizes using CSS variables */
+.text-micro { font-size: var(--text-micro); }
+.text-tiny { font-size: var(--text-tiny); }
+
+/* Consistent label styling */
+.label-style {
+  font-size: var(--text-tiny);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: oklch(0.55 0.03 var(--theme-hue));
+}
+
+/* Card consistent styling */
+.card-base {
+  border-radius: var(--radius-xl);
+  border: 2px solid oklch(0.92 0.015 var(--theme-hue));
+  background: white;
+}
+
+/* Button consistent styling */
+.btn-primary {
+  height: var(--btn-md);
+  padding-left: var(--space-6);
+  padding-right: var(--space-6);
+  border-radius: var(--radius-xl);
+  font-weight: 800;
 }

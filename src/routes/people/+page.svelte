@@ -24,9 +24,13 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
 
     let { data }: { data: PageData } = $props();
 
-    let searchQuery = $state(page.url.searchParams.get('q') || '');
+    let searchQuery = $state('');
     let isRegisterOpen = $state(false);
     let debounceTimer: any;
+
+    $effect(() => {
+        searchQuery = page.url.searchParams.get('q') || '';
+    });
 
     function handleSearchInput() {
         clearTimeout(debounceTimer);
@@ -121,7 +125,7 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
         if (searchQuery) url.searchParams.set('q', searchQuery);
         else url.searchParams.delete('q');
         url.searchParams.set('page', '1');
-        goto(url.toString(), { keepFocus: true });
+        goto(url.toString(), { keepFocus: true, noScroll: true });
     }
 
     function changeCategory(catId: string | null) {
@@ -129,7 +133,7 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
         if (catId) url.searchParams.set('category', catId);
         else url.searchParams.delete('category');
         url.searchParams.set('page', '1');
-        goto(url.toString());
+        goto(url.toString(), { keepFocus: true, noScroll: true });
     }
 
     function clearFilters() {
@@ -193,7 +197,7 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
                 {/if}
 
                 {#if data.user?.permissions.includes('people.create')}
-                    <Button class="h-14 px-8 rounded-2xl font-black gap-2 shadow-lg shadow-primary-100" onclick={() => isRegisterOpen = true}>
+                    <Button class="h-14 px-8 rounded-2xl font-black gap-2 shadow-lg" onclick={() => isRegisterOpen = true}>
                         <PlusCircle size={20} />
                         <span class="hidden sm:inline">{i18n.t('register')}</span>
                     </Button>
@@ -210,7 +214,7 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
                 size="sm"
                 class={cn(
                     "rounded-full font-bold px-4 transition-all",
-                    !selectedCategoryId ? "bg-primary-600 text-white border-primary-600 shadow-md shadow-primary-100" : "bg-white text-slate-600 border-slate-200"
+                    !selectedCategoryId ? "bg-primary-600 text-white border-primary-600 shadow-md" : "bg-white text-slate-600 border-slate-200"
                 )}
                 onclick={() => changeCategory(null)}
             >
@@ -228,7 +232,7 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
                     size="sm"
                     class={cn(
                         "rounded-full font-bold px-4 transition-all",
-                        isActive ? "bg-primary-600 text-white border-primary-600 shadow-md shadow-primary-100" : "bg-white text-slate-600 border-slate-200"
+                        isActive ? "bg-primary-600 text-white border-primary-600 shadow-md" : "bg-white text-slate-600 border-slate-200"
                     )}
                     onclick={() => changeCategory(cat.id)}
                 >
@@ -292,7 +296,87 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
         {/if}
     </div>
 
-    <Card.Root>
+    <!-- Mobile Card View -->
+    <div class="md:hidden space-y-3">
+        {#each data.people as person}
+            <Card.Root class="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow" onclick={() => goto(`/people/${person.id}`)}>
+                <Card.Content class="p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap mb-1">
+                                <h3 class="font-black text-slate-900">{person.name}</h3>
+                                {#if person.status === 'on_premises'}
+                                    <Badge class={cn("text-[10px] font-bold uppercase animate-pulse", statusBadgeClasses.on_premises)}>
+                                        {i18n.t('inside')}
+                                    </Badge>
+                                {/if}
+                            </div>
+                            <button
+                                class="hover:opacity-70 transition-opacity"
+                                onclick={(e) => openChangeCategory(person, e)}
+                            >
+                                <Badge variant="outline" class={cn("font-bold text-[10px] uppercase tracking-wider", getCategoryBadgeClass(person.category.slug))}>
+                                    {person.category.name}
+                                </Badge>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-1 shrink-0">
+                            {#if data.user?.permissions.includes('people.edit')}
+                                <Button variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-primary-600 hover:bg-primary-50" onclick={(e) => openEdit(person, e)}>
+                                    <Edit2 size={15} />
+                                </Button>
+                            {/if}
+                            {#if data.user?.permissions.includes('people.delete')}
+                                <form method="POST" action="?/delete" use:enhance={() => {
+                                    return async ({ result, update }) => {
+                                        if (result.type === 'success') await update();
+                                    };
+                                }}>
+                                    <input type="hidden" name="id" value={person.id} />
+                                    <Button type="submit" variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50" onclick={(e) => e.stopPropagation()}>
+                                        <Trash2 size={15} />
+                                    </Button>
+                                </form>
+                            {/if}
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-3 text-xs">
+                        <div>
+                            <span class="text-slate-400 font-bold">{i18n.t('codeNo')}:</span>
+                            <span class="font-bold text-slate-600 ml-1">{person.codeNo || '-'}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 font-bold">{i18n.t('company')}:</span>
+                            <span class="font-bold text-slate-600 ml-1">{person.company || '-'}</span>
+                        </div>
+                        <div class="col-span-2 flex items-center gap-4 pt-1 border-t border-slate-100 mt-1">
+                            {#if person.isTrained}
+                                <div class="flex items-center gap-1.5 text-emerald-600 font-bold">
+                                    <CheckCircle2 size={14} />
+                                    <span>{i18n.t('isTrained')}</span>
+                                </div>
+                            {:else}
+                                <div class="flex items-center gap-1.5 text-rose-500 font-bold">
+                                    <XCircle size={14} />
+                                    <span>Not Trained</span>
+                                </div>
+                            {/if}
+                        </div>
+                    </div>
+                </Card.Content>
+            </Card.Root>
+        {:else}
+            <div class="py-20 text-center space-y-4">
+                <div class="size-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
+                    <Users size={40} />
+                </div>
+                <p class="text-slate-500 font-bold">{i18n.t('noResults')}</p>
+            </div>
+        {/each}
+    </div>
+
+    <!-- Desktop Table View -->
+    <Card.Root class="hidden md:block">
         <Table.Root>
             <Table.Header>
                 <Table.Row class="hover:bg-transparent bg-slate-50">
@@ -395,7 +479,7 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
                 onclick={() => {
                     const url = new URL(page.url);
                     url.searchParams.set('page', (data.pagination.page - 1).toString());
-                    goto(url.toString());
+                    goto(url.toString(), { keepFocus: true, noScroll: true });
                 }}
             >
                 Previous
@@ -410,7 +494,7 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
                 onclick={() => {
                     const url = new URL(page.url);
                     url.searchParams.set('page', (data.pagination.page + 1).toString());
-                    goto(url.toString());
+                    goto(url.toString(), { keepFocus: true, noScroll: true });
                 }}
             >
                 Next
@@ -483,7 +567,7 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
                     <Label for="edit-isTrained" class="text-sm font-black text-slate-700">{i18n.t('isTrained')}</Label>
                 </div>
 
-                <Button type="submit" class="w-full h-14 text-base font-black gap-2 shadow-lg shadow-primary-100">
+                <Button type="submit" class="w-full h-14 text-base font-black gap-2 shadow-lg">
                     <Save size={20} />
                     {i18n.t('save')}
                 </Button>

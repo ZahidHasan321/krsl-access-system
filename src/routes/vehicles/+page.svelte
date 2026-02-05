@@ -17,8 +17,13 @@
     let { data, form }: { data: PageData, form: ActionData } = $props();
 
     let isCheckInOpen = $state(false);
-    let searchQuery = $state(data.query || '');
-    let typeFilter = $state(data.typeFilter || 'all');
+    let searchQuery = $state('');
+    let typeFilter = $state('all');
+
+    $effect(() => {
+        searchQuery = data.query || '';
+        typeFilter = data.typeFilter || 'all';
+    });
 
     // Vehicle lookup state
     let vehicleNumber = $state('');
@@ -68,7 +73,7 @@
         else url.searchParams.delete('type');
 
         url.searchParams.set('page', '1');
-        goto(url.toString(), { keepFocus: true });
+        goto(url.toString(), { keepFocus: true, noScroll: true });
     }
 
     function resetDialog() {
@@ -182,7 +187,16 @@
                                 </div>
                             </div>
 
-                            <form method="POST" action="?/checkOut" use:enhance class="w-full md:w-auto" onclick={(e) => e.stopPropagation()}>
+                            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                            <form 
+                                method="POST" 
+                                action="?/checkOut" 
+                                use:enhance 
+                                class="w-full md:w-auto" 
+                                onsubmit={(e) => e.stopPropagation()} 
+                                onclick={(e) => e.stopPropagation()}
+                                onkeydown={(e) => e.stopPropagation()}
+                            >
                                 <input type="hidden" name="id" value={vehicle.id} />
                                 <Button type="submit" variant="outline" class="w-full md:w-auto border-2 border-rose-100 text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-black h-11 px-6 gap-2">
                                     <LogOut size={18} />

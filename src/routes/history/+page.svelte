@@ -5,7 +5,8 @@
     import { Input } from '$lib/components/ui/input';
     import { Badge } from '$lib/components/ui/badge';
     import * as Table from '$lib/components/ui/table';
-    import { Search, Calendar, Filter, Clock, Users, TrendingUp, X, RotateCcw, ChevronRight } from 'lucide-svelte';
+    import { Search, Calendar, Filter, Clock, Users, TrendingUp, X, RotateCcw, ChevronRight, Printer } from 'lucide-svelte';
+    import logo from '$lib/assets/logo.png';
     import { clsx } from 'clsx';
     import { cn, getCategoryBadgeClass, statusBadgeClasses } from '$lib/utils';
     import type { PageData } from './$types';
@@ -19,9 +20,15 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
 
     let { data }: { data: PageData } = $props();
 
-    let searchQuery = $state(data.filters.query);
-    let startDate = $state(data.filters.startDate);
-    let endDate = $state(data.filters.endDate);
+    let searchQuery = $state('');
+    let startDate = $state('');
+    let endDate = $state('');
+
+    $effect(() => {
+        searchQuery = data.filters.query;
+        startDate = data.filters.startDate;
+        endDate = data.filters.endDate;
+    });
     let debounceTimer: any;
 
     function handleSearchInput() {
@@ -105,14 +112,14 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
         else url.searchParams.delete('endDate');
 
         url.searchParams.set('page', '1');
-        goto(url.toString());
+        goto(url.toString(), { keepFocus: true, noScroll: true });
     }
 
     function changeView(view: string) {
         const url = new URL(page.url);
         url.searchParams.set('view', view);
         url.searchParams.set('page', '1');
-        goto(url.toString());
+        goto(url.toString(), { keepFocus: true, noScroll: true });
     }
 
     function changeCategory(catId: string | null) {
@@ -120,7 +127,7 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
         if (catId) url.searchParams.set('category', catId);
         else url.searchParams.delete('category');
         url.searchParams.set('page', '1');
-        goto(url.toString());
+        goto(url.toString(), { keepFocus: true, noScroll: true });
     }
 
     function clearFilters() {
@@ -141,8 +148,189 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
     const hasActiveFilters = $derived(
         !!searchQuery || !!startDate || !!endDate
     );
+
+    const activeCategoryName = $derived(() => {
+        if (!selectedCategoryId) return '';
+        const cat = getCategoryById(selectedCategoryId);
+        return cat ? (i18n.t(cat.slug as any) || cat.name) : '';
+    });
+
+    function printHistory() {
+        window.print();
+    }
 </script>
 
+<!-- Print-only section -->
+<div class="print-only hidden">
+    <div class="print-header" style="display: flex !important; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 2px solid #333; margin-bottom: 1rem;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <img src={logo} alt="Logo" style="height: 48px; width: auto;" />
+            <div>
+                <h1 style="font-size: 24px; font-weight: 800; margin: 0;">{i18n.t('appName')}</h1>
+                <p style="font-size: 14px; font-weight: 600; color: #333; margin: 4px 0 0 0;">
+                    {#if data.view === 'detailed'}
+                        Attendance History - Detailed Log
+                    {:else if data.view === 'daily'}
+                        Attendance History - Daily Summary
+                    {:else}
+                        Attendance History - Monthly Summary
+                    {/if}
+                </p>
+            </div>
+        </div>
+        <div style="text-align: right;">
+            <p style="font-size: 14px; font-weight: 600; margin: 0;">Generated: {format(new Date(), 'PPPP')}</p>
+            <p style="font-size: 12px; color: #666; margin: 4px 0 0 0;">at {format(new Date(), 'hh:mm a')}</p>
+        </div>
+    </div>
+
+    <!-- Summary Section (MOVED TO TOP) -->
+    <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px;">
+        <p style="font-size: 12px; font-weight: 700; margin: 0 0 0.5rem 0;">Summary Statistics:</p>
+        <div style="display: flex; gap: 2rem; font-size: 12px;">
+            <span><strong>Total Entries:</strong> {data.summary.totalEntries}</span>
+            <span><strong>Unique People:</strong> {data.summary.uniquePeople}</span>
+            <span><strong>Active Days:</strong> {data.summary.activeDays}</span>
+            <span><strong>Total Time:</strong> {formatDuration(data.summary.totalDuration)}</span>
+        </div>
+    </div>
+
+    <!-- Active Filters Info -->
+    <div style="margin-bottom: 1rem; padding: 0.75rem; background: #f5f5f5; border-radius: 4px;">
+        <p style="font-size: 12px; margin: 0;">
+            <strong>Filters Applied:</strong>
+            {#if selectedCategoryId}
+                Category: {activeCategoryName()} |
+            {/if}
+            {#if data.filters.query}
+                Search: "{data.filters.query}" |
+            {/if}
+            {#if data.filters.startDate}
+                From: {format(parseISO(data.filters.startDate), 'PP')} |
+            {/if}
+            {#if data.filters.endDate}
+                To: {format(parseISO(data.filters.endDate), 'PP')} |
+            {/if}
+            {#if !selectedCategoryId && !data.filters.query && !data.filters.startDate && !data.filters.endDate}
+                None (showing all records)
+            {/if}
+        </p>
+        <p style="font-size: 12px; margin: 4px 0 0 0;">
+            <strong>Total Records:</strong> {data.pagination.totalCount} |
+            <strong>Page:</strong> {data.pagination.page} of {data.pagination.totalPages}
+        </p>
+    </div>
+
+    {#if data.view === 'detailed'}
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+            <thead>
+                <tr style="background: #f0f0f0;">
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">#</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Name</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Code No.</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Category</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Date</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Entry</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Exit</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Duration</th>
+                    {#if !isEmployeeView}
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Purpose</th>
+                    {/if}
+                </tr>
+            </thead>
+            <tbody>
+                {#each data.data as log, index}
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 6px;">{index + 1}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px; font-weight: 600;">{log.person.name}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px;">{log.person.codeNo || '-'}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px;">{log.category.name}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px;">{format(parseISO(log.date), 'PP')}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px;">{format(log.entryTime, 'hh:mm a')}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px;">{log.exitTime ? format(log.exitTime, 'hh:mm a') : 'Still Inside'}</td>
+                        <td style="border: 1px solid #ddd; padding: 6px;">
+                            {#if log.exitTime}
+                                {formatDuration((log.exitTime.getTime() - log.entryTime.getTime()) / 1000)}
+                            {:else}
+                                -
+                            {/if}
+                        </td>
+                        {#if !isEmployeeView}
+                            <td style="border: 1px solid #ddd; padding: 6px;">{log.purpose || '-'}</td>
+                        {/if}
+                    </tr>
+                {:else}
+                    <tr>
+                        <td colspan={isEmployeeView ? 8 : 9} style="border: 1px solid #ddd; padding: 20px; text-align: center; color: #666;">
+                            No records found
+                        </td>
+                    </tr>
+                {/each}
+            </tbody>
+        </table>
+    {:else if data.view === 'daily'}
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+                <tr style="background: #f0f0f0;">
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Date</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Total Entries</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Unique People</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Total Hours</th>
+                </tr>
+            </thead>
+            <tbody>
+                {#each data.data as day}
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">{format(parseISO(day.date), 'PP')}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{day.totalEntries}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{day.uniquePeople}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{formatDuration(day.totalDuration)}</td>
+                    </tr>
+                {:else}
+                    <tr>
+                        <td colspan="4" style="border: 1px solid #ddd; padding: 20px; text-align: center; color: #666;">
+                            No records found
+                        </td>
+                    </tr>
+                {/each}
+            </tbody>
+        </table>
+    {:else if data.view === 'monthly'}
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+                <tr style="background: #f0f0f0;">
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Month</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Total Entries</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Unique People</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Active Days</th>
+                </tr>
+            </thead>
+            <tbody>
+                {#each data.data as month}
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">{format(parseISO(month.month + '-01'), 'MMMM yyyy')}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{month.totalEntries}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{month.uniquePeople}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{month.activeDays}</td>
+                    </tr>
+                {:else}
+                    <tr>
+                        <td colspan="4" style="border: 1px solid #ddd; padding: 20px; text-align: center; color: #666;">
+                            No records found
+                        </td>
+                    </tr>
+                {/each}
+            </tbody>
+        </table>
+    {/if}
+
+    <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ddd; font-size: 10px; color: #666; text-align: center;">
+        Generated by {i18n.t('appName')} • Page {data.pagination.page} of {data.pagination.totalPages}
+    </div>
+</div>
+
+<!-- Screen view -->
+<div class="no-print">
 <div class="space-y-6 pb-20">
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h1 class="text-3xl font-black text-slate-900 tracking-tight">{i18n.t('history')}</h1>
@@ -151,6 +339,14 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
             <div class="text-sm font-bold text-slate-400">
                 {data.pagination.totalCount} {data.pagination.totalCount === 1 ? 'record' : 'records'}
             </div>
+            <Button
+                variant="outline"
+                class="h-10 px-4 rounded-xl font-bold gap-2 border-2 border-slate-200 hover:border-primary-300 hover:bg-primary-50 transition-all"
+                onclick={printHistory}
+            >
+                <Printer size={16} />
+                <span class="hidden sm:inline">Print</span>
+            </Button>
         </div>
     </div>
 
@@ -219,7 +415,7 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
                         variant={!selectedCategoryId ? "secondary" : "ghost"}
                         class={cn(
                             "justify-start font-bold h-10 px-3 transition-all",
-                            !selectedCategoryId ? "bg-primary-600 text-white hover:bg-primary-700 shadow-md shadow-primary-100" : "text-slate-600"
+                            !selectedCategoryId ? "bg-primary-600 text-white hover:bg-primary-700 shadow-md" : "text-slate-600"
                         )}
                         onclick={() => changeCategory(null)}
                     >
@@ -384,7 +580,124 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
 
         <!-- Main Content -->
         <div class="flex-1 min-w-0">
-            <Card.Root>
+            <!-- Mobile Card View -->
+            <div class="lg:hidden space-y-3">
+                {#if data.view === 'detailed'}
+                    {#each data.data as log}
+                        <Card.Root class="cursor-pointer hover:shadow-lg transition-shadow" onclick={() => goto(`/people/${log.person.id}`)}>
+                            <Card.Content class="p-4">
+                                <div class="flex items-start justify-between gap-3 mb-3">
+                                    <div>
+                                        <div class="font-bold text-slate-900">{log.person.name}</div>
+                                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                                            {log.rootCategory.name} {log.category.name !== log.rootCategory.name ? '• ' + log.category.name : ''} • {log.person.codeNo || 'N/A'}
+                                        </div>
+                                    </div>
+                                    {#if !log.exitTime}
+                                        <Badge class={cn("text-[10px] font-bold uppercase shrink-0", statusBadgeClasses.on_premises)}>
+                                            {i18n.t('inside')}
+                                        </Badge>
+                                    {/if}
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 text-xs">
+                                    <div>
+                                        <p class="text-slate-400 font-medium">{i18n.t('date')}</p>
+                                        <p class="font-bold text-slate-600">{format(parseISO(log.date), 'PP')}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-400 font-medium">{i18n.t('entryTime')}</p>
+                                        <p class="font-black text-slate-700">{format(log.entryTime, 'hh:mm a')}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-400 font-medium">{i18n.t('exitTime')}</p>
+                                        <p class="font-black text-slate-700">{log.exitTime ? format(log.exitTime, 'hh:mm a') : '-'}</p>
+                                    </div>
+                                </div>
+                                {#if log.exitTime}
+                                    <div class="mt-2 pt-2 border-t border-slate-100 text-xs">
+                                        <span class="text-slate-400 font-medium">{i18n.t('duration')}:</span>
+                                        <span class="font-bold text-slate-500 ml-1">{formatDuration((log.exitTime.getTime() - log.entryTime.getTime()) / 1000)}</span>
+                                    </div>
+                                {/if}
+                                {#if !isEmployeeView && log.purpose}
+                                    <div class="mt-2 pt-2 border-t border-slate-100 text-xs">
+                                        <span class="text-slate-400 font-medium">{i18n.t('purpose')}:</span>
+                                        <span class="font-medium text-slate-600 ml-1">{log.purpose}</span>
+                                    </div>
+                                {/if}
+                            </Card.Content>
+                        </Card.Root>
+                    {:else}
+                        <div class="py-20 text-center space-y-4">
+                            <div class="size-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
+                                <Users size={40} />
+                            </div>
+                            <p class="text-slate-500 font-bold">{i18n.t('noData')}</p>
+                        </div>
+                    {/each}
+                {:else if data.view === 'daily'}
+                    {#each data.data as day}
+                        <Card.Root>
+                            <Card.Content class="p-4">
+                                <div class="font-bold text-slate-900 mb-2">{format(parseISO(day.date), 'PP')}</div>
+                                <div class="grid grid-cols-3 gap-2 text-center">
+                                    <div class="bg-primary-50 rounded-lg p-2">
+                                        <p class="text-xl font-black text-primary-600">{day.totalEntries}</p>
+                                        <p class="text-[10px] font-bold text-primary-500 uppercase">{i18n.t('entries')}</p>
+                                    </div>
+                                    <div class="bg-emerald-50 rounded-lg p-2">
+                                        <p class="text-xl font-black text-emerald-600">{day.uniquePeople}</p>
+                                        <p class="text-[10px] font-bold text-emerald-500 uppercase">{i18n.t('people')}</p>
+                                    </div>
+                                    <div class="bg-slate-100 rounded-lg p-2">
+                                        <p class="text-xl font-black text-slate-700">{formatDuration(day.totalDuration)}</p>
+                                        <p class="text-[10px] font-bold text-slate-500 uppercase">Hours</p>
+                                    </div>
+                                </div>
+                            </Card.Content>
+                        </Card.Root>
+                    {:else}
+                        <div class="py-20 text-center space-y-4">
+                            <div class="size-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
+                                <Calendar size={40} />
+                            </div>
+                            <p class="text-slate-500 font-bold">{i18n.t('noData')}</p>
+                        </div>
+                    {/each}
+                {:else if data.view === 'monthly'}
+                    {#each data.data as month}
+                        <Card.Root>
+                            <Card.Content class="p-4">
+                                <div class="font-black text-slate-900 uppercase mb-2">{format(parseISO(month.month + '-01'), 'MMMM yyyy')}</div>
+                                <div class="grid grid-cols-3 gap-2 text-center">
+                                    <div class="bg-primary-50 rounded-lg p-2">
+                                        <p class="text-xl font-black text-primary-600">{month.totalEntries}</p>
+                                        <p class="text-[10px] font-bold text-primary-500 uppercase">{i18n.t('entries')}</p>
+                                    </div>
+                                    <div class="bg-emerald-50 rounded-lg p-2">
+                                        <p class="text-xl font-black text-emerald-600">{month.uniquePeople}</p>
+                                        <p class="text-[10px] font-bold text-emerald-500 uppercase">{i18n.t('people')}</p>
+                                    </div>
+                                    <div class="bg-amber-50 rounded-lg p-2">
+                                        <p class="text-xl font-black text-amber-600">{month.activeDays}</p>
+                                        <p class="text-[10px] font-bold text-amber-500 uppercase">Days</p>
+                                    </div>
+                                </div>
+                            </Card.Content>
+                        </Card.Root>
+                    {:else}
+                        <div class="py-20 text-center space-y-4">
+                            <div class="size-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
+                                <TrendingUp size={40} />
+                            </div>
+                            <p class="text-slate-500 font-bold">{i18n.t('noData')}</p>
+                        </div>
+                    {/each}
+                {/if}
+            </div>
+
+            <!-- Desktop Table View -->
+            <Card.Root class="hidden lg:block">
                 <Table.Root>
                     {#if data.view === 'detailed'}
                         <Table.Header>
@@ -491,16 +804,17 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
                     <Button variant="outline" size="sm" disabled={data.pagination.page === 1} onclick={() => {
                         const url = new URL(page.url);
                         url.searchParams.set('page', (data.pagination.page - 1).toString());
-                        goto(url.toString());
+                        goto(url.toString(), { keepFocus: true, noScroll: true });
                     }}>Previous</Button>
                     <div class="text-sm font-bold text-slate-500 px-4">Page {data.pagination.page} of {data.pagination.totalPages}</div>
                     <Button variant="outline" size="sm" disabled={data.pagination.page === data.pagination.totalPages} onclick={() => {
                         const url = new URL(page.url);
                         url.searchParams.set('page', (data.pagination.page + 1).toString());
-                        goto(url.toString());
+                        goto(url.toString(), { keepFocus: true, noScroll: true });
                     }}>Next</Button>
                 </div>
             {/if}
         </div>
     </div>
+</div>
 </div>

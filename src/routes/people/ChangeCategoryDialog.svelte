@@ -13,17 +13,17 @@
         person: { id: string, name: string, category: { id: string, name: string } }
     }>();
 
-    let selectedCategoryId = $state(person.category.id);
+    let boundCategoryId = $state('');
     let isLoading = $state(false);
 
     $effect(() => {
         if (open) {
-            selectedCategoryId = person.category.id;
+            boundCategoryId = person.category.id;
         }
     });
 
     const selectedCategoryName = $derived(
-        CATEGORIES.find((c) => c.id === selectedCategoryId)?.name ?? 'Select Category'
+        CATEGORIES.find((c) => c.id === boundCategoryId)?.name ?? 'Select Category'
     );
 
     // Group categories for the select
@@ -57,11 +57,11 @@
         >
             <input type="hidden" name="id" value={person.id} />
             <input type="hidden" name="name" value={person.name} /> <!-- Name is required by update action -->
-            <input type="hidden" name="categoryId" value={selectedCategoryId} />
+            <input type="hidden" name="categoryId" value={boundCategoryId} />
 
             <div class="space-y-2">
                 <Label>{i18n.t('category')}</Label>
-                <Select.Root type="single" bind:value={selectedCategoryId}>
+                <Select.Root type="single" bind:value={boundCategoryId}>
                     <Select.Trigger class="h-11 border-2">
                         {selectedCategoryName}
                     </Select.Trigger>

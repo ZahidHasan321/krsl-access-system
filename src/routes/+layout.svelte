@@ -25,7 +25,9 @@
 
 <div class="min-h-screen bg-slate-50 flex flex-col">
     {#if !isLoginPage}
-        <Navbar />
+        <div class="no-print">
+            <Navbar />
+        </div>
     {/if}
     
     <main class={isLoginPage ? "flex-1 w-full" : "flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8"}>

@@ -5,6 +5,53 @@ export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
 
+export type WithElementRef<T> = T & {
+	ref?: HTMLElement;
+};
+
+export type WithoutChildrenOrChild<T> = Omit<T, "children" | "child">;
+export type WithoutChild<T> = Omit<T, "child">;
+export type WithoutChildren<T> = Omit<T, "children">;
+
+/**
+ * Converts a Date or ISO string to a CalendarDate object (simplified for shadcn components)
+ */
+export function toCalendarDate(date: Date | string) {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return {
+        year: d.getFullYear(),
+        month: d.getMonth() + 1,
+        day: d.getDate()
+    };
+}
+
+/**
+ * Generates a range of page numbers for pagination with ellipsis support.
+ */
+export function getPageRange(current: number, total: number) {
+    const delta = 1;
+    const range = [];
+    const rangeWithDots: (number | string)[] = [];
+    let l;
+    for (let i = 1; i <= total; i++) {
+        if (i == 1 || i == total || (i >= current - delta && i <= current + delta)) {
+            range.push(i);
+        }
+    }
+    for (let i of range) {
+        if (l) {
+            if (i - l === 2) {
+                rangeWithDots.push(l + 1);
+            } else if (i - l !== 1) {
+                rangeWithDots.push('...');
+            }
+        }
+        rangeWithDots.push(i);
+        l = i;
+    }
+    return rangeWithDots;
+}
+
 /**
  * High-contrast color mapping for category badges
  */

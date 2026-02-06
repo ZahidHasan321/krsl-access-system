@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { vehicles } from '$lib/server/db/schema';
-import { desc, eq, and, or, like, count } from 'drizzle-orm';
+import { desc, eq, and, or, like, count, sql } from 'drizzle-orm';
 import { format } from 'date-fns';
 import { fail, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
@@ -53,13 +53,33 @@ export const load: PageServerLoad = async ({ url, locals }) => {
         .limit(pageSize)
         .offset(offset);
 
+    // Summary stats for active vehicles
+    const [summaryStats] = await db
+        .select({
+            total: count(),
+            transport: sql<number>`sum(case when ${vehicles.type} = 'transport' then 1 else 0 end)`,
+            regular: sql<number>`sum(case when ${vehicles.type} = 'regular' then 1 else 0 end)`
+        })
+        .from(vehicles)
+        .where(whereClause);
+
     return { 
         activeVehicles, 
-        query,
-        typeFilter,
-        currentPage: page,
-        totalPages,
-        pageSize
+        summary: {
+            total: summaryStats.total || 0,
+            transport: summaryStats.transport || 0,
+            regular: summaryStats.regular || 0
+        },
+        filters: {
+            query,
+            typeFilter
+        },
+        pagination: {
+            page,
+            limit: pageSize,
+            totalCount,
+            totalPages
+        }
     };
 };
 

@@ -49,7 +49,7 @@ export const load: PageServerLoad = async (event) => {
     const categoryId = event.url.searchParams.get('category') || '';
     const query = event.url.searchParams.get('q') || '';
     const page = parseInt(event.url.searchParams.get('page') || '1');
-    const limit = 20;
+    const limit = Math.min(100, Math.max(1, parseInt(event.url.searchParams.get('limit') || '20')));
     const offset = (page - 1) * limit;
 
     const rootLookup = buildRootLookup();
@@ -69,7 +69,8 @@ export const load: PageServerLoad = async (event) => {
         whereClauses.push(or(
             like(people.name, `%${query}%`),
             like(people.codeNo, `%${query}%`),
-            like(people.company, `%${query}%`)
+            like(people.company, `%${query}%`),
+            like(people.contactNo, `%${query}%`)
         ));
     }
 
@@ -104,7 +105,7 @@ export const load: PageServerLoad = async (event) => {
             .where(where)
             .limit(limit)
             .offset(offset)
-            .orderBy(desc(attendanceLogs.entryTime));
+            .orderBy(desc(sql`COALESCE(${attendanceLogs.exitTime}, ${attendanceLogs.entryTime})`));
 
         // Add root category name to each row
         data = rows.map(row => {

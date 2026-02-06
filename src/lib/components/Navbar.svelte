@@ -15,6 +15,14 @@
     let showResults = $state(false);
     let debounceTimer: ReturnType<typeof setTimeout>;
 
+    let searchInput: HTMLInputElement | undefined = $state();
+
+    $effect(() => {
+        if (isMobileSearchOpen && searchInput) {
+            searchInput.focus();
+        }
+    });
+
     async function handleSearch(e: Event) {
         const query = (e.target as HTMLInputElement).value;
         searchQuery = query;
@@ -128,7 +136,7 @@
     });
 </script>
 
-<nav class="bg-white border-b sticky top-0 z-40">
+<nav class="bg-white border-b z-40">
     <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
             <div class="flex items-center gap-4 xl:gap-6 min-w-0">
@@ -211,6 +219,7 @@
                         <div class="relative w-full">
                             <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                             <input 
+                                bind:this={searchInput}
                                 type="text" 
                                 placeholder={i18n.t('searchPlaceholder')} 
                                 class="pl-9 pr-4 py-2 2xl:py-1.5 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white w-full transition-all"
@@ -218,7 +227,6 @@
                                 oninput={handleSearch}
                                 onblur={closeSearch}
                                 onfocus={() => searchQuery.length >= 2 && (showResults = true)}
-                                autofocus={isMobileSearchOpen}
                             />
                             {#if isSearching}
                                 <div class="absolute right-3 top-1/2 -translate-y-1/2">

@@ -1,23 +1,36 @@
-
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from './src/lib/server/db/schema';
+import { desc, eq } from 'drizzle-orm';
+import dotenv from 'dotenv';
 
-const client = new Database('local.db');
+dotenv.config();
+
+const databaseUrl = process.env.DATABASE_URL || 'local.db';
+const client = new Database(databaseUrl);
 const db = drizzle(client, { schema });
 
-async function run() {
-    const logs = await db.query.labourLogs.findFirst({
-        where: (logs, { isNotNull }) => isNotNull(logs.exitTime)
-    });
-    
-    console.log('Drizzle Log:', logs);
-    if (logs) {
-        console.log('Entry Time Type:', typeof logs.entryTime);
-        console.log('Entry Time Instance of Date:', logs.entryTime instanceof Date);
-        console.log('Entry Time Value (ms):', (logs.entryTime as any).getTime());
-        console.log('Entry Time ISO:', (logs.entryTime as any).toISOString());
-    }
+async function inspect() {
+    console.log('--- Recent Attendance Logs ---');
+    const logs = await db.select({
+        id: schema.attendanceLogs.id,
+        personName: schema.people.name,
+        entryTime: schema.attendanceLogs.entryTime,
+        date: schema.attendanceLogs.date,
+        status: schema.attendanceLogs.status
+    })
+    .from(schema.attendanceLogs)
+    .innerJoin(schema.people, eq(schema.attendanceLogs.personId, schema.people.id))
+    .orderBy(desc(schema.attendanceLogs.entryTime))
+    .limit(10);
+
+    console.table(logs.map(l => ({
+        ...l,
+        entryTime: l.entryTime.toISOString()
+    })));
+
+    const countResult = await db.select({ count: schema.sql<number>`count(*)` }).from(schema.attendanceLogs);
+    console.log('Total Logs:', countResult[0].count);
 }
 
-run().catch(console.error).finally(() => client.close());
+inspect().catch(console.error);

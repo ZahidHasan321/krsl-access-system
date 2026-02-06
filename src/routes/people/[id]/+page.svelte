@@ -119,6 +119,10 @@
     }
 </script>
 
+<svelte:head>
+    <title>{data.person.name} | {i18n.t('appName')}</title>
+</svelte:head>
+
 <div class="space-y-6 pb-20">
     <!-- Back Button -->
     <div class="flex items-center justify-between">
@@ -242,6 +246,18 @@
                             </div>
                         </div>
                         {/if}
+
+                        {#if data.person.createdAt}
+                        <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                            <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center text-primary-600 shrink-0">
+                                <Calendar size={20} />
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registered</p>
+                                <p class="font-bold text-slate-900 truncate">{format(data.person.createdAt, 'PPP')}</p>
+                            </div>
+                        </div>
+                        {/if}
                     </div>
 
                     <!-- Training Status -->
@@ -283,7 +299,7 @@
                                     }
                                 };
                             }} bind:this={deleteFormElement} class="shrink-0">
-                                <Button type="button" variant="outline" class="h-11 w-11 text-rose-500 hover:text-rose-700 hover:bg-rose-50 border-2 border-rose-100" onclick={(e) => triggerDelete((e.currentTarget as HTMLButtonElement).form as HTMLFormElement)}>
+                                <Button type="button" variant="outline" class="h-11 w-11 text-rose-500 hover:text-rose-700 hover:bg-rose-50 border-2 border-rose-100" onclick={(e: MouseEvent) => triggerDelete((e.currentTarget as HTMLButtonElement).form as HTMLFormElement)}>
                                     <Trash2 size={18} />
                                 </Button>
                             </form>
@@ -380,7 +396,7 @@
                 <Card.Content class="p-0">
                     <!-- Mobile View: List of cards -->
                     <div class="md:hidden divide-y divide-slate-100">
-                        {#each data.recentLogs as log}
+                        {#each data.recentLogs as log (log.id)}
                             <div class="p-4 hover:bg-primary-50/50 transition-colors">
                                 <div class="flex items-center justify-between mb-2">
                                     <span class="font-bold text-slate-700 text-sm">{format(parseISO(log.date), 'PP')}</span>
@@ -439,7 +455,7 @@
                                 </Table.Row>
                             </Table.Header>
                             <Table.Body>
-                                {#each data.recentLogs as log}
+                                {#each data.recentLogs as log (log.id)}
                                     <Table.Row class="hover:bg-primary-50/50 transition-colors">
                                         <Table.Cell class="font-bold text-slate-700">{format(parseISO(log.date), 'PP')}</Table.Cell>
                                         <Table.Cell class="font-black text-slate-900">{format(log.entryTime, 'hh:mm a')}</Table.Cell>
@@ -586,7 +602,7 @@
                                 {selectedCategoryName}
                             </Select.Trigger>
                             <Select.Content class="max-h-[300px] overflow-y-auto">
-                                {#each data.allCategoriesFlat as cat}
+                                {#each data.allCategoriesFlat as cat (cat.id)}
                                     <Select.Item value={cat.id} class="font-medium" style="padding-left: {cat.level * 1.25 + 0.5}rem">
                                         {#if cat.level > 0}
                                             <span class="text-slate-300 mr-2">↳</span>
@@ -631,7 +647,7 @@
                 <input type="hidden" name="isTrained" value={editIsTrained ? 'true' : 'false'} />
 
                 <div class="flex items-center space-x-3 p-4 bg-slate-50 rounded-2xl border-2 border-slate-100">
-                    <Checkbox id="edit-isTrained" checked={editIsTrained} onCheckedChange={(v) => editIsTrained = !!v} />
+                    <Checkbox id="edit-isTrained" checked={editIsTrained} onCheckedChange={(v: boolean | "indeterminate") => editIsTrained = !!v} />
                     <Label for="edit-isTrained" class="text-sm font-black text-slate-700">{i18n.t('isTrained')}</Label>
                 </div>
 

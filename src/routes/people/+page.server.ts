@@ -45,7 +45,7 @@ export const load: PageServerLoad = async (event) => {
     const query = event.url.searchParams.get('q') || '';
     const categoryId = event.url.searchParams.get('category') || '';
     const page = parseInt(event.url.searchParams.get('page') || '1');
-    const limit = 20;
+    const limit = Math.min(100, Math.max(1, parseInt(event.url.searchParams.get('limit') || '20')));
     const offset = (page - 1) * limit;
 
     const whereClauses = [];
@@ -53,7 +53,8 @@ export const load: PageServerLoad = async (event) => {
         whereClauses.push(or(
             like(people.name, `%${query}%`),
             like(people.codeNo, `%${query}%`),
-            like(people.company, `%${query}%`)
+            like(people.company, `%${query}%`),
+            like(people.contactNo, `%${query}%`)
         ));
     }
     if (categoryId) {
@@ -75,6 +76,7 @@ export const load: PageServerLoad = async (event) => {
             notes: people.notes,
             isTrained: people.isTrained,
             categoryId: people.categoryId,
+            createdAt: people.createdAt,
             category: {
                 name: personCategories.name,
                 slug: personCategories.slug
@@ -88,18 +90,45 @@ export const load: PageServerLoad = async (event) => {
         .offset(offset)
         .orderBy(desc(people.createdAt));
 
-    const [totalCount] = await db
+    const [totalCountResult] = await db
         .select({ value: sql<number>`count(*)` })
         .from(people)
+        .innerJoin(personCategories, eq(people.categoryId, personCategories.id))
+        .where(where);
+    
+    const totalCount = totalCountResult.value;
+
+    // Summary stats for filtered people
+    const [summaryStats] = await db
+        .select({
+            total: sql<number>`count(*)`,
+            trained: sql<number>`sum(case when ${people.isTrained} = 1 then 1 else 0 end)`,
+            inside: sql<number>`count(distinct case when attendance_logs.status = 'on_premises' then people.id else null end)`
+        })
+        .from(people)
+        .leftJoin(attendanceLogs, and(
+            eq(people.id, attendanceLogs.personId),
+            eq(attendanceLogs.status, 'on_premises')
+        ))
         .where(where);
 
     return {
         people: list,
-        totalCount: totalCount.value,
+        summary: {
+            total: summaryStats.total || 0,
+            trained: summaryStats.trained || 0,
+            untrained: (summaryStats.total || 0) - (summaryStats.trained || 0),
+            inside: summaryStats.inside || 0
+        },
+        filters: {
+            query,
+            categoryId
+        },
         pagination: {
             page,
             limit,
-            totalPages: Math.ceil(totalCount.value / limit)
+            totalCount,
+            totalPages: Math.ceil(totalCount / limit)
         }
     };
 };

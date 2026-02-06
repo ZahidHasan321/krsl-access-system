@@ -8,9 +8,10 @@
     import { Checkbox } from '$lib/components/ui/checkbox';
     import * as Table from '$lib/components/ui/table';
     import * as Dialog from '$lib/components/ui/dialog';
-    import { Search, Users, PlusCircle, Edit2, Trash2, CheckCircle2, XCircle, Save, Eye, RotateCcw, ChevronRight, X } from 'lucide-svelte';
+    import { Search, Users, PlusCircle, Edit2, Trash2, CheckCircle2, XCircle, Save, Eye, RotateCcw, ChevronRight, X, ChevronLeft, Printer, Loader2, Calendar } from 'lucide-svelte';
+    import { format } from 'date-fns';
     import { clsx } from 'clsx';
-    import { cn, getCategoryBadgeClass, statusBadgeClasses } from '$lib/utils';
+    import { cn, getCategoryBadgeClass, statusBadgeClasses, getPageRange } from '$lib/utils';
     import type { PageData } from './$types';
     import { goto } from '$app/navigation';
     import { page } from '$app/state';
@@ -19,8 +20,10 @@
     import { sineInOut } from 'svelte/easing';
     import RegisterDialog from './RegisterDialog.svelte';
     import ChangeCategoryDialog from './ChangeCategoryDialog.svelte';
+    import logo from '$lib/assets/logo.png';
 
 import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '$lib/constants/categories';
+import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
 
     let { data }: { data: PageData } = $props();
 
@@ -28,8 +31,27 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
     let isRegisterOpen = $state(false);
     let debounceTimer: any;
 
+    let isPreparingPrint = $state(false);
+    let previousLimit = $state(20);
+    let isPrintConfirmOpen = $state(false);
+
     $effect(() => {
-        searchQuery = page.url.searchParams.get('q') || '';
+        searchQuery = data.filters.query;
+    });
+
+    $effect(() => {
+        if (page.url.searchParams.has('print')) {
+            isPreparingPrint = true;
+            const timer = setTimeout(() => {
+                window.print();
+                isPreparingPrint = false;
+                const url = new URL(page.url);
+                url.searchParams.delete('print');
+                url.searchParams.set('limit', previousLimit.toString());
+                goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
+            }, 1500);
+            return () => clearTimeout(timer);
+        }
     });
 
     function handleSearchInput() {
@@ -61,42 +83,26 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
 
     const availableSubCategories = $derived(() => {
         if (!selectedCategoryId) return [];
-
-        // 1. If Root is selected, show its children
-        if (isRootCategory) {
-            return getSubCategories(selectedCategoryId);
-        }
-
+        if (isRootCategory) return getSubCategories(selectedCategoryId);
         const selected = getCategoryById(selectedCategoryId);
         if (!selected) return [];
-
-        // 2. Check if the selected category has children
         const children = getSubCategories(selectedCategoryId);
-        if (children.length > 0) {
-            return children;
-        }
-
-        // 3. If no children (Leaf node), show siblings
+        if (children.length > 0) return children;
         const parentId = selected.parentId;
-        if (parentId) {
-            return getSubCategories(parentId);
-        }
-
+        if (parentId) return getSubCategories(parentId);
         return [];
     });
 
     const activeRootCategoryId = $derived(() => {
         if (!selectedCategoryId) return '';
         if (isRootCategory) return selectedCategoryId;
-        
-        // Traverse up to find root
         let current = getCategoryById(selectedCategoryId);
         if (!current) return '';
-
         while (current?.parentId) {
             const parentId = current.parentId;
             const parent = getCategoryById(parentId);
             if (!parent) break;
+            if (ROOT_CATEGORIES.some(r => r.id === parent.id)) return parent.id;
             current = parent;
         }
         return current?.id || '';
@@ -117,7 +123,7 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
     });
 
     const hasActiveFilters = $derived(
-        !!searchQuery
+        !!searchQuery || !!selectedCategoryId
     );
 
     function handleSearch() {
@@ -138,7 +144,11 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
 
     function clearFilters() {
         searchQuery = '';
-        handleSearch();
+        const url = new URL(page.url);
+        url.searchParams.delete('q');
+        url.searchParams.delete('category');
+        url.searchParams.set('page', '1');
+        goto(url.toString(), { keepFocus: true, noScroll: true });
     }
 
     function openEdit(person: any, e: Event) {
@@ -159,24 +169,115 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
         changeCategoryPerson = person;
         isChangeCategoryOpen = true;
     }
+
+    function goToPage(p: number) {
+        const url = new URL(page.url);
+        url.searchParams.set('page', p.toString());
+        goto(url.toString(), { keepFocus: true, noScroll: true });
+    }
+
+    function confirmPrint() {
+        if (data.pagination.totalCount > 2000) {
+            isPrintConfirmOpen = true;
+        } else {
+            printPeople();
+        }
+    }
+
+    function printPeople() {
+        previousLimit = data.pagination.limit;
+        const url = new URL(page.url);
+        url.searchParams.set('limit', '5000');
+        url.searchParams.set('page', '1');
+        url.searchParams.set('print', '1');
+        goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
+    }
 </script>
 
-<div class="space-y-6 pb-20">
-    <div class="flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-4">
-        <h1 class="text-3xl font-black text-slate-900 tracking-tight">{i18n.t('people')}</h1>
+<svelte:head>
+    <title>{i18n.t('people')} | {i18n.t('appName')}</title>
+</svelte:head>
 
-        <div class="flex flex-col md:flex-row items-stretch md:items-center gap-3 flex-1 xl:max-w-4xl">
-            <div class="relative flex-1 group">
-                <Search class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors" size={20} />
-                <Input
-                    placeholder={i18n.t('searchPlaceholder')}
-                    class="h-14 pl-12 pr-12 bg-white border-2 border-slate-100 rounded-2xl focus-visible:border-primary-500 focus-visible:ring-0 shadow-sm font-bold text-base"
+<div class="print-only hidden">
+    <div class="print-header" style="display: flex !important; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 2px solid #333; margin-bottom: 1rem;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <img src={logo} alt="Logo" style="height: 48px; width: auto;" />
+            <div>
+                <div style="font-size: 24px; font-weight: 800; margin: 0;">{i18n.t('appName')}</div>
+                <p style="font-size: 14px; font-weight: 600; color: #333; margin: 4px 0 0 0;">
+                    People Report
+                </p>
+            </div>
+        </div>
+        <div style="text-align: right;">
+            <p style="font-size: 14px; font-weight: 600; margin: 0;">Generated: {new Date().toLocaleDateString()}</p>
+        </div>
+    </div>
+
+    <div style="margin-bottom: 1rem; padding: 0.75rem; background: #f5f5f5; border-radius: 4px;">
+        <p style="font-size: 14px; font-weight: 600; margin: 0;">
+            Total People: <strong>{data.pagination.totalCount}</strong>
+        </p>
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+        <thead>
+            <tr style="background: #f0f0f0;">
+                <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">#</th>
+                <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Name</th>
+                <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Identity No.</th>
+                <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Category</th>
+                <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Company</th>
+                <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Trained</th>
+                <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {#each data.people as person, index (person.id)}
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">{index + 1}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">{person.name}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">{person.codeNo || '-'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">{person.category.name}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">{person.company || '-'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">{person.isTrained ? 'YES' : 'NO'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">{person.status === 'on_premises' ? 'Inside' : 'Checked Out'}</td>
+                </tr>
+            {/each}
+        </tbody>
+    </table>
+
+    <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ddd; font-size: 10px; color: #666; text-align: center;">
+        Generated by {i18n.t('appName')}
+    </div>
+</div>
+
+{#if isPreparingPrint}
+    <div class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center">
+        <Loader2 class="animate-spin text-primary-600 mb-4" size={48} />
+        <h2 class="text-xl font-black text-slate-900">Preparing Print Report...</h2>
+        <p class="text-slate-500 font-bold mt-2">Fetching {data.pagination.totalCount} records</p>
+    </div>
+{/if}
+
+<div class="pb-20 no-print">
+    <!-- Sticky Top Bar for Search -->
+    <div class="sticky-filter-bar">
+        <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-4">
+            <!-- Search Section - Left -->
+            <div class="flex-1 max-w-md relative group">
+                <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors">
+                    <Search size={20} />
+                </div>
+                <Input 
                     bind:value={searchQuery}
                     oninput={handleSearchInput}
+                    placeholder={i18n.t('searchPlaceholder')}
+                    class="h-12 pl-12 pr-12 bg-white border-2 border-slate-100 rounded-2xl focus-visible:border-primary-500 focus-visible:ring-0 shadow-sm font-bold text-base w-full"
                 />
                 {#if searchQuery}
                     <button 
-                        class="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors"
+                        class="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors cursor-pointer"
                         onclick={() => { searchQuery = ''; handleSearch(); }}
                     >
                         <X size={16} />
@@ -184,11 +285,21 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
                 {/if}
             </div>
 
-            <div class="flex items-center gap-2">
+            <!-- Actions - Right -->
+            <div class="flex items-center gap-3">
+                <Button
+                    variant="outline"
+                    class="h-12 px-6 rounded-2xl font-black gap-2 border-2 border-slate-200 hover:border-primary-300 hover:bg-primary-50 transition-all cursor-pointer"
+                    onclick={confirmPrint}
+                >
+                    <Printer size={18} />
+                    <span>Print Report</span>
+                </Button>
+
                 {#if hasActiveFilters}
                     <Button 
                         variant="ghost" 
-                        class="h-14 px-6 rounded-2xl font-black text-rose-500 hover:bg-rose-50 hover:text-rose-600 gap-2 border-2 border-transparent hover:border-rose-100 transition-all animate-in zoom-in duration-200" 
+                        class="h-12 px-6 rounded-2xl font-black text-rose-500 hover:bg-rose-50 hover:text-rose-600 gap-2 border-2 border-transparent hover:border-rose-100 transition-all cursor-pointer" 
                         onclick={clearFilters}
                     >
                         <RotateCcw size={18} />
@@ -197,7 +308,7 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
                 {/if}
 
                 {#if data.user?.permissions.includes('people.create')}
-                    <Button class="h-14 px-8 rounded-2xl font-black gap-2 shadow-lg" onclick={() => isRegisterOpen = true}>
+                    <Button class="h-12 px-8 rounded-2xl font-black gap-2 shadow-lg" onclick={() => isRegisterOpen = true}>
                         <PlusCircle size={20} />
                         <span class="hidden sm:inline">{i18n.t('register')}</span>
                     </Button>
@@ -206,304 +317,390 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
         </div>
     </div>
 
-    <!-- Category Filters -->
-    <div class="space-y-3">
-        <div class="flex flex-wrap items-center gap-2">
-            <Button
-                variant={!selectedCategoryId ? "default" : "outline"}
-                size="sm"
-                class={cn(
-                    "rounded-full font-bold px-4 transition-all",
-                    !selectedCategoryId ? "bg-primary-600 text-white border-primary-600 shadow-md" : "bg-white text-slate-600 border-slate-200"
-                )}
-                onclick={() => changeCategory(null)}
-            >
-                <div class="flex items-center gap-2">
-                    {#if !selectedCategoryId}
-                        <div class="size-1.5 rounded-full bg-white animate-pulse"></div>
-                    {/if}
-                    {i18n.t('all')}
-                </div>
-            </Button>
-            {#each ROOT_CATEGORIES as cat}
-                {@const isActive = activeRootCategoryId() === cat.id}
-                <Button
-                    variant={isActive ? "default" : "outline"}
-                    size="sm"
-                    class={cn(
-                        "rounded-full font-bold px-4 transition-all",
-                        isActive ? "bg-primary-600 text-white border-primary-600 shadow-md" : "bg-white text-slate-600 border-slate-200"
-                    )}
-                    onclick={() => changeCategory(cat.id)}
-                >
-                    <div class="flex items-center gap-2">
-                        {#if isActive}
-                            <div class="size-1.5 rounded-full bg-white animate-pulse"></div>
-                        {/if}
-                        {i18n.t(cat.slug as any) || cat.name}
-                    </div>
-                </Button>
-            {/each}
-        </div>
-
-        <!-- Sub-category pills -->
-        {#if availableSubCategories().length > 0}
-            <div 
-                class="flex items-center gap-2 pl-2"
-                transition:slide={{ duration: 250, easing: sineInOut }}
-            >
-                <ChevronRight size={16} class="text-slate-300" />
-                <div class="flex flex-wrap items-center gap-1.5">
-                    <!-- Root Reset -->
-                    <button
-                        class={clsx(
-                            "px-3 py-1 text-xs font-bold rounded-full transition-all border",
-                            isRootCategory
-                                ? "bg-primary-600 text-white border-primary-600 shadow-sm"
-                                : "bg-white text-slate-600 border-slate-200 hover:border-primary-300"
+    <!-- Main Content Area -->
+    <div class="flex flex-col md:flex-row gap-8 items-start">
+        
+        <!-- Sidebar - Sticky -->
+        <aside class="w-full md:w-64 shrink-0 md:sticky md:top-36 space-y-6 max-h-[calc(100vh-10rem)] overflow-y-auto pr-2 custom-scrollbar pb-10 print:hidden">
+            <!-- Category Filter -->
+            <div class="space-y-3">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{i18n.t('category')}</p>
+                <div class="flex flex-col gap-1">
+                    <Button
+                        variant={!selectedCategoryId ? "secondary" : "ghost"}
+                        class={cn(
+                            "justify-start font-bold h-10 px-3 transition-all cursor-pointer",
+                            !selectedCategoryId ? "bg-primary-600 text-white hover:bg-primary-700 shadow-md" : "text-slate-600"
                         )}
-                        onclick={() => changeCategory(activeRootCategoryId())}
+                        onclick={() => changeCategory(null)}
                     >
-                        All {activeRootCategoryName()}
-                    </button>
+                        <div class="flex items-center gap-2">
+                            {#if !selectedCategoryId}
+                                <div class="size-1.5 rounded-full bg-white animate-pulse"></div>
+                            {/if}
+                            {i18n.t('all')}
+                        </div>
+                    </Button>
+                    {#each ROOT_CATEGORIES as cat}
+                        {@const isCatActive = activeRootCategoryId() === cat.id}
+                        <div>
+                            <Button
+                                variant={isCatActive ? "secondary" : "ghost"}
+                                class={cn(
+                                    "justify-start font-bold h-10 w-full px-3 transition-all cursor-pointer",
+                                    isCatActive ? "bg-primary-50 text-primary-700 border-l-4 border-primary-600 rounded-l-none" : "text-slate-600"
+                                )}
+                                onclick={() => changeCategory(cat.id)}
+                            >
+                                <div class="flex items-center gap-2">
+                                    {#if isCatActive}
+                                        <div class="size-1.5 rounded-full bg-primary-600"></div>
+                                    {/if}
+                                    {i18n.t(cat.slug as any) || cat.name}
+                                </div>
+                            </Button>
 
-                    <!-- Parent Reset (if deep) -->
-                    {#if activeParentCategory() && activeParentCategory()?.id !== activeRootCategoryId()}
-                         <button
-                            class="px-3 py-1 text-xs font-bold rounded-full transition-all bg-white text-slate-600 border border-slate-200 hover:border-primary-300 shadow-sm"
-                            onclick={() => changeCategory(activeParentCategory()?.id || null)}
-                        >
-                            <span class="opacity-50 mr-1">↑</span>
-                            {activeParentCategory()?.name}
-                        </button>
-                    {/if}
+                            {#if isCatActive && availableSubCategories().length > 0}
+                                <div 
+                                    class="ml-3 mt-1 mb-2 pl-3 border-l-2 border-primary-100"
+                                    transition:slide={{ duration: 250, easing: sineInOut }}
+                                >
+                                    <div class="flex flex-wrap gap-1.5 py-1">
+                                        <button
+                                            class={clsx(
+                                                "px-3 py-1 text-[11px] font-bold rounded-full transition-all border cursor-pointer",
+                                                activeRootCategoryId() === selectedCategoryId
+                                                    ? "bg-primary-600 text-white border-primary-600 shadow-sm"
+                                                    : "bg-white text-slate-600 border-slate-200 hover:border-primary-300"
+                                            )}
+                                            onclick={() => changeCategory(activeRootCategoryId())}
+                                        >
+                                            All
+                                        </button>
 
-                    {#each availableSubCategories() as subCat}
-                        <button
-                            class={clsx(
-                                "px-3 py-1 text-xs font-bold rounded-full transition-all border",
-                                selectedCategoryId === subCat.id
-                                    ? "bg-primary-600 text-white border-primary-600 shadow-sm"
-                                    : "bg-white text-slate-600 border-slate-200 hover:border-primary-300"
-                            )}
-                            onclick={() => changeCategory(subCat.id)}
-                        >
-                            {i18n.t(subCat.slug as any) || subCat.name}
-                        </button>
+                                        {#if activeParentCategory() && activeParentCategory()?.id !== activeRootCategoryId()}
+                                            <button
+                                                class="px-2.5 py-1 text-[11px] font-bold rounded-full transition-all bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
+                                                onclick={() => changeCategory(activeParentCategory()?.id || null)}
+                                            >
+                                                <span class="opacity-50 mr-1">↑</span>
+                                                {activeParentCategory()?.name}
+                                            </button>
+                                        {/if}
+
+                                        {#each availableSubCategories() as subCat}
+                                            <button
+                                                class={clsx(
+                                                    "px-3 py-1 text-[11px] font-bold rounded-full transition-all border cursor-pointer",
+                                                    selectedCategoryId === subCat.id
+                                                        ? "bg-primary-600 text-white border-primary-600 shadow-sm"
+                                                        : "bg-white text-slate-600 border-slate-200 hover:border-primary-300"
+                                                )}
+                                                onclick={() => changeCategory(subCat.id)}
+                                            >
+                                                {i18n.t(subCat.slug as any) || subCat.name}
+                                            </button>
+                                        {/each}
+                                    </div>
+                                </div>
+                            {/if}
+                        </div>
                     {/each}
                 </div>
             </div>
-        {/if}
-    </div>
 
-    <!-- Mobile Card View -->
-    <div class="md:hidden space-y-3">
-        {#each data.people as person}
-            <Card.Root class="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow" onclick={() => goto(`/people/${person.id}`)}>
-                <Card.Content class="p-4">
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap mb-1">
-                                <h3 class="font-black text-slate-900">{person.name}</h3>
-                                {#if person.status === 'on_premises'}
-                                    <Badge class={cn("text-[10px] font-bold uppercase animate-pulse", statusBadgeClasses.on_premises)}>
-                                        {i18n.t('inside')}
-                                    </Badge>
-                                {/if}
-                            </div>
-                            <button
-                                class="hover:opacity-70 transition-opacity"
-                                onclick={(e) => openChangeCategory(person, e)}
-                            >
-                                <Badge variant="outline" class={cn("font-bold text-[10px] uppercase tracking-wider", getCategoryBadgeClass(person.category.slug))}>
-                                    {person.category.name}
-                                </Badge>
-                            </button>
-                        </div>
-                        <div class="flex items-center gap-1 shrink-0">
-                            {#if data.user?.permissions.includes('people.edit')}
-                                <Button variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-primary-600 hover:bg-primary-50" onclick={(e) => openEdit(person, e)}>
-                                    <Edit2 size={15} />
-                                </Button>
-                            {/if}
-                            {#if data.user?.permissions.includes('people.delete')}
-                                <form method="POST" action="?/delete" use:enhance={() => {
-                                    return async ({ result, update }) => {
-                                        if (result.type === 'success') await update();
-                                    };
-                                }}>
-                                    <input type="hidden" name="id" value={person.id} />
-                                    <Button type="submit" variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50" onclick={(e) => e.stopPropagation()}>
-                                        <Trash2 size={15} />
-                                    </Button>
-                                </form>
-                            {/if}
-                        </div>
+            <!-- Summary Stats -->
+            <div class="p-4 rounded-xl bg-white border-2 border-slate-100 shadow-sm space-y-3">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Summary</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <p class="text-2xl font-black text-slate-900">{data.summary.total}</p>
+                        <p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('total')}</p>
                     </div>
-                    <div class="grid grid-cols-2 gap-2 mt-3 text-xs">
-                        <div>
-                            <span class="text-slate-400 font-bold">{i18n.t('codeNo')}:</span>
-                            <span class="font-bold text-slate-600 ml-1">{person.codeNo || '-'}</span>
-                        </div>
-                        <div>
-                            <span class="text-slate-400 font-bold">{i18n.t('company')}:</span>
-                            <span class="font-bold text-slate-600 ml-1">{person.company || '-'}</span>
-                        </div>
-                        <div class="col-span-2 flex items-center gap-4 pt-1 border-t border-slate-100 mt-1">
-                            {#if person.isTrained}
-                                <div class="flex items-center gap-1.5 text-emerald-600 font-bold">
-                                    <CheckCircle2 size={14} />
-                                    <span>{i18n.t('isTrained')}</span>
-                                </div>
-                            {:else}
-                                <div class="flex items-center gap-1.5 text-rose-500 font-bold">
-                                    <XCircle size={14} />
-                                    <span>Not Trained</span>
-                                </div>
-                            {/if}
-                        </div>
+                    <div>
+                        <p class="text-2xl font-black text-emerald-600">{data.summary.inside}</p>
+                        <p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('inside')}</p>
                     </div>
-                </Card.Content>
-            </Card.Root>
-        {:else}
-            <div class="py-20 text-center space-y-4">
-                <div class="size-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
-                    <Users size={40} />
+                    <div>
+                        <p class="text-2xl font-black text-primary-600">{data.summary.trained}</p>
+                        <p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('trained')}</p>
+                    </div>
+                    <div>
+                        <p class="text-2xl font-black text-rose-500">{data.summary.untrained}</p>
+                        <p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('untrained')}</p>
+                    </div>
                 </div>
-                <p class="text-slate-500 font-bold">{i18n.t('noResults')}</p>
             </div>
-        {/each}
-    </div>
+        </aside>
 
-    <!-- Desktop Table View -->
-    <Card.Root class="hidden md:block">
-        <Table.Root>
-            <Table.Header>
-                <Table.Row class="hover:bg-transparent bg-slate-50">
-                    <Table.Head class="font-black text-slate-900">{i18n.t('name')}</Table.Head>
-                    <Table.Head class="font-black text-slate-900">{i18n.t('category')}</Table.Head>
-                    <Table.Head class="font-black text-slate-900">{i18n.t('codeNo')}</Table.Head>
-                    <Table.Head class="font-black text-slate-900">{i18n.t('company')}</Table.Head>
-                    <Table.Head class="font-black text-slate-900">{i18n.t('isTrained')}</Table.Head>
-                    <Table.Head class="font-black text-slate-900">{i18n.t('status')}</Table.Head>
-                    <Table.Head class="text-right font-black text-slate-900">{i18n.t('actions')}</Table.Head>
-                </Table.Row>
-            </Table.Header>
-            <Table.Body>
-                {#each data.people as person}
-                    <Table.Row class="group cursor-pointer" onclick={() => goto(`/people/${person.id}`)}>
-                        <Table.Cell class="font-bold text-slate-900">
-                            {person.name}
-                        </Table.Cell>
-                        <Table.Cell>
-                            <button
-                                class="hover:opacity-70 transition-opacity"
-                                onclick={(e) => openChangeCategory(person, e)}
-                            >
-                                <Badge variant="outline" class={cn("font-bold text-[10px] uppercase tracking-wider", getCategoryBadgeClass(person.category.slug))}>
-                                    {person.category.name}
-                                </Badge>
-                            </button>
-                        </Table.Cell>
-                        <Table.Cell class="font-medium text-slate-500">{person.codeNo || '-'}</Table.Cell>
-                        <Table.Cell class="font-medium text-slate-500">{person.company || '-'}</Table.Cell>
-                        <Table.Cell>
-                            {#if person.isTrained}
-                                <div class="flex items-center gap-1.5 text-emerald-600 font-bold text-xs">
-                                    <CheckCircle2 size={14} />
-                                    <span>YES</span>
+        <!-- Main Scrolling Content Area -->
+        <main class="flex-1 min-w-0 space-y-6">
+            <!-- List Section -->
+            <div class="space-y-4">
+                <!-- Mobile Card View -->
+                <div class="lg:hidden space-y-3">
+                    {#each data.people as person (person.id)}
+                        <Card.Root class="cursor-pointer hover:shadow-lg transition-shadow bg-white" onclick={() => goto(`/people/${person.id}`)}>
+                            <Card.Content class="p-4">
+                                <div class="flex items-start justify-between gap-3 mb-3">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2 flex-wrap mb-1">
+                                            <h3 class="font-black text-slate-900">{person.name}</h3>
+                                            {#if person.status === 'on_premises'}
+                                                <Badge class={cn("text-[10px] font-bold uppercase animate-pulse shrink-0", statusBadgeClasses.on_premises)}>
+                                                    {i18n.t('inside')}
+                                                </Badge>
+                                            {/if}
+                                        </div>
+                                        <button
+                                            class="hover:opacity-70 transition-opacity"
+                                            onclick={(e) => openChangeCategory(person, e)}
+                                        >
+                                            <Badge variant="outline" class={cn("font-bold text-[10px] uppercase tracking-wider", getCategoryBadgeClass(person.category.slug))}>
+                                                {person.category.name}
+                                            </Badge>
+                                        </button>
+                                    </div>
+                                    <div class="flex items-center gap-1 shrink-0">
+                                        {#if data.user?.permissions.includes('people.edit')}
+                                            <Button variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-primary-600 hover:bg-primary-50" onclick={(e: MouseEvent) => openEdit(person, e)}>
+                                                <Edit2 size={15} />
+                                            </Button>
+                                        {/if}
+                                        {#if data.user?.permissions.includes('people.delete')}
+                                            <form method="POST" action="?/delete" use:enhance={() => {
+                                                return async ({ result, update }) => {
+                                                    if (result.type === 'success') await update();
+                                                };
+                                            }}>
+                                                <input type="hidden" name="id" value={person.id} />
+                                                <Button type="submit" variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50" onclick={(e: MouseEvent) => e.stopPropagation()}>
+                                                    <Trash2 size={15} />
+                                                </Button>
+                                            </form>
+                                        {/if}
+                                    </div>
                                 </div>
-                            {:else}
-                                <div class="flex items-center gap-1.5 text-rose-500 font-bold text-xs">
-                                    <XCircle size={14} />
-                                    <span>NO</span>
+                                <div class="grid grid-cols-2 gap-2 mt-3 text-xs">
+                                    <div>
+                                        <p class="text-slate-400 font-bold uppercase text-[10px]">{i18n.t('codeNo')}</p>
+                                        <p class="font-bold text-slate-600">{person.codeNo || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-400 font-bold uppercase text-[10px]">{i18n.t('company')}</p>
+                                        <p class="font-bold text-slate-600">{person.company || '-'}</p>
+                                    </div>
+                                    <div class="col-span-2 flex items-center gap-4 pt-1 border-t border-slate-100 mt-1">
+                                        {#if person.isTrained}
+                                            <div class="flex items-center gap-1.5 text-emerald-600 font-bold">
+                                                <CheckCircle2 size={14} />
+                                                <span>{i18n.t('isTrained')}</span>
+                                            </div>
+                                        {:else}
+                                            <div class="flex items-center gap-1.5 text-rose-500 font-bold">
+                                                <XCircle size={14} />
+                                                <span>Not Trained</span>
+                                            </div>
+                                        {/if}
+                                    </div>
                                 </div>
-                            {/if}
-                        </Table.Cell>
-                        <Table.Cell>
-                            {#if person.status === 'on_premises'}
-                                <Badge class={cn("text-[10px] font-bold uppercase animate-pulse", statusBadgeClasses.on_premises)}>
-                                    {i18n.t('inside')}
-                                </Badge>
-                            {:else}
-                                <Badge class={cn("text-[10px] font-bold uppercase", statusBadgeClasses.checked_out)}>
-                                    {i18n.t('checkedOut')}
-                                </Badge>
-                            {/if}
-                        </Table.Cell>
-                        <Table.Cell class="text-right">
-                            <div class="flex items-center justify-end gap-1">
-                                <Button variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-primary-600 hover:bg-primary-50" onclick={(e) => { e.stopPropagation(); goto(`/people/${person.id}`); }}>
-                                    <Eye size={15} />
-                                </Button>
-                                {#if data.user?.permissions.includes('people.edit')}
-                                    <Button variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-primary-600 hover:bg-primary-50" onclick={(e) => openEdit(person, e)}>
-                                        <Edit2 size={15} />
-                                    </Button>
-                                {/if}
-                                {#if data.user?.permissions.includes('people.delete')}
-                                    <form method="POST" action="?/delete" use:enhance={() => {
-                                        return async ({ result, update }) => {
-                                            if (result.type === 'success') await update();
-                                        };
-                                    }}>
-                                        <input type="hidden" name="id" value={person.id} />
-                                        <Button type="submit" variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50" onclick={(e) => e.stopPropagation()}>
-                                            <Trash2 size={15} />
-                                        </Button>
-                                    </form>
-                                {/if}
-                            </div>
-                        </Table.Cell>
-                    </Table.Row>
-                {:else}
-                    <Table.Row>
-                        <Table.Cell colspan={7} class="h-64 text-center">
-                            <div class="flex flex-col items-center gap-2 text-slate-400">
+                            </Card.Content>
+                        </Card.Root>
+                    {:else}
+                        <div class="py-20 text-center space-y-4">
+                            <div class="size-20 bg-white rounded-full flex items-center justify-center mx-auto text-slate-300 border-2 border-slate-100 shadow-sm">
                                 <Users size={40} />
-                                <p class="font-bold">{i18n.t('noResults')}</p>
                             </div>
-                        </Table.Cell>
-                    </Table.Row>
-                {/each}
-            </Table.Body>
-        </Table.Root>
-    </Card.Root>
+                            <p class="text-slate-500 font-bold">{i18n.t('noResults')}</p>
+                        </div>
+                    {/each}
+                </div>
 
-    {#if data.pagination.totalPages > 1}
-        <div class="flex items-center justify-center gap-2 mt-8">
-            <Button
-                variant="outline"
-                size="sm"
-                disabled={data.pagination.page === 1}
-                onclick={() => {
-                    const url = new URL(page.url);
-                    url.searchParams.set('page', (data.pagination.page - 1).toString());
-                    goto(url.toString(), { keepFocus: true, noScroll: true });
-                }}
-            >
-                Previous
-            </Button>
-            <div class="text-sm font-bold text-slate-500 px-4">
-                Page {data.pagination.page} of {data.pagination.totalPages}
+                <!-- Desktop Table View -->
+                <div class="hidden lg:block">
+                    <Card.Root class="border-2 shadow-sm rounded-3xl overflow-hidden bg-white">
+                        <Table.Root>
+                            <Table.Header>
+                                <Table.Row class="bg-slate-50 hover:bg-transparent">
+                                    <Table.Head class="font-black text-slate-900">{i18n.t('name')}</Table.Head>
+                                    <Table.Head class="font-black text-slate-900">{i18n.t('category')}</Table.Head>
+                                    <Table.Head class="font-black text-slate-900">{i18n.t('codeNo')}</Table.Head>
+                                    <Table.Head class="font-black text-slate-900">{i18n.t('company')}</Table.Head>
+                                    <Table.Head class="font-black text-slate-900">{i18n.t('isTrained')}</Table.Head>
+                                    <Table.Head class="font-black text-slate-900">{i18n.t('status')}</Table.Head>
+                                    <Table.Head class="text-right font-black text-slate-900 print:hidden">{i18n.t('actions')}</Table.Head>
+                                </Table.Row>
+                                                            </Table.Header>
+                                                        <Table.Body>
+                                                            {#each data.people as person (person.id)}
+                                                                <Table.Row class="cursor-pointer group" onclick={() => goto(`/people/${person.id}`)}>                                        <Table.Cell class="py-4">
+                                            <div class="font-bold text-slate-900 group-hover:text-primary-600 transition-colors">{person.name}</div>
+                                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                                                {person.designation || 'N/A'}
+                                            </div>
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            <button
+                                                class="hover:opacity-70 transition-opacity"
+                                                onclick={(e) => openChangeCategory(person, e)}
+                                            >
+                                                <Badge variant="outline" class={cn("font-bold text-[10px] uppercase tracking-wider", getCategoryBadgeClass(person.category.slug))}>
+                                                    {person.category.name}
+                                                </Badge>
+                                            </button>
+                                        </Table.Cell>
+                                        <Table.Cell class="font-medium text-slate-500">{person.codeNo || '-'}</Table.Cell>
+                                        <Table.Cell class="font-medium text-slate-500">{person.company || '-'}</Table.Cell>
+                                        <Table.Cell>
+                                            {#if person.isTrained}
+                                                <div class="flex items-center gap-1.5 text-emerald-600 font-bold text-xs">
+                                                    <CheckCircle2 size={14} />
+                                                    <span>YES</span>
+                                                </div>
+                                            {:else}
+                                                <div class="flex items-center gap-1.5 text-rose-500 font-bold text-xs">
+                                                    <XCircle size={14} />
+                                                    <span>NO</span>
+                                                </div>
+                                            {/if}
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            {#if person.status === 'on_premises'}
+                                                <Badge class={cn("text-[10px] font-bold uppercase animate-pulse", statusBadgeClasses.on_premises)}>
+                                                    {i18n.t('inside')}
+                                                </Badge>
+                                            {:else}
+                                                <Badge class={cn("text-[10px] font-bold uppercase", statusBadgeClasses.checked_out)}>
+                                                    {i18n.t('checkedOut')}
+                                                </Badge>
+                                            {/if}
+                                        </Table.Cell>
+                                        <Table.Cell class="text-right print:hidden">
+                                            <div class="flex items-center justify-end gap-1">
+                                                <Button variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-primary-600 hover:bg-primary-50" onclick={(e: MouseEvent) => { e.stopPropagation(); goto(`/people/${person.id}`); }}>
+                                                    <Eye size={15} />
+                                                </Button>
+                                                {#if data.user?.permissions.includes('people.edit')}
+                                                    <Button variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-primary-600 hover:bg-primary-50" onclick={(e: MouseEvent) => openEdit(person, e)}>
+                                                        <Edit2 size={15} />
+                                                    </Button>
+                                                {/if}
+                                                {#if data.user?.permissions.includes('people.delete')}
+                                                    <form method="POST" action="?/delete" use:enhance={() => {
+                                                        return async ({ result, update }) => {
+                                                            if (result.type === 'success') await update();
+                                                        };
+                                                    }}>
+                                                        <input type="hidden" name="id" value={person.id} />
+                                                        <Button type="submit" variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50" onclick={(e: MouseEvent) => e.stopPropagation()}>
+                                                            <Trash2 size={15} />
+                                                        </Button>
+                                                    </form>
+                                                {/if}
+                                            </div>
+                                        </Table.Cell>
+                                    </Table.Row>
+                                {:else}
+                                    <Table.Row>
+                                        <Table.Cell colspan={8} class="h-64 text-center text-slate-400 font-bold">{i18n.t('noResults')}</Table.Cell>
+                                    </Table.Row>
+                                {/each}
+                            </Table.Body>
+                        </Table.Root>
+                    </Card.Root>
+                </div>
+
+                <!-- Pagination (Improved UI) -->
+                {#if data.pagination.totalPages > 1}
+                    <div class="flex flex-col lg:flex-row items-center justify-between gap-6 py-8 px-4 border-t border-slate-200 mt-6 print:hidden">
+                        <!-- Left: Info -->
+                        <div class="text-sm font-bold text-slate-400 order-2 lg:order-1">
+                            Showing <span class="text-slate-900">{(data.pagination.page - 1) * data.pagination.limit + 1}</span> 
+                            to <span class="text-slate-900">{Math.min(data.pagination.page * data.pagination.limit, data.pagination.totalCount)}</span> 
+                            of <span class="text-slate-900">{data.pagination.totalCount}</span> results
+                        </div>
+
+                        <!-- Center: Page Numbers -->
+                        <div class="flex items-center gap-1 order-1 lg:order-2">
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                class="h-10 px-3 rounded-xl font-bold gap-1 cursor-pointer"
+                                disabled={data.pagination.page === 1}
+                                onclick={() => goToPage(data.pagination.page - 1)}
+                            >
+                                <ChevronLeft size={16} />
+                                <span class="hidden sm:inline">Prev</span>
+                            </Button>
+
+                            <div class="flex items-center gap-1 mx-2">
+                                {#each getPageRange(data.pagination.page, data.pagination.totalPages) as p}
+                                    {#if p === '...'}
+                                        <span class="px-2 text-slate-300">...</span>
+                                    {:else}
+                                        <Button 
+                                            variant={data.pagination.page === p ? "default" : "ghost"}
+                                            size="sm"
+                                            class={cn(
+                                                "h-10 w-10 rounded-xl font-black text-xs cursor-pointer transition-all",
+                                                data.pagination.page === p ? "shadow-md scale-110" : "text-slate-500 hover:bg-slate-100"
+                                            )}
+                                            onclick={() => goToPage(p as number)}
+                                        >
+                                            {p}
+                                        </Button>
+                                    {/if}
+                                {/each}
+                            </div>
+
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                class="h-10 px-3 rounded-xl font-bold gap-1 cursor-pointer"
+                                disabled={data.pagination.page === data.pagination.totalPages}
+                                onclick={() => goToPage(data.pagination.page + 1)}
+                            >
+                                <span class="hidden sm:inline">Next</span>
+                                <ChevronRight size={16} />
+                            </Button>
+                        </div>
+
+                        <!-- Right: Row Count -->
+                        <div class="flex items-center gap-3 order-3 print:hidden">
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Per Page</span>
+                            <select 
+                                class="bg-white border-2 border-slate-100 rounded-xl text-xs font-black px-3 py-2 focus:outline-none focus:border-primary-500 transition-colors cursor-pointer shadow-sm hover:border-slate-200"
+                                value={data.pagination.limit}
+                                onchange={(e) => {
+                                    const url = new URL(page.url);
+                                    url.searchParams.set('limit', (e.currentTarget as HTMLSelectElement).value);
+                                    url.searchParams.set('page', '1');
+                                    goto(url.toString(), { keepFocus: true, noScroll: true });
+                                }}
+                            >
+                                {#each [10, 20, 50, 100] as limit}
+                                    <option value={limit}>{limit}</option>
+                                {/each}
+                            </select>
+                        </div>
+                    </div>
+                {/if}
             </div>
-            <Button
-                variant="outline"
-                size="sm"
-                disabled={data.pagination.page === data.pagination.totalPages}
-                onclick={() => {
-                    const url = new URL(page.url);
-                    url.searchParams.set('page', (data.pagination.page + 1).toString());
-                    goto(url.toString(), { keepFocus: true, noScroll: true });
-                }}
-            >
-                Next
-            </Button>
-        </div>
-    {/if}
+        </main>
+    </div>
 </div>
 
 <RegisterDialog bind:open={isRegisterOpen} />
+
+<ConfirmModal
+    bind:open={isPrintConfirmOpen}
+    title="Large Report Warning"
+    message="This directory contains {data.pagination.totalCount} records. Printing more than 2,000 records may slow down your browser or take a long time to load. Are you sure you want to proceed?"
+    confirmText="Print Anyway"
+    cancelText="Cancel"
+    variant="warning"
+    onconfirm={printPeople}
+/>
 
 <!-- Edit Dialog -->
 {#if editPerson}
@@ -563,7 +760,7 @@ import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '
                 </div>
 
                 <div class="flex items-center space-x-3 p-4 bg-slate-50 rounded-2xl border-2 border-slate-100">
-                    <Checkbox id="edit-isTrained" checked={editIsTrained} onCheckedChange={(v) => editIsTrained = !!v} />
+                    <Checkbox id="edit-isTrained" checked={editIsTrained} onCheckedChange={(v: boolean | "indeterminate") => editIsTrained = !!v} />
                     <Label for="edit-isTrained" class="text-sm font-black text-slate-700">{i18n.t('isTrained')}</Label>
                 </div>
 

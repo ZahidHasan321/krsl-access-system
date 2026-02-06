@@ -1,22 +1,25 @@
-import Database from 'better-sqlite3';
+import { db } from './src/lib/server/db';
+import { attendanceLogs, people } from './src/lib/server/db/schema';
+import { desc, eq } from 'drizzle-orm';
 
-const db = new Database('local.db');
-try {
-    const logs = db.prepare('SELECT id, entry_time, exit_time FROM labour_logs WHERE exit_time IS NOT NULL LIMIT 5').all();
-    console.log('Raw Logs:', JSON.stringify(logs, null, 2));
+async function inspect() {
+    console.log('--- Recent Attendance Logs ---');
+    const logs = await db.select({
+        id: attendanceLogs.id,
+        personName: people.name,
+        entryTime: attendanceLogs.entryTime,
+        date: attendanceLogs.date,
+        status: attendanceLogs.status
+    })
+    .from(attendanceLogs)
+    .innerJoin(people, eq(attendanceLogs.personId, people.id))
+    .orderBy(desc(attendanceLogs.entryTime))
+    .limit(10);
 
-    if (logs.length > 0) {
-        const log = logs[0] as any;
-        console.log('Entry Time Type:', typeof log.entry_time);
-        console.log('Exit Time Type:', typeof log.exit_time);
+    console.table(logs);
 
-        const diff = log.exit_time - log.entry_time;
-        console.log('Difference:', diff);
-        console.log('Difference in hours (if ms):', diff / (1000 * 60 * 60));
-        console.log('Difference in hours (if seconds):', diff / (60 * 60));
-    }
-} catch (e) {
-    console.error(e);
-} finally {
-    db.close();
+    const count = await db.select({ count: attendanceLogs.id }).from(attendanceLogs);
+    console.log('Total Logs:', count.length);
 }
+
+inspect().catch(console.error);

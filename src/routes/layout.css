@@ -224,74 +224,123 @@
    =========================================== */
 @page {
   size: auto;
-  margin: 0;
+  margin: 0; /* Set to 0 to hide browser-default headers (Title, URL, etc.) */
+}
+
+/* Filter Bar sticky behavior */
+.sticky-filter-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background-color: rgb(248 250 252 / 0.95);
+  backdrop-filter: blur(4px);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom-width: 1px;
+  border-color: rgb(226 232 240 / 0.6);
+  margin-bottom: 0.5rem;
 }
 
 @media print {
-  body {
-    margin: 1cm;
-  }
-  /* Hide browser default headers/footers - user may need to disable in print dialog */
-  @page {
-    margin: 0;
-  }
-
   /* Hide navigation and non-essential elements */
   nav,
   .no-print,
   button:not(.print-only),
   .fixed,
-  .sticky {
+  .sticky,
+  .pagination,
+  [class*="pagination"] {
     display: none !important;
   }
 
-  /* Reset background colors for print */
-  body {
+  /* Reset all containers for print */
+  html, body {
     background: white !important;
     color: black !important;
-  }
-
-  /* Ensure content takes full width */
-  main {
-    max-width: 100% !important;
-    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
     margin: 0 !important;
+    padding: 0 !important;
   }
 
-  /* Print-specific styles */
+  body {
+    padding: 1.5cm !important; /* Add margin back here so content isn't at the edge */
+  }
+
+  main, 
+  .flex-1,
+  div,
+  section,
+  article,
+  .container,
+  [class*="max-w-"] {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: none !important;
+  }
+
+  /* Force print-only sections to be visible and correctly structured */
   .print-only {
     display: block !important;
   }
 
-  /* Page break handling */
-  .page-break-before {
-    page-break-before: always;
-  }
-
-  .page-break-after {
-    page-break-after: always;
-  }
-
-  .avoid-break {
-    page-break-inside: avoid;
-  }
-
-  /* Table print optimization */
+  /* Official Audit Table Styling */
   table {
-    border-collapse: collapse;
-    width: 100%;
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 1rem !important;
+    margin-bottom: 1rem !important;
+    table-layout: auto !important;
   }
 
   th, td {
-    border: 1px solid #ddd;
-    padding: 8px;
-    text-align: left;
+    border: 1px solid #000 !important;
+    padding: 6px 8px !important;
+    text-align: left !important;
+    font-size: 10pt !important;
+    background: transparent !important;
+    color: #000 !important;
+    border-radius: 0 !important;
   }
 
   th {
-    background-color: #f5f5f5 !important;
+    font-weight: bold !important;
+    background-color: #f0f0f0 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  /* Remove all fancy UI elements in print */
+  .badge, 
+  [class*="badge"],
+  .card,
+  [class*="card"],
+  .shadow-sm,
+  .shadow-lg,
+  .shadow-xl,
+  .rounded-3xl,
+  .rounded-2xl {
+    border: none !important;
+    background: transparent !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Specifically target and hide screen-only data views if they somehow leak through */
+  .lg\:block:not(.print-only),
+  .hidden.lg\:block:not(.print-only) {
+    display: none !important;
   }
 
   /* Header for print */
@@ -299,22 +348,18 @@
     display: flex !important;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem 0;
-    border-bottom: 2px solid #333;
-    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #000;
+    margin-bottom: 1.5rem;
   }
 
-  .print-footer {
-    display: block !important;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    text-align: center;
-    font-size: 10px;
-    color: #666;
-    padding: 0.5rem;
-    border-top: 1px solid #ddd;
+  .print-header img {
+    height: 60px !important;
+    width: auto !important;
+  }
+
+  .page-break-inside-avoid {
+    page-break-inside: avoid;
   }
 }
 

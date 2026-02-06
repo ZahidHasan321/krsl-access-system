@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { vehicles } from '$lib/server/db/schema';
-import { desc, like, or, and, eq, count, gte, lte } from 'drizzle-orm';
+import { desc, like, or, and, eq, count, gte, lte, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 import { requirePermission } from '$lib/server/rbac';
 
@@ -79,19 +79,24 @@ export const load: PageServerLoad = async ({ url, locals }) => {
         .select()
         .from(vehicles)
         .where(whereClause)
-        .orderBy(desc(vehicles.date), desc(vehicles.entryTime))
+        .orderBy(desc(sql`COALESCE(${vehicles.exitTime}, ${vehicles.entryTime})`))
         .limit(pageSize)
         .offset(offset);
 
     return {
         vehicles: allVehicles,
-        query,
-        dateFrom,
-        dateTo,
-        typeFilter,
+        filters: {
+            query,
+            dateFrom,
+            dateTo,
+            typeFilter
+        },
         summary,
-        currentPage: page,
-        totalPages,
-        pageSize
+        pagination: {
+            page,
+            limit: pageSize,
+            totalCount,
+            totalPages
+        }
     };
 };

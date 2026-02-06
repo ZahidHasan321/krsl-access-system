@@ -63,6 +63,15 @@
                         </div>
                         <div class="flex items-center gap-3">
                             <div class="size-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0">
+                                <User size={18} />
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{i18n.t('helperName')}</p>
+                                <p class="font-bold text-slate-900">{data.entry.helperName || 'N/A'}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="size-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0">
                                 <Phone size={18} />
                             </div>
                             <div>
@@ -121,7 +130,7 @@
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
-                            {#each data.history as log}
+                            {#each data.history as log (log.id)}
                                 <Table.Row>
                                     <Table.Cell class="font-bold text-slate-700">{format(parseISO(log.date), 'PP')}</Table.Cell>
                                     <Table.Cell class="font-black text-slate-900">{format(log.entryTime, 'hh:mm a')}</Table.Cell>

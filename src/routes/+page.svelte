@@ -31,6 +31,7 @@
 	import RegisterDialog from './people/RegisterDialog.svelte';
 	import DashboardCategoryRow from '$lib/components/DashboardCategoryRow.svelte';
 	import { getCategoryById } from '$lib/constants/categories';
+	import CountUp from '$lib/components/ui/CountUp.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -153,7 +154,7 @@
 							class="flex flex-col items-end rounded-xl border-2 border-primary-100 bg-primary-50 px-3 py-1.5"
 						>
 							<span class="text-xl leading-none font-black text-primary-700"
-								>{data.currentlyInside.totalPeople}</span
+								><CountUp value={data.currentlyInside?.totalPeople || 0} /></span
 							>
 							<span class="text-[9px] font-black tracking-widest text-primary-500 uppercase"
 								>Total People</span
@@ -163,7 +164,7 @@
 				</Card.Header>
 				<Card.Content class="p-4 pt-0">
 					<div class="space-y-1">
-						{#each data.currentlyInside.categoryTree as root}
+						{#each data.currentlyInside.categoryTree as root (root.id)}
 							<DashboardCategoryRow category={root} level={0} />
 						{:else}
 							<div
@@ -197,7 +198,7 @@
 								</div>
 								<div class="text-right">
 									<span class="block text-xl leading-none font-black text-amber-700"
-										>{data.currentlyInside.vehicleStats.total}</span
+										><CountUp value={data.currentlyInside?.vehicleStats?.total || 0} /></span
 									>
 								</div>
 							</div>
@@ -221,7 +222,7 @@
 								</div>
 								<div class="text-right">
 									<span class="block text-lg leading-none font-black text-blue-700"
-										>{data.currentlyInside.vehicleStats.transport}</span
+										><CountUp value={data.currentlyInside?.vehicleStats?.transport || 0} /></span
 									>
 								</div>
 							</div>
@@ -245,7 +246,7 @@
 								</div>
 								<div class="text-right">
 									<span class="block text-lg leading-none font-black text-indigo-700"
-										>{data.currentlyInside.vehicleStats.regular}</span
+										><CountUp value={data.currentlyInside?.vehicleStats?.regular || 0} /></span
 									>
 								</div>
 							</div>
@@ -264,14 +265,14 @@
 						<ArrowRight size={14} />
 						<span class="text-[9px] font-black tracking-widest uppercase">Today's Entries</span>
 					</div>
-					<span class="text-xl font-black text-slate-900">{data.todayActivity.entries}</span>
+					<span class="text-xl font-black text-slate-900"><CountUp value={data.todayActivity?.entries || 0} /></span>
 				</div>
 				<div class="rounded-xl border-2 border-rose-100 bg-white p-3 shadow-sm">
 					<div class="mb-1.5 flex items-center gap-2 text-rose-700">
 						<LogOut size={14} />
 						<span class="text-[9px] font-black tracking-widest uppercase">Today's Exits</span>
 					</div>
-					<span class="text-xl font-black text-slate-900">{data.todayActivity.exits}</span>
+					<span class="text-xl font-black text-slate-900"><CountUp value={data.todayActivity?.exits || 0} /></span>
 				</div>
 			</div>
 
@@ -297,7 +298,7 @@
 				</Card.Header>
 				<Card.Content class="p-0">
 					<div class="divide-y-2 divide-slate-50">
-						{#each data.recentLogs as log}
+						{#each data.recentLogs as log (log.id)}
 							<button
 								class="group flex w-full items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-slate-50"
 								onclick={() => goto(`/people/${log.personId}`)}
@@ -367,32 +368,34 @@
 					</div>
 				</Card.Header>
 				<Card.Content class="p-4 pt-0">
-					<div class="flex h-28 items-end gap-2 pt-2">
-						{#each data.trend7Day as day, i}
+					<div class="flex h-32 items-end gap-2 pt-6">
+						{#each data.trend7Day as day, i (day.date)}
 							{@const isToday = i === data.trend7Day.length - 1}
 							{@const pct = trendMax > 0 ? (day.count / trendMax) * 100 : 0}
-							<div class="group flex flex-1 flex-col items-center gap-1">
-								<!-- Tooltip-ish Value -->
-								<div
-									class="pointer-events-none absolute z-10 -mt-6 rounded bg-slate-900 px-1.5 py-0.5 text-[9px] font-black text-white opacity-0 transition-opacity group-hover:opacity-100"
-								>
-									{day.count}
-								</div>
+							<div class="group flex flex-1 flex-col items-center h-full">
+								<!-- Bar Container -->
+								<div class="relative flex-1 w-full flex items-end justify-center">
+									<!-- Tooltip-ish Value -->
+									<div
+										class="pointer-events-none absolute -top-6 z-10 rounded bg-slate-900 px-1.5 py-0.5 text-[9px] font-black text-white opacity-0 transition-opacity group-hover:opacity-100"
+									>
+										{day.count}
+									</div>
 
-								<!-- Bar -->
-								<div class="flex h-full w-full items-end">
+									<!-- Bar -->
 									<div
 										class={clsx(
-											'w-full rounded-t-sm transition-all duration-500',
+											'w-full max-w-[20px] rounded-t-sm transition-all duration-500',
 											isToday ? 'bg-primary-600' : 'bg-slate-200 group-hover:bg-primary-400'
 										)}
 										style="height: {Math.max(pct, 5)}%"
 									></div>
 								</div>
+								
 								<!-- Day label -->
 								<span
 									class={clsx(
-										'w-full truncate text-center text-[8px] font-black uppercase',
+										'w-full truncate text-center text-[8px] font-black uppercase mt-2',
 										isToday ? 'text-primary-700' : 'text-slate-500'
 									)}
 								>

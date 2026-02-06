@@ -45,7 +45,8 @@ export const GET: RequestHandler = async ({ url }) => {
     const searchCondition = or(
         like(people.name, searchPattern),
         like(people.codeNo, searchPattern),
-        like(people.company, searchPattern)
+        like(people.company, searchPattern),
+        like(people.contactNo, searchPattern)
     );
 
     const whereCondition = categoryFilter
@@ -97,7 +98,8 @@ export const GET: RequestHandler = async ({ url }) => {
         .from(vehicles)
         .where(or(
             like(vehicles.vehicleNumber, searchPattern),
-            like(vehicles.driverName, searchPattern)
+            like(vehicles.driverName, searchPattern),
+            like(vehicles.mobile, searchPattern)
         ))
         .limit(5);
 

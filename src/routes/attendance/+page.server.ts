@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { attendanceLogs, people, personCategories } from '$lib/server/db/schema';
-import { eq, and, desc, sql, or, like, inArray, gte, lte, count } from 'drizzle-orm';
+import { eq, and, desc, sql, or, like, inArray, gte, lte, count, type SQL } from 'drizzle-orm';
 import { format } from 'date-fns';
 import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
@@ -8,6 +8,22 @@ import { requirePermission } from '$lib/server/rbac';
 import { notifyChange } from '$lib/server/events';
 
 import { CATEGORIES } from '$lib/constants/categories';
+
+/** Given a root category ID, return all descendant IDs (inclusive). */
+function getDescendantIds(categoryId: string): string[] {
+    const ids: string[] = [categoryId];
+    const queue = [categoryId];
+    while (queue.length > 0) {
+        const parentId = queue.shift()!;
+        for (const cat of CATEGORIES) {
+            if (cat.parentId === parentId) {
+                ids.push(cat.id);
+                queue.push(cat.id);
+            }
+        }
+    }
+    return ids;
+}
 
 function buildRootLookup() {
     const byId = new Map(CATEGORIES.map(c => [c.id, c]));
@@ -27,16 +43,35 @@ function buildRootLookup() {
 export const load: PageServerLoad = async (event) => {
     requirePermission(event.locals, 'people.view');
 
-    const now = new Date();
-    const today = format(now, 'yyyy-MM-dd');
+    const query = event.url.searchParams.get('q') || '';
+    const categoryId = event.url.searchParams.get('category') || '';
+    const page = parseInt(event.url.searchParams.get('page') || '1');
+    const limit = Math.min(100, Math.max(1, parseInt(event.url.searchParams.get('limit') || '20')));
+    const offset = (page - 1) * limit;
 
     const rootLookup = buildRootLookup();
 
-    const page = parseInt(event.url.searchParams.get('page') || '1');
-    const limit = 20;
-    const offset = (page - 1) * limit;
+    const whereClauses: (SQL | undefined)[] = [
+        eq(attendanceLogs.status, 'on_premises')
+    ];
 
-    // Load active entries (on_premises) only
+    if (query) {
+        whereClauses.push(or(
+            like(people.name, `%${query}%`),
+            like(people.codeNo, `%${query}%`),
+            like(people.company, `%${query}%`),
+            like(people.contactNo, `%${query}%`)
+        ));
+    }
+
+    if (categoryId) {
+        const descendantIds = getDescendantIds(categoryId);
+        whereClauses.push(inArray(people.categoryId, descendantIds));
+    }
+
+    const where = and(...whereClauses.filter((c): c is SQL => !!c));
+
+    // Load active entries (on_premises) only with filtering
     const logs = await db
         .select({
             id: attendanceLogs.id,
@@ -61,7 +96,7 @@ export const load: PageServerLoad = async (event) => {
         .from(attendanceLogs)
         .innerJoin(people, eq(attendanceLogs.personId, people.id))
         .innerJoin(personCategories, eq(people.categoryId, personCategories.id))
-        .where(eq(attendanceLogs.status, 'on_premises'))
+        .where(where)
         .orderBy(desc(attendanceLogs.entryTime))
         .limit(limit)
         .offset(offset);
@@ -69,7 +104,9 @@ export const load: PageServerLoad = async (event) => {
     const [totalCountResult] = await db
         .select({ count: count() })
         .from(attendanceLogs)
-        .where(eq(attendanceLogs.status, 'on_premises'));
+        .innerJoin(people, eq(attendanceLogs.personId, people.id))
+        .innerJoin(personCategories, eq(people.categoryId, personCategories.id))
+        .where(where);
     
     const totalCount = totalCountResult?.count || 0;
 
@@ -84,6 +121,10 @@ export const load: PageServerLoad = async (event) => {
 
     return {
         logs: logsWithRoot,
+        filters: {
+            query,
+            categoryId
+        },
         pagination: {
             page,
             limit,

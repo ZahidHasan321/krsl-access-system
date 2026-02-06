@@ -46,6 +46,7 @@ export const load: PageServerLoad = async (event) => {
             isTrained: people.isTrained,
             joinDate: people.joinDate,
             notes: people.notes,
+            createdAt: people.createdAt,
             category: {
                 id: personCategories.id,
                 name: personCategories.name,
@@ -66,7 +67,7 @@ export const load: PageServerLoad = async (event) => {
         .select()
         .from(attendanceLogs)
         .where(eq(attendanceLogs.personId, id))
-        .orderBy(desc(attendanceLogs.entryTime))
+        .orderBy(desc(sql`COALESCE(${attendanceLogs.exitTime}, ${attendanceLogs.entryTime})`))
         .limit(20);
 
     // Stats

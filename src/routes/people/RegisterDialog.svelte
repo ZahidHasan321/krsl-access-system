@@ -112,7 +112,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" in:fade>
                     {#each ROOT_CATEGORIES as cat}
                         <button
-                            class="group relative p-5 rounded-2xl border-2 border-slate-100 hover:border-primary-300 hover:bg-primary-50/50 transition-all text-center"
+                            class="group relative p-5 rounded-2xl border-2 border-slate-100 hover:border-primary-300 hover:bg-primary-50/50 transition-all text-center cursor-pointer"
                             onclick={() => selectRootCategory(cat.id)}
                         >
                             <div class="size-14 rounded-2xl bg-slate-100 group-hover:bg-primary-100 flex items-center justify-center text-slate-400 group-hover:text-primary-600 mx-auto mb-3 transition-colors">
@@ -135,7 +135,9 @@
                             </div>
                             <div>
                                 <div class="flex items-center gap-2">
-                                    <span class="font-black text-slate-900">{i18n.t(selectedRootCategory.slug as any) || selectedRootCategory.name}</span>
+                                    {#if selectedRootCategory}
+                                        <span class="font-black text-slate-900">{i18n.t(selectedRootCategory.slug as any) || selectedRootCategory.name}</span>
+                                    {/if}
                                     {#if selectedSubCategory}
                                         <ChevronRight size={14} class="text-slate-300" />
                                         <Badge variant="outline" class={cn("font-bold text-[10px]", getCategoryBadgeClass(selectedSubCategory.slug))}>
@@ -158,7 +160,7 @@
                                 {#each subCategories as subCat}
                                     <button
                                         class={cn(
-                                            "px-4 py-2 rounded-xl border-2 text-xs font-black uppercase tracking-wider transition-all",
+                                            "px-4 py-2 rounded-xl border-2 text-xs font-black uppercase tracking-wider transition-all cursor-pointer",
                                             selectedSubCategoryId === subCat.id
                                                 ? activeColorMap[subCat.color] || "border-primary-500 bg-primary-500 text-white"
                                                 : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
@@ -252,14 +254,14 @@
                         </div>
 
                         <div class="grid grid-cols-2 gap-3">
-                            <button type="button" class={cn("flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left", isTrained ? "border-emerald-200 bg-emerald-50" : "border-slate-100 hover:border-slate-200")} onclick={() => isTrained = !isTrained}>
+                            <button type="button" class={cn("flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left cursor-pointer", isTrained ? "border-emerald-200 bg-emerald-50" : "border-slate-100 hover:border-slate-200")} onclick={() => isTrained = !isTrained}>
                                 <Checkbox checked={isTrained} />
                                 <div>
                                     <p class="font-bold text-sm text-slate-900">{i18n.t('isTrained')}</p>
                                     <p class="text-[10px] font-medium text-slate-500">Safety training completed</p>
                                 </div>
                             </button>
-                            <button type="button" class={cn("flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left", autoCheckIn ? "border-primary-200 bg-primary-50" : "border-slate-100 hover:border-slate-200")} onclick={() => autoCheckIn = !autoCheckIn}>
+                            <button type="button" class={cn("flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left cursor-pointer", autoCheckIn ? "border-primary-200 bg-primary-50" : "border-slate-100 hover:border-slate-200")} onclick={() => autoCheckIn = !autoCheckIn}>
                                 <Checkbox checked={autoCheckIn} />
                                 <div>
                                     <p class="font-bold text-sm text-slate-900">{i18n.t('checkInImmediately')}</p>

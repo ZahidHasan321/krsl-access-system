@@ -5,6 +5,7 @@
     import { getCategoryById } from '$lib/constants/categories';
     import { slide } from 'svelte/transition';
     import { clsx } from 'clsx';
+    import DashboardCategoryRow from './DashboardCategoryRow.svelte';
 
     let { category, level = 0 } = $props<{
         category: any;
@@ -108,7 +109,7 @@
     {#if hasChildren && isExpanded}
         <div class="mt-1" transition:slide={{ duration: 200 }}>
             {#each category.children as child}
-                <svelte:self category={child} level={level + 1} />
+                <DashboardCategoryRow category={child} level={level + 1} />
             {/each}
         </div>
     {/if}

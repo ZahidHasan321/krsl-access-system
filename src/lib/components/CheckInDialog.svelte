@@ -174,7 +174,7 @@
                             {#if selectedCategoryId}
                                 <button 
                                     onclick={clearCategory}
-                                    class="text-[10px] font-black uppercase tracking-wider text-primary-600 hover:underline"
+                                    class="text-[10px] font-black uppercase tracking-wider text-primary-600 hover:underline cursor-pointer"
                                     in:fade
                                 >
                                     Clear Filter
@@ -188,7 +188,7 @@
                                 {@const isActive = selectedCategoryId === cat.id || (selectedCategory?.parentId === cat.id)}
                                 <button
                                     class={cn(
-                                        "flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2",
+                                        "flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2 cursor-pointer",
                                         isActive 
                                             ? activeColorMap[cat.color] || "border-primary-500 bg-primary-500 text-white shadow-md scale-[1.02]" 
                                             : "border-slate-100 bg-white text-slate-600 hover:border-slate-200 hover:bg-slate-50"
@@ -208,7 +208,7 @@
                                     {#each availableSubCategories() as subCat}
                                         <button
                                             class={cn(
-                                                "px-3 py-1.5 rounded-lg border-2 text-[10px] font-black uppercase tracking-wider transition-all",
+                                                "px-3 py-1.5 rounded-lg border-2 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
                                                 selectedCategoryId === subCat.id
                                                     ? activeColorMap[subCat.color] || "border-primary-500 bg-primary-500 text-white"
                                                     : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
@@ -241,7 +241,7 @@
                     {:else}
                         {#each results as person (person.id)}
                             <button
-                                class="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-slate-100 hover:border-primary-200 hover:bg-primary-50/50 transition-all text-left"
+                                class="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-slate-100 hover:border-primary-200 hover:bg-primary-50/50 transition-all text-left cursor-pointer"
                                 onclick={() => selectPerson(person)}
                                 in:fly={{ y: 10, duration: 200 }}
                             >

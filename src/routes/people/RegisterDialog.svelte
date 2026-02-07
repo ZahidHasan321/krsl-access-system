@@ -12,16 +12,34 @@
     import { fade, fly, slide } from 'svelte/transition';
     import { cn, getCategoryBadgeClass } from '$lib/utils';
     import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '$lib/constants/categories';
+    import EnrollmentPanel from './EnrollmentPanel.svelte';
 
     let { open = $bindable() } = $props<{ open: boolean }>();
 
     let selectedRootCategoryId = $state<string>('');
     let selectedSubCategoryId = $state<string>('');
-    
+
     let isTrained = $state(false);
     let autoCheckIn = $state(true);
     let photoPreview = $state<string | null>(null);
     let purpose = $state('');
+    let showSummary = $state(false);
+    let enrolledMethod = $state<string | null>(null);
+
+    // After registration, store person data for enrollment step
+    let registeredPerson = $state<{
+        id: string;
+        biometricId: string;
+        name: string;
+        photoUrl: string | null;
+        categoryName: string;
+        subCategoryName: string | null;
+        company: string | null;
+        contactNo: string | null;
+        designation: string | null;
+        codeNo: string | null;
+        isTrained: boolean;
+    } | null>(null);
 
     const selectedRootCategory = $derived(getCategoryById(selectedRootCategoryId));
     const selectedSubCategory = $derived(getCategoryById(selectedSubCategoryId));
@@ -70,6 +88,9 @@
         autoCheckIn = true;
         photoPreview = null;
         purpose = '';
+        registeredPerson = null;
+        showSummary = false;
+        enrolledMethod = null;
     }
 
     $effect(() => {
@@ -80,7 +101,6 @@
 
     const finalCategoryId = $derived(selectedSubCategoryId || selectedRootCategoryId || '');
 
-    // Helper for category colors
     const activeColorMap: Record<string, string> = {
         blue: 'border-blue-500 bg-blue-500 text-white shadow-md scale-[1.02]',
         orange: 'border-orange-500 bg-orange-500 text-white shadow-md scale-[1.02]',
@@ -97,9 +117,25 @@
 <Dialog.Root bind:open>
     <Dialog.Content class="sm:max-w-[650px] p-0 overflow-hidden max-h-[90vh] flex flex-col">
         <div class="p-6 border-b bg-slate-50 shrink-0">
-            <Dialog.Title class="text-xl font-black">{i18n.t('register')}</Dialog.Title>
+            <Dialog.Title class="text-xl font-black">
+                {#if registeredPerson}
+                    {#if showSummary}
+                        Registration Complete
+                    {:else}
+                        Device Enrollment
+                    {/if}
+                {:else}
+                    {i18n.t('register')}
+                {/if}
+            </Dialog.Title>
             <Dialog.Description class="font-bold text-xs uppercase tracking-widest text-slate-500">
-                {#if selectedRootCategory}
+                {#if registeredPerson}
+                    {#if showSummary}
+                        Successfully added {registeredPerson.name}
+                    {:else}
+                        Register {registeredPerson.name} on a device
+                    {/if}
+                {:else if selectedRootCategory}
                     Registering new {i18n.t(selectedRootCategory.slug as any) || selectedRootCategory.name}
                 {:else}
                     Select a category to continue
@@ -108,7 +144,96 @@
         </div>
 
         <div class="p-6 overflow-y-auto flex-1">
-            {#if !selectedRootCategoryId}
+            {#if registeredPerson}
+                {#if showSummary}
+                    <!-- Step 3: Summary View -->
+                    <div class="flex flex-col items-center text-center space-y-6" in:fade>
+                        <div class="size-16 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                             <UserCheck size={32} />
+                        </div>
+
+                        <h3 class="text-xl font-black text-slate-900">Registration Complete!</h3>
+
+                        <!-- Person card -->
+                        <div class="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 overflow-hidden text-left">
+                            <div class="flex items-start gap-4 p-5">
+                                <div class="size-20 rounded-xl bg-white shadow-md border-2 border-slate-100 overflow-hidden flex-shrink-0 flex items-center justify-center text-slate-300">
+                                    {#if registeredPerson.photoUrl}
+                                        <img src={registeredPerson.photoUrl} alt={registeredPerson.name} class="w-full h-full object-cover" />
+                                    {:else}
+                                        <Users size={32} />
+                                    {/if}
+                                </div>
+                                <div class="flex-1 min-w-0 space-y-1.5">
+                                    <h4 class="text-lg font-black text-slate-900 truncate">{registeredPerson.name}</h4>
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <Badge variant="outline" class="font-bold text-[10px] uppercase">{registeredPerson.categoryName}</Badge>
+                                        {#if registeredPerson.subCategoryName}
+                                            <Badge variant="outline" class="font-bold text-[10px] uppercase">{registeredPerson.subCategoryName}</Badge>
+                                        {/if}
+                                        {#if registeredPerson.isTrained}
+                                            <Badge class="bg-emerald-100 text-emerald-700 border-emerald-200 font-bold text-[10px] uppercase">Trained</Badge>
+                                        {/if}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-slate-100 px-5 py-3 grid grid-cols-2 gap-3 text-xs">
+                                <div>
+                                    <p class="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Biometric ID</p>
+                                    <p class="font-black text-slate-700">{registeredPerson.biometricId}</p>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Enrollment</p>
+                                    {#if enrolledMethod}
+                                        <p class="font-black text-emerald-700 capitalize">{enrolledMethod}</p>
+                                    {:else}
+                                        <p class="font-black text-slate-400">Skipped</p>
+                                    {/if}
+                                </div>
+                                {#if registeredPerson.codeNo}
+                                    <div>
+                                        <p class="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Code No.</p>
+                                        <p class="font-black text-slate-700">{registeredPerson.codeNo}</p>
+                                    </div>
+                                {/if}
+                                {#if registeredPerson.company}
+                                    <div>
+                                        <p class="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Company</p>
+                                        <p class="font-black text-slate-700">{registeredPerson.company}</p>
+                                    </div>
+                                {/if}
+                                {#if registeredPerson.designation}
+                                    <div>
+                                        <p class="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Designation</p>
+                                        <p class="font-black text-slate-700">{registeredPerson.designation}</p>
+                                    </div>
+                                {/if}
+                                {#if registeredPerson.contactNo}
+                                    <div>
+                                        <p class="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Phone</p>
+                                        <p class="font-black text-slate-700">{registeredPerson.contactNo}</p>
+                                    </div>
+                                {/if}
+                            </div>
+                        </div>
+
+                        <Button onclick={() => { open = false; }} class="w-full h-12 font-black text-sm uppercase tracking-widest">
+                            Done
+                        </Button>
+                    </div>
+                {:else}
+                    <!-- Step 2: Enrollment -->
+                    <EnrollmentPanel
+                        personId={registeredPerson.id}
+                        biometricId={registeredPerson.biometricId}
+                        personName={registeredPerson.name}
+                        onDone={(method) => { enrolledMethod = method; showSummary = true; }}
+                        onSkip={() => { enrolledMethod = null; showSummary = true; }}
+                    />
+                {/if}
+            {:else if !selectedRootCategoryId}
+                <!-- Step 1a: Category selection -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" in:fade>
                     {#each ROOT_CATEGORIES as cat}
                         <button
@@ -123,6 +248,7 @@
                     {/each}
                 </div>
             {:else}
+                <!-- Step 1b: Registration form -->
                 <div class="space-y-6" in:fly={{ x: 20, duration: 300 }}>
                     <div class="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-primary-50 to-slate-50 border-2 border-primary-100">
                         <div class="flex items-center gap-3">
@@ -179,12 +305,37 @@
                         action="/people?/create"
                         class="space-y-5"
                         enctype="multipart/form-data"
-                        use:enhance={() => {
+                        use:enhance={({ formData }) => {
+                            // Capture form values before submission
+                            const formName = formData.get('name') as string;
+                            const formCompany = formData.get('company') as string || null;
+                            const formContactNo = formData.get('contactNo') as string || null;
+                            const formDesignation = formData.get('designation') as string || null;
+                            const formCodeNo = formData.get('codeNo') as string || null;
+                            const capturedPhoto = photoPreview;
+                            const capturedTrained = isTrained;
+                            const rootCatName = selectedRootCategory ? (i18n.t(selectedRootCategory.slug as any) || selectedRootCategory.name) : '';
+                            const subCatName = selectedSubCategory ? (i18n.t(selectedSubCategory.slug as any) || selectedSubCategory.name) : null;
+
                             return async ({ result, update }) => {
                                 if (result.type === 'success') {
-                                    open = false;
+                                    const data = result.data as any;
                                     toast.success('Registration successful');
                                     await update();
+                                    // Transition to enrollment step
+                                    registeredPerson = {
+                                        id: data.personId,
+                                        biometricId: data.biometricId,
+                                        name: data.personName,
+                                        photoUrl: capturedPhoto,
+                                        categoryName: rootCatName,
+                                        subCategoryName: subCatName,
+                                        company: formCompany,
+                                        contactNo: formContactNo,
+                                        designation: formDesignation,
+                                        codeNo: formCodeNo,
+                                        isTrained: capturedTrained
+                                    };
                                 } else if (result.type === 'failure') {
                                     const msg = (result.data as any)?.message || 'Registration failed';
                                     toast.error(msg);
@@ -237,10 +388,6 @@
                             <div class="space-y-2">
                                 <Label for="reg-contactNo" class="font-bold uppercase text-[10px] tracking-widest text-slate-500">{i18n.t('phone')}</Label>
                                 <Input id="reg-contactNo" name="contactNo" class="h-11 border-2" placeholder="Phone number" />
-                            </div>
-                            <div class="space-y-2">
-                                <Label for="reg-cardNo" class="font-bold uppercase text-[10px] tracking-widest text-slate-500">{i18n.t('cardNo')}</Label>
-                                <Input id="reg-cardNo" name="cardNo" class="h-11 border-2" placeholder="Access card number" />
                             </div>
                             <div class="space-y-2">
                                 <Label for="reg-designation" class="font-bold uppercase text-[10px] tracking-widest text-slate-500">{i18n.t('designation')}</Label>

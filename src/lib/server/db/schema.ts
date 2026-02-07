@@ -62,6 +62,7 @@ export const people = sqliteTable('people', {
     cardNo: text('card_no'), // RFID/NFC card number
     biometricId: text('biometric_id'), // device ID
     photoUrl: text('photo_url'), // path to stored photo
+    enrolledMethods: text('enrolled_methods'), // JSON: ["finger","face","card"]
 
     // Contact & details
     company: text('company'),
@@ -92,6 +93,7 @@ export const attendanceLogs = sqliteTable('attendance_logs', {
     entryTime: integer('entry_time', { mode: 'timestamp' }).notNull(),
     exitTime: integer('exit_time', { mode: 'timestamp' }), // null = currently inside
     status: text('status', { enum: ['on_premises', 'checked_out'] }).notNull(),
+    verifyMethod: text('verify_method'), // 'finger' | 'face' | 'card' | 'password' | null
     date: text('date').notNull(), // 'YYYY-MM-DD'
     purpose: text('purpose'), // Reason for visit (for non-employees)
     notes: text('notes'),
@@ -126,4 +128,47 @@ export const vehicles = sqliteTable('vehicles', {
     driverNameIdx: index('vehicle_driver_idx').on(table.driverName),
     vendorNameIdx: index('vehicle_vendor_idx').on(table.vendorName),
     entryTimeIdx: index('vehicle_entry_time_idx').on(table.entryTime),
+}));
+
+// --- ZKTeco Devices ---
+export const devices = sqliteTable('devices', {
+    id: text('id').primaryKey(),
+    serialNumber: text('serial_number').notNull().unique(),
+    name: text('name').notNull(),
+    location: text('location'),
+    lastHeartbeat: integer('last_heartbeat', { mode: 'timestamp' }),
+    status: text('status', { enum: ['online', 'offline'] }).notNull().default('offline'),
+    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
+}, (table) => ({
+    snIdx: index('devices_serial_number_idx').on(table.serialNumber),
+}));
+
+// --- Device Commands ---
+export const deviceCommands = sqliteTable('device_commands', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    deviceSn: text('device_sn').notNull().references(() => devices.serialNumber, { onDelete: 'cascade' }),
+    commandString: text('command_string').notNull(),
+    status: text('status', { enum: ['PENDING', 'SENT', 'SUCCESS', 'FAILED'] }).notNull().default('PENDING'),
+    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
+}, (table) => ({
+    deviceSnIdx: index('device_commands_device_sn_idx').on(table.deviceSn),
+    statusIdx: index('device_commands_status_idx').on(table.status),
+}));
+
+// --- Raw Punches (audit trail) ---
+export const rawPunches = sqliteTable('raw_punches', {
+    id: text('id').primaryKey(),
+    deviceSn: text('device_sn').notNull(),
+    pin: text('pin').notNull(),
+    punchTime: integer('punch_time', { mode: 'timestamp' }).notNull(),
+    status: integer('status'),
+    verify: integer('verify'),
+    rawLine: text('raw_line').notNull(),
+    processed: integer('processed', { mode: 'boolean' }).notNull().default(false),
+    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
+}, (table) => ({
+    deviceSnIdx: index('raw_punches_device_sn_idx').on(table.deviceSn),
+    pinIdx: index('raw_punches_pin_idx').on(table.pin),
+    processedIdx: index('raw_punches_processed_idx').on(table.processed),
 }));

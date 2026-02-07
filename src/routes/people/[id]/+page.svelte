@@ -10,6 +10,7 @@
     import * as Dialog from '$lib/components/ui/dialog';
     import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
     import * as Select from '$lib/components/ui/select';
+    import EnrollmentPanel from '../EnrollmentPanel.svelte';
     import {
         ChevronLeft,
         User,
@@ -31,13 +32,18 @@
         Calendar,
         IdCard,
         Briefcase,
-        TrendingUp
+        TrendingUp,
+        Fingerprint,
+        Scan,
+        CreditCard,
+        Radio
     } from 'lucide-svelte';
     import type { PageData } from './$types';
     import { format, parseISO } from 'date-fns';
     import { enhance } from '$app/forms';
-    import { goto } from '$app/navigation';
+    import { goto, invalidateAll } from '$app/navigation';
     import { cn } from '$lib/utils';
+    import { toast } from 'svelte-sonner';
 
     let { data }: { data: PageData } = $props();
 
@@ -49,6 +55,7 @@
     let checkInFormElement = $state<HTMLFormElement | null>(null);
     let checkOutFormElement = $state<HTMLFormElement | null>(null);
     let isImageViewerOpen = $state(false);
+    let isEnrollOpen = $state(false);
 
     let editName = $state('');
     let editCategoryId = $state('');
@@ -59,6 +66,16 @@
     let editIsTrained = $state(false);
     let editNotes = $state('');
     let photoPreview = $state<string | null>(null);
+
+    const enrolledMethods: string[] = $derived(
+        (() => {
+            try {
+                const raw = data.person.enrolledMethods;
+                if (!raw) return [];
+                return JSON.parse(raw);
+            } catch { return []; }
+        })()
+    );
 
     // Sync edit form state when data changes
     $effect(() => {
@@ -91,7 +108,6 @@
     }
 
     function openEdit() {
-        // State is synced via $effect, just open the dialog
         isEditOpen = true;
     }
 
@@ -139,7 +155,6 @@
             <Card.Root class="overflow-hidden border-2 border-slate-200 shadow-lg">
                 <!-- Hero Section with Photo -->
                 <div class="relative bg-gradient-to-br from-primary-600 to-primary-800 p-6 pb-24">
-                    <!-- Background Pattern -->
                     <div class="absolute inset-0 opacity-10">
                         <svg class="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                             <defs>
@@ -150,8 +165,6 @@
                             <rect width="100" height="100" fill="url(#grid)" />
                         </svg>
                     </div>
-
-                    <!-- Name and Category -->
                     <div class="relative text-center text-white">
                         <h1 class="text-2xl md:text-3xl font-black tracking-tight mb-2">{data.person.name}</h1>
                         <Badge variant="secondary" class="bg-white/20 text-white border-white/30 font-bold uppercase tracking-wider text-xs">
@@ -174,7 +187,6 @@
                                     alt={data.person.name}
                                     class="w-full h-full object-cover"
                                 />
-                                <!-- Zoom overlay on hover -->
                                 <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl">
                                     <ZoomIn size={32} class="text-white" />
                                 </div>
@@ -182,8 +194,6 @@
                                 <User size={64} />
                             {/if}
                         </div>
-
-                        <!-- Status indicator -->
                         {#if data.isInside}
                             <div class="absolute -bottom-1 -right-1 w-8 h-8 bg-emerald-500 rounded-full border-4 border-white flex items-center justify-center animate-pulse">
                                 <CheckCircle2 size={16} class="text-white" />
@@ -194,7 +204,6 @@
 
                 <!-- Info Cards -->
                 <Card.Content class="p-6 pt-4 space-y-4">
-                    <!-- Status Badge -->
                     {#if data.isInside}
                         <div class="flex items-center justify-center">
                             <Badge class="bg-emerald-100 text-emerald-700 border-emerald-200 font-black uppercase tracking-wider text-xs px-4 py-1.5 animate-pulse">
@@ -259,6 +268,48 @@
                         </div>
                         {/if}
                     </div>
+
+                    <!-- Biometric Info -->
+                    {#if data.person.biometricId}
+                        <div class="p-4 rounded-xl bg-indigo-50 border-2 border-indigo-100 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                                        <Fingerprint size={20} />
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Biometric ID</p>
+                                        <p class="font-bold text-indigo-900">{data.person.biometricId}</p>
+                                    </div>
+                                </div>
+                                {#if data.user?.permissions.includes('people.edit')}
+                                    <Button variant="outline" size="sm" class="text-xs font-bold gap-1 border-indigo-200 text-indigo-700 hover:bg-indigo-100" onclick={() => isEnrollOpen = true}>
+                                        <Radio size={14} /> Enroll
+                                    </Button>
+                                {/if}
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                {#if enrolledMethods.includes('finger')}
+                                    <Badge class="bg-emerald-100 text-emerald-700 border-emerald-200 font-bold text-[10px] uppercase gap-1">
+                                        <Fingerprint size={12} /> Finger
+                                    </Badge>
+                                {/if}
+                                {#if enrolledMethods.includes('face')}
+                                    <Badge class="bg-blue-100 text-blue-700 border-blue-200 font-bold text-[10px] uppercase gap-1">
+                                        <Scan size={12} /> Face
+                                    </Badge>
+                                {/if}
+                                {#if enrolledMethods.includes('card')}
+                                    <Badge class="bg-amber-100 text-amber-700 border-amber-200 font-bold text-[10px] uppercase gap-1">
+                                        <CreditCard size={12} /> Card
+                                    </Badge>
+                                {/if}
+                                {#if enrolledMethods.length === 0}
+                                    <p class="text-[10px] font-bold text-indigo-400">Not enrolled on device yet</p>
+                                {/if}
+                            </div>
+                        </div>
+                    {/if}
 
                     <!-- Training Status -->
                     <div class="flex items-center justify-between p-4 rounded-xl {data.person.isTrained ? 'bg-emerald-50 border-2 border-emerald-100' : 'bg-rose-50 border-2 border-rose-100'}">
@@ -394,23 +445,19 @@
                     </div>
                 </Card.Header>
                 <Card.Content class="p-0">
-                    <!-- Mobile View: List of cards -->
+                    <!-- Mobile View -->
                     <div class="md:hidden divide-y divide-slate-100">
                         {#each data.recentLogs as log (log.id)}
                             <div class="p-4 hover:bg-primary-50/50 transition-colors">
                                 <div class="flex items-center justify-between mb-2">
                                     <span class="font-bold text-slate-700 text-sm">{format(parseISO(log.date), 'PP')}</span>
                                     {#if !log.exitTime}
-                                        <Badge class="bg-emerald-100 text-emerald-700 border-emerald-200 font-bold text-xs uppercase animate-pulse">
-                                            Inside
-                                        </Badge>
+                                        <Badge class="bg-emerald-100 text-emerald-700 border-emerald-200 font-bold text-xs uppercase animate-pulse">Inside</Badge>
                                     {:else}
-                                        <Badge variant="outline" class="text-slate-500 font-bold text-xs uppercase">
-                                            Completed
-                                        </Badge>
+                                        <Badge variant="outline" class="text-slate-500 font-bold text-xs uppercase">Completed</Badge>
                                     {/if}
                                 </div>
-                                <div class="grid grid-cols-3 gap-2 text-xs">
+                                <div class="grid grid-cols-4 gap-2 text-xs">
                                     <div>
                                         <p class="text-slate-400 font-medium">{i18n.t('entryTime')}</p>
                                         <p class="font-black text-slate-900">{format(log.entryTime, 'hh:mm a')}</p>
@@ -429,6 +476,10 @@
                                             {/if}
                                         </p>
                                     </div>
+                                    <div>
+                                        <p class="text-slate-400 font-medium">Method</p>
+                                        <p class="font-bold text-slate-500 capitalize">{log.verifyMethod || '-'}</p>
+                                    </div>
                                 </div>
                             </div>
                         {:else}
@@ -442,7 +493,7 @@
                         {/each}
                     </div>
 
-                    <!-- Desktop View: Table -->
+                    <!-- Desktop View -->
                     <div class="hidden md:block overflow-x-auto">
                         <Table.Root>
                             <Table.Header>
@@ -451,6 +502,7 @@
                                     <Table.Head class="font-black text-slate-900">{i18n.t('entryTime')}</Table.Head>
                                     <Table.Head class="font-black text-slate-900">{i18n.t('exitTime')}</Table.Head>
                                     <Table.Head class="font-black text-slate-900">{i18n.t('duration')}</Table.Head>
+                                    <Table.Head class="font-black text-slate-900">Method</Table.Head>
                                     <Table.Head class="font-black text-slate-900">Status</Table.Head>
                                 </Table.Row>
                             </Table.Header>
@@ -470,20 +522,30 @@
                                             {/if}
                                         </Table.Cell>
                                         <Table.Cell>
-                                            {#if !log.exitTime}
-                                                <Badge class="bg-emerald-100 text-emerald-700 border-emerald-200 font-bold text-xs uppercase animate-pulse">
-                                                    Inside
+                                            {#if log.verifyMethod}
+                                                <Badge variant="outline" class={cn("font-bold text-[10px] uppercase",
+                                                    log.verifyMethod === 'finger' ? 'text-emerald-600 border-emerald-200 bg-emerald-50' :
+                                                    log.verifyMethod === 'face' ? 'text-blue-600 border-blue-200 bg-blue-50' :
+                                                    log.verifyMethod === 'card' ? 'text-amber-600 border-amber-200 bg-amber-50' :
+                                                    'text-slate-500 border-slate-200'
+                                                )}>
+                                                    {log.verifyMethod}
                                                 </Badge>
                                             {:else}
-                                                <Badge variant="outline" class="text-slate-500 font-bold text-xs uppercase">
-                                                    Completed
-                                                </Badge>
+                                                <span class="text-slate-400 text-xs">-</span>
+                                            {/if}
+                                        </Table.Cell>
+                                        <Table.Cell>
+                                            {#if !log.exitTime}
+                                                <Badge class="bg-emerald-100 text-emerald-700 border-emerald-200 font-bold text-xs uppercase animate-pulse">Inside</Badge>
+                                            {:else}
+                                                <Badge variant="outline" class="text-slate-500 font-bold text-xs uppercase">Completed</Badge>
                                             {/if}
                                         </Table.Cell>
                                     </Table.Row>
                                 {:else}
                                     <Table.Row>
-                                        <Table.Cell colspan={5} class="h-48 text-center">
+                                        <Table.Cell colspan={6} class="h-48 text-center">
                                             <div class="flex flex-col items-center gap-3 text-slate-400">
                                                 <Calendar size={40} class="opacity-50" />
                                                 <p class="font-bold">{i18n.t('noData')}</p>
@@ -498,7 +560,6 @@
                 </Card.Content>
             </Card.Root>
 
-            <!-- Notes Section -->
             {#if data.person.notes}
                 <Card.Root class="p-6 border-2 border-slate-100 bg-slate-50">
                     <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{i18n.t('notes')}</h4>
@@ -529,6 +590,29 @@
         <div class="p-4 bg-black/50 text-center">
             <p class="text-white font-bold text-lg">{data.person.name}</p>
             <p class="text-white/70 text-sm">{data.person.category.name}</p>
+        </div>
+    </Dialog.Content>
+</Dialog.Root>
+{/if}
+
+<!-- Enrollment Dialog -->
+{#if data.person.biometricId}
+<Dialog.Root bind:open={isEnrollOpen}>
+    <Dialog.Content class="sm:max-w-[500px] p-0 overflow-hidden">
+        <div class="p-6 border-b bg-slate-50">
+            <Dialog.Title class="text-xl font-black">Device Enrollment</Dialog.Title>
+            <Dialog.Description class="font-bold text-xs uppercase tracking-widest text-slate-500">
+                Enroll {data.person.name} on a device
+            </Dialog.Description>
+        </div>
+        <div class="p-6">
+            <EnrollmentPanel
+                personId={data.person.id}
+                biometricId={data.person.biometricId}
+                personName={data.person.name}
+                onDone={() => { isEnrollOpen = false; invalidateAll(); }}
+                onSkip={() => { isEnrollOpen = false; }}
+            />
         </div>
     </Dialog.Content>
 </Dialog.Root>

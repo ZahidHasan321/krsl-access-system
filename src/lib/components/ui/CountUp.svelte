@@ -5,12 +5,11 @@
     let { value = 0, duration = 600 } = $props();
 
     const displayValue = tweened(0, {
-        duration: Number(duration),
         easing: cubicOut
     });
 
     $effect(() => {
-        displayValue.set(Number(value) || 0);
+        displayValue.set(Number(value) || 0, { duration: Number(duration) });
     });
 </script>
 

@@ -4,27 +4,27 @@ import { eq, and, desc, sql, count } from 'drizzle-orm';
 import { error, fail } from '@sveltejs/kit';
 import { requirePermission } from '$lib/server/rbac';
 import { notifyChange } from '$lib/server/events';
+import { queueDeviceSync } from '$lib/server/device-sync';
 import type { PageServerLoad, Actions } from './$types';
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
 async function savePhoto(photo: FormDataEntryValue | null): Promise<string | null> {
     if (!photo || !(photo instanceof File) || photo.size === 0) return null;
-    
+
     const ext = photo.name.split('.').pop() || 'jpg';
     const fileName = `${crypto.randomUUID()}.${ext}`;
     const uploadDir = join(process.cwd(), 'static', 'uploads', 'people');
-    
-    // Ensure directory exists
+
     try {
         mkdirSync(uploadDir, { recursive: true });
     } catch (e) {}
 
     const filePath = join(uploadDir, fileName);
-    
+
     const buffer = Buffer.from(await photo.arrayBuffer());
     writeFileSync(filePath, buffer);
-    
+
     return `/uploads/people/${fileName}`;
 }
 
@@ -39,6 +39,7 @@ export const load: PageServerLoad = async (event) => {
             codeNo: people.codeNo,
             cardNo: people.cardNo,
             biometricId: people.biometricId,
+            enrolledMethods: people.enrolledMethods,
             photoUrl: people.photoUrl,
             company: people.company,
             contactNo: people.contactNo,
@@ -62,7 +63,6 @@ export const load: PageServerLoad = async (event) => {
         error(404, 'Person not found');
     }
 
-    // Recent logs
     const recentLogs = await db
         .select()
         .from(attendanceLogs)
@@ -70,7 +70,6 @@ export const load: PageServerLoad = async (event) => {
         .orderBy(desc(sql`COALESCE(${attendanceLogs.exitTime}, ${attendanceLogs.entryTime})`))
         .limit(20);
 
-    // Stats
     const [stats] = await db
         .select({
             totalVisits: count(),
@@ -88,9 +87,7 @@ export const load: PageServerLoad = async (event) => {
 
     const allCategories = await db.select().from(personCategories);
 
-    // Flatten/Sort categories for the select dropdown
     const allCategoriesFlat: any[] = [];
-    const roots = allCategories.filter(c => !c.parentId);
 
     function traverse(parentId: string | null, level = 0) {
         const children = allCategories.filter(c => c.parentId === parentId);
@@ -146,6 +143,12 @@ export const actions: Actions = {
             await db.update(people)
                 .set(updates)
                 .where(eq(people.id, id));
+
+            // Auto-sync to device if person has biometricId
+            const person = db.select().from(people).where(eq(people.id, id)).get();
+            if (person?.biometricId) {
+                queueDeviceSync(person.biometricId, name, person.cardNo);
+            }
 
             notifyChange();
             return { success: true };

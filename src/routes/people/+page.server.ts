@@ -6,19 +6,20 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { requirePermission } from '$lib/server/rbac';
 import { notifyChange } from '$lib/server/events';
+// Device sync is handled by enrollment flow (devicecmd on success, or /api/enroll/sync on skip)
 import { writeFileSync } from 'fs';
 import { join } from 'path';
 
 async function savePhoto(photo: FormDataEntryValue | null): Promise<string | null> {
     if (!photo || !(photo instanceof File) || photo.size === 0) return null;
-    
+
     const ext = photo.name.split('.').pop() || 'jpg';
     const fileName = `${crypto.randomUUID()}.${ext}`;
     const filePath = join(process.cwd(), 'static', 'uploads', 'people', fileName);
-    
+
     const buffer = Buffer.from(await photo.arrayBuffer());
     writeFileSync(filePath, buffer);
-    
+
     return `/uploads/people/${fileName}`;
 }
 
@@ -58,7 +59,6 @@ export const load: PageServerLoad = async (event) => {
         ));
     }
     if (categoryId) {
-        // Find all descendant category IDs so filtering by root includes subcategories
         const descendantIds = getDescendantIds(categoryId);
         whereClauses.push(inArray(people.categoryId, descendantIds));
     }
@@ -73,6 +73,7 @@ export const load: PageServerLoad = async (event) => {
             company: people.company,
             contactNo: people.contactNo,
             designation: people.designation,
+            biometricId: people.biometricId,
             notes: people.notes,
             isTrained: people.isTrained,
             categoryId: people.categoryId,
@@ -95,10 +96,9 @@ export const load: PageServerLoad = async (event) => {
         .from(people)
         .innerJoin(personCategories, eq(people.categoryId, personCategories.id))
         .where(where);
-    
+
     const totalCount = totalCountResult.value;
 
-    // Summary stats for filtered people
     const [summaryStats] = await db
         .select({
             total: sql<number>`count(*)`,
@@ -137,11 +137,10 @@ export const actions: Actions = {
     create: async (event) => {
         requirePermission(event.locals, 'people.create');
         const data = await event.request.formData();
-        
+
         const name = data.get('name') as string;
         const categoryId = data.get('categoryId') as string;
         const codeNo = data.get('codeNo') as string || null;
-        const cardNo = data.get('cardNo') as string || null;
         const company = data.get('company') as string || null;
         const contactNo = data.get('contactNo') as string || null;
         const designation = data.get('designation') as string || null;
@@ -157,20 +156,35 @@ export const actions: Actions = {
         try {
             const photoUrl = await savePhoto(photo);
             const id = crypto.randomUUID();
-            await db.insert(people).values({
-                id,
-                name,
-                categoryId,
-                codeNo,
-                cardNo,
-                company,
-                contactNo,
-                designation,
-                isTrained,
-                notes,
-                photoUrl,
-                createdAt: new Date()
+
+            // Auto-generate biometricId atomically (SQLite is single-writer, no race)
+            const nextBiometricId = db.transaction((tx) => {
+                const [maxResult] = tx
+                    .select({ maxId: sql<number>`COALESCE(MAX(CAST(biometric_id AS INTEGER)), 0)` })
+                    .from(people)
+                    .all();
+                const nextId = String((maxResult.maxId || 0) + 1);
+
+                tx.insert(people).values({
+                    id,
+                    name,
+                    categoryId,
+                    codeNo,
+                    biometricId: nextId,
+                    company,
+                    contactNo,
+                    designation,
+                    isTrained,
+                    notes,
+                    photoUrl,
+                    createdAt: new Date()
+                }).run();
+
+                return nextId;
             });
+
+            // No device sync during registration — user is synced to device
+            // after enrollment succeeds (devicecmd handler) or when enrollment is skipped.
 
             // Optional: Auto check-in if requested
             if (data.get('autoCheckIn') === 'true') {
@@ -186,7 +200,7 @@ export const actions: Actions = {
             }
 
             notifyChange();
-            return { success: true };
+            return { success: true, personId: id, biometricId: nextBiometricId, personName: name };
         } catch (e: any) {
             if (e.message?.includes('UNIQUE constraint failed: people.code_no')) {
                 return fail(400, { message: 'Code Number already exists' });
@@ -232,6 +246,13 @@ export const actions: Actions = {
             await db.update(people)
                 .set(updates)
                 .where(eq(people.id, id));
+
+            // Auto-sync to device if person has biometricId
+            const person = db.select().from(people).where(eq(people.id, id)).get();
+            if (person?.biometricId) {
+                const cardNo = person.cardNo;
+                queueDeviceSync(person.biometricId, name, cardNo);
+            }
 
             notifyChange();
             return { success: true };

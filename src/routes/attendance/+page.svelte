@@ -17,7 +17,10 @@
 		ChevronLeft,
 		X,
 		Printer,
-		Loader2
+		Loader2,
+		Scan,
+		Fingerprint,
+		CreditCard
 	} from 'lucide-svelte';
 	import logo from '$lib/assets/logo.png';
 	import { goto } from '$app/navigation';
@@ -56,18 +59,25 @@
 	let searchQuery = $state('');
 	let selectedCategoryId = $state('');
 	let isCheckInOpen = $state(false);
-	    let isRegisterOpen = $state(false);
-		let isPreparingPrint = $state(false);
-		let previousLimit = $state(20);
-		let debounceTimer: any;
-		let isPrintConfirmOpen = $state(false);
-	
-		$effect(() => {		searchQuery = data.filters.query;
-		selectedCategoryId = data.filters.categoryId;
-	});
-
-	$effect(() => {
-		if (page.url.searchParams.has('print')) {
+	    	let isRegisterOpen = $state(false);
+	    	let isPreparingPrint = $state(false);
+	    	let confirmCheckOutOpen = $state(false);
+	    	let checkOutFormElement = $state<HTMLFormElement | null>(null);
+	    	let previousLimit = $state(20);
+	    	let debounceTimer: any;
+	    	let isPrintConfirmOpen = $state(false);
+	    
+	    	$effect(() => {
+	    		searchQuery = data.filters.query;
+	    		selectedCategoryId = data.filters.categoryId;
+	    	});
+	    
+	    	function triggerCheckOut(form: HTMLFormElement) {
+	    		checkOutFormElement = form;
+	    		confirmCheckOutOpen = true;
+	    	}
+	    
+	    	$effect(() => {		if (page.url.searchParams.has('print')) {
 			isPreparingPrint = true;
 			const timer = setTimeout(() => {
 				window.print();
@@ -483,15 +493,27 @@
 								>
 									<div class="flex min-w-0 items-center gap-5">
 										<div
-											class="flex size-14 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-100 bg-white text-slate-400 shadow-inner shadow-sm"
+											class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-slate-100 bg-white shadow-sm"
 										>
-											<Users size={28} />
+											{#if log.person.photoUrl}
+												<img
+													src={log.person.photoUrl}
+													alt={log.person.name}
+													class="size-full object-cover"
+												/>
+											{:else}
+												<div class="flex size-full items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 text-lg font-black text-white">
+													{log.person.name.trim().split(/\s+/).length > 1
+														? log.person.name.trim().split(/\s+/).slice(0, 2).map((n: string) => [...n][0]).join('')
+														: [...log.person.name.trim()][0] ?? '?'}
+												</div>
+											{/if}
 										</div>
 										<div class="min-w-0">
 											<div class="flex flex-wrap items-center gap-3">
-												<h3 class="truncate text-lg leading-tight font-black text-slate-900">
+												<a href="/people/{log.person.id}" class="truncate text-lg leading-tight font-black text-slate-900 hover:text-primary-600 transition-colors">
 													{log.person.name}
-												</h3>
+												</a>
 
 												<div class="flex gap-1.5">
 													{#each getCategoryPath(log.person.categoryId) as cat, i (cat.id)}
@@ -538,13 +560,38 @@
 											</div>
 										</div>
 
+										{#if log.verifyMethod}
+											<div class="space-y-1">
+												<p
+													class="text-[10px] leading-none font-black tracking-widest text-slate-400 uppercase"
+												>
+													Method
+												</p>
+												<div class="flex items-center gap-2 text-sm font-black text-slate-700">
+													<div class={cn('rounded-lg p-1.5', log.verifyMethod === 'face' ? 'bg-blue-100 text-blue-600' : log.verifyMethod === 'finger' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500')}>
+														{#if log.verifyMethod === 'face'}
+															<Scan size={16} />
+														{:else if log.verifyMethod === 'finger'}
+															<Fingerprint size={16} />
+														{:else if log.verifyMethod === 'card'}
+															<CreditCard size={16} />
+														{:else}
+															<Users size={16} />
+														{/if}
+													</div>
+													<span class="capitalize">{log.verifyMethod}</span>
+												</div>
+											</div>
+										{/if}
+
 										{#if data.user?.permissions.includes('people.create')}
 											<form method="POST" action="?/checkOut" use:enhance class="w-full md:w-auto">
 												<input type="hidden" name="logId" value={log.id} />
 												<Button
-													type="submit"
+													type="button"
 													variant="outline"
 													class="h-12 w-full cursor-pointer gap-2 border-2 border-rose-100 px-6 font-black text-rose-600 shadow-sm hover:bg-rose-50 hover:text-rose-700 md:w-auto"
+													onclick={(e) => triggerCheckOut((e.currentTarget as HTMLButtonElement).form as HTMLFormElement)}
 												>
 													<CheckCircle2 size={20} />
 													{i18n.t('checkOut')}
@@ -702,4 +749,12 @@
     cancelText="Cancel"
     variant="warning"
     onconfirm={printEntryLog}
+/>
+
+<ConfirmModal
+    bind:open={confirmCheckOutOpen}
+    title="Confirm Check-Out"
+    message="Are you sure you want to check out this person?"
+    confirmText="Confirm"
+    onconfirm={() => checkOutFormElement?.requestSubmit()}
 />

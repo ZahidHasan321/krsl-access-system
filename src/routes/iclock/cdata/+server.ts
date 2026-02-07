@@ -1,0 +1,344 @@
+import type { RequestHandler } from './$types';
+import { db } from '$lib/server/db';
+import { devices, rawPunches, people, attendanceLogs } from '$lib/server/db/schema';
+import { eq, and } from 'drizzle-orm';
+import { buildHandshakeResponse, parseAttLog, parseOperLog, toDateString, verifyCodeToMethod } from '$lib/zkteco';
+import { notifyChange, notifyCheckIn, notifyEnrollment } from '$lib/server/events';
+import { writeFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
+import sharp from 'sharp';
+
+/** Save photo and generate thumbnail. Returns { photoUrl, thumbUrl }. */
+async function savePersonPhoto(pin: string, imageBuffer: Buffer): Promise<{ photoUrl: string; thumbUrl: string } | null> {
+	if (imageBuffer.length === 0) return null;
+
+	const uploadDir = join(process.cwd(), 'static', 'uploads', 'people');
+	try { mkdirSync(uploadDir, { recursive: true }); } catch {}
+
+	const baseName = `user_${pin}_face`;
+
+	// Save original
+	const photoPath = join(uploadDir, `${baseName}.jpg`);
+	writeFileSync(photoPath, imageBuffer);
+
+	// Generate thumbnail (80x80, optimized JPEG)
+	const thumbPath = join(uploadDir, `${baseName}_thumb.jpg`);
+	try {
+		await sharp(imageBuffer)
+			.resize(80, 80, { fit: 'cover' })
+			.jpeg({ quality: 75 })
+			.toFile(thumbPath);
+	} catch (e) {
+		console.error(`[ZK:Photo] Failed to generate thumbnail:`, e);
+	}
+
+	return {
+		photoUrl: `/uploads/people/${baseName}.jpg`,
+		thumbUrl: `/uploads/people/${baseName}_thumb.jpg`
+	};
+}
+
+/** GET — Device handshake (first contact + periodic) */
+export const GET: RequestHandler = async ({ url }) => {
+	const sn = url.searchParams.get('SN');
+	if (!sn) return new Response('Missing SN', { status: 400 });
+
+	console.log(`[ZK:Handshake] Device ${sn} connected`);
+
+	// Upsert device (auto-register on first contact)
+	const existing = db
+		.select()
+		.from(devices)
+		.where(eq(devices.serialNumber, sn))
+		.get();
+
+	if (existing) {
+		db.update(devices)
+			.set({ lastHeartbeat: new Date(), status: 'online' })
+			.where(eq(devices.serialNumber, sn))
+			.run();
+	} else {
+		db.insert(devices)
+			.values({
+				id: crypto.randomUUID(),
+				serialNumber: sn,
+				name: `Device ${sn}`,
+				lastHeartbeat: new Date(),
+				status: 'online'
+			})
+			.run();
+	}
+
+	const response = buildHandshakeResponse(sn);
+	console.log(`[ZK:Handshake] Response to ${sn}:\n${response.replace(/\n/g, ' | ')}`);
+
+	return new Response(response, {
+		headers: { 'Content-Type': 'text/plain' }
+	});
+};
+
+/** POST — Attendance data push (ATTLOG), enrollment photos (ATTPHOTO), operation logs (OPERLOG) */
+export const POST: RequestHandler = async ({ url, request }) => {
+	const sn = url.searchParams.get('SN');
+	const table = url.searchParams.get('table');
+
+	if (!sn) return new Response('Missing SN', { status: 400 });
+
+	console.log(`[ZK:Data] Received POST from ${sn} table=${table}`);
+
+	// Handle ATTPHOTO — device sends a face photo during enrollment or attendance
+	if (table === 'ATTPHOTO') {
+		const pin = url.searchParams.get('PIN') || url.searchParams.get('pin');
+		console.log(`[ZK:Photo] Received ATTPHOTO for PIN ${pin}`);
+		if (!pin) return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+
+		try {
+			const imageBuffer = Buffer.from(await request.arrayBuffer());
+			console.log(`[ZK:Photo] Image size: ${imageBuffer.length} bytes`);
+
+			const result = await savePersonPhoto(pin, imageBuffer);
+			if (result) {
+				const person = db
+					.select()
+					.from(people)
+					.where(eq(people.biometricId, pin))
+					.get();
+
+				if (person) {
+					db.update(people)
+						.set({ photoUrl: result.photoUrl })
+						.where(eq(people.id, person.id))
+						.run();
+					console.log(`[ZK:Photo] Saved ATTPHOTO for ${person.name}: ${result.photoUrl}`);
+					notifyChange();
+				}
+			}
+		} catch (e) {
+			console.error(`[ZK:Photo] Error saving photo:`, e);
+		}
+
+		return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+	}
+
+	const body = await request.text();
+	// Log truncated body for debugging
+	console.log(`[ZK:Data] Body (${body.length} chars): ${body.substring(0, 200).replace(/\n/g, ' ')}...`);
+
+	// Process OPERLOG for enrollment tracking + face photos
+	if (table === 'OPERLOG') {
+		// Check for embedded BIOPHOTO/face photo (BIOPHOTO PIN=2\tNo=0\t...Content=<base64>)
+		const photoMatch = body.match(/(?:BIOPHOTO\s+)?PIN=(\w+).*?Content=([A-Za-z0-9+/=]+)/s);
+		if (photoMatch) {
+			const photoPin = photoMatch[1];
+			const base64Content = photoMatch[2];
+			console.log(`[ZK:OperLog] Found face photo for PIN ${photoPin} (${base64Content.length} base64 chars)`);
+
+			try {
+				const imageBuffer = Buffer.from(base64Content, 'base64');
+				const result = await savePersonPhoto(photoPin, imageBuffer);
+				if (result) {
+					const person = db
+						.select()
+						.from(people)
+						.where(eq(people.biometricId, photoPin))
+						.get();
+
+					if (person) {
+						db.update(people)
+							.set({ photoUrl: result.photoUrl })
+							.where(eq(people.id, person.id))
+							.run();
+						console.log(`[ZK:OperLog] Saved face photo for ${person.name}: ${result.photoUrl} (thumb: ${result.thumbUrl})`);
+						notifyChange();
+					}
+				}
+			} catch (e) {
+				console.error(`[ZK:OperLog] Error saving face photo:`, e);
+			}
+		}
+
+		const opEntries = parseOperLog(body);
+		for (const entry of opEntries) {
+			if (!entry.enrollMethod) continue;
+
+			const person = db
+				.select()
+				.from(people)
+				.where(eq(people.biometricId, entry.pin))
+				.get();
+
+			if (!person) continue;
+
+			let methods: string[] = [];
+			try {
+				methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : [];
+			} catch { methods = []; }
+
+			if (!methods.includes(entry.enrollMethod)) {
+				methods.push(entry.enrollMethod);
+				db.update(people)
+					.set({ enrolledMethods: JSON.stringify(methods) })
+					.where(eq(people.id, person.id))
+					.run();
+				console.log(`[ZK:Enroll] Detected ${entry.enrollMethod} enrollment for ${person.name}`);
+				notifyEnrollment({ personId: person.id, method: entry.enrollMethod });
+			}
+		}
+		notifyChange();
+		return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+	}
+
+	// Handle BIODATA — device sends biometric template after successful enrollment
+	if (table === 'BIODATA') {
+		// PIN may be in URL params or in the body (e.g. "BIODATA Pin=2\tNo=0...")
+		let pin = url.searchParams.get('PIN') || url.searchParams.get('pin');
+		if (!pin) {
+			const pinMatch = body.match(/Pin=(\w+)/i);
+			pin = pinMatch ? pinMatch[1] : null;
+		}
+		console.log(`[ZK:BioData] Received template for PIN ${pin}`);
+		if (pin) {
+			const person = db
+				.select()
+				.from(people)
+				.where(eq(people.biometricId, pin))
+				.get();
+
+			if (person) {
+				let methods: string[] = [];
+				try {
+					methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : [];
+				} catch { methods = []; }
+
+				// BIODATA with FID=111 is face, FID=0 is finger — check OpStamp or default to face
+				const opStamp = url.searchParams.get('OpStamp') || '';
+				const method = opStamp === '0' ? 'finger' : 'face';
+
+				console.log(`[ZK:BioData] Associating template (OpStamp=${opStamp}) as ${method} for ${person.name}`);
+
+				if (!methods.includes(method)) {
+					methods.push(method);
+					db.update(people)
+						.set({ enrolledMethods: JSON.stringify(methods) })
+						.where(eq(people.id, person.id))
+						.run();
+				}
+				notifyEnrollment({ personId: person.id, method });
+				notifyChange();
+			}
+		}
+		return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+	}
+
+	// Only process ATTLOG beyond this point, acknowledge everything else
+	if (table !== 'ATTLOG') {
+		return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+	}
+	const entries = parseAttLog(body);
+
+	for (const entry of entries) {
+		const rawId = crypto.randomUUID();
+
+		// 1. Store raw punch (audit trail)
+		db.insert(rawPunches)
+			.values({
+				id: rawId,
+				deviceSn: sn,
+				pin: entry.pin,
+				punchTime: entry.timestamp,
+				status: entry.status,
+				verify: entry.verify,
+				rawLine: entry.rawLine,
+				processed: false
+			})
+			.run();
+
+		// 2. Look up person by biometricId
+		const person = db
+			.select()
+			.from(people)
+			.where(eq(people.biometricId, entry.pin))
+			.get();
+
+		if (!person) continue; // No matching person — raw punch still stored
+
+		// 3. Punch-to-attendance mapping
+		const punchDate = toDateString(entry.timestamp);
+
+		const activeLog = db
+			.select()
+			.from(attendanceLogs)
+			.where(
+				and(
+					eq(attendanceLogs.personId, person.id),
+					eq(attendanceLogs.status, 'on_premises')
+				)
+			)
+			.get();
+
+		const method = verifyCodeToMethod(entry.verify);
+
+		if (!activeLog) {
+			// CHECK-IN: no active log → create new entry
+			db.insert(attendanceLogs)
+				.values({
+					id: crypto.randomUUID(),
+					personId: person.id,
+					entryTime: entry.timestamp,
+					verifyMethod: method,
+					status: 'on_premises',
+					date: punchDate
+				})
+				.run();
+
+			// Notify real-time check-in
+			notifyCheckIn({
+				personId: person.id,
+				personName: person.name,
+				verifyMethod: method,
+				photoUrl: person.photoUrl
+			});
+		} else if (activeLog.date === punchDate) {
+			// CHECK-OUT: same day, second punch → mark as checked out
+			db.update(attendanceLogs)
+				.set({ exitTime: entry.timestamp, status: 'checked_out' })
+				.where(eq(attendanceLogs.id, activeLog.id))
+				.run();
+		} else {
+			// CLOSE + NEW: different day → close old, create new
+			db.update(attendanceLogs)
+				.set({ exitTime: entry.timestamp, status: 'checked_out' })
+				.where(eq(attendanceLogs.id, activeLog.id))
+				.run();
+
+			db.insert(attendanceLogs)
+				.values({
+					id: crypto.randomUUID(),
+					personId: person.id,
+					entryTime: entry.timestamp,
+					verifyMethod: method,
+					status: 'on_premises',
+					date: punchDate
+				})
+				.run();
+
+			// Notify real-time check-in (new day entry)
+			notifyCheckIn({
+				personId: person.id,
+				personName: person.name,
+				verifyMethod: method,
+				photoUrl: person.photoUrl
+			});
+		}
+
+		// 4. Mark raw punch as processed
+		db.update(rawPunches)
+			.set({ processed: true })
+			.where(eq(rawPunches.id, rawId))
+			.run();
+	}
+
+	notifyChange();
+
+	return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+};

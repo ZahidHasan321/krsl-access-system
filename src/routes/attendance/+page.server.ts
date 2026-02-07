@@ -78,13 +78,15 @@ export const load: PageServerLoad = async (event) => {
             entryTime: attendanceLogs.entryTime,
             exitTime: attendanceLogs.exitTime,
             status: attendanceLogs.status,
+            verifyMethod: attendanceLogs.verifyMethod,
             purpose: attendanceLogs.purpose,
             person: {
                 id: people.id,
                 name: people.name,
                 codeNo: people.codeNo,
                 company: people.company,
-                categoryId: people.categoryId
+                categoryId: people.categoryId,
+                photoUrl: people.photoUrl
             },
             category: {
                 id: personCategories.id,

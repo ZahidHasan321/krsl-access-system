@@ -8,7 +8,7 @@
     import { Checkbox } from '$lib/components/ui/checkbox';
     import * as Table from '$lib/components/ui/table';
     import * as Dialog from '$lib/components/ui/dialog';
-    import { Search, Users, PlusCircle, Edit2, Trash2, CheckCircle2, XCircle, Save, Eye, RotateCcw, ChevronRight, X, ChevronLeft, Printer, Loader2, Calendar } from 'lucide-svelte';
+    import { Search, Users, PlusCircle, Edit2, Trash2, CheckCircle2, XCircle, Save, Eye, RotateCcw, ChevronRight, X, ChevronLeft, Printer, Loader2, Calendar, Fingerprint } from 'lucide-svelte';
     import { format } from 'date-fns';
     import { clsx } from 'clsx';
     import { cn, getCategoryBadgeClass, statusBadgeClasses, getPageRange } from '$lib/utils';
@@ -67,8 +67,10 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
     let editCompany = $state('');
     let editContactNo = $state('');
     let editDesignation = $state('');
+    let editBiometricId = $state('');
     let editIsTrained = $state(false);
     let editNotes = $state('');
+    let editSyncToDevice = $state(false);
 
     // Change Category state
     let isChangeCategoryOpen = $state(false);
@@ -158,9 +160,11 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
         editCodeNo = person.codeNo || '';
         editCompany = person.company || '';
         editContactNo = person.contactNo || '';
+        editBiometricId = person.biometricId || '';
         editDesignation = person.designation || '';
         editIsTrained = person.isTrained;
         editNotes = person.notes || '';
+        editSyncToDevice = false;
         isEditOpen = true;
     }
 
@@ -752,7 +756,22 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
                         <Label for="edit-designation" class="font-bold uppercase text-[10px] tracking-widest text-slate-500">{i18n.t('designation')}</Label>
                         <Input id="edit-designation" name="designation" bind:value={editDesignation} class="h-11 border-2" />
                     </div>
+                    <div class="space-y-2">
+                        <Label for="edit-biometricId" class="font-bold uppercase text-[10px] tracking-widest text-slate-500">Biometric ID</Label>
+                        <Input id="edit-biometricId" name="biometricId" bind:value={editBiometricId} class="h-11 border-2" placeholder="Device user PIN" />
+                    </div>
                 </div>
+
+                <input type="hidden" name="syncToDevice" value={editSyncToDevice && editBiometricId ? 'true' : 'false'} />
+                {#if editBiometricId}
+                    <button type="button" class={cn("flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left cursor-pointer w-full", editSyncToDevice ? "border-sky-200 bg-sky-50" : "border-slate-100 hover:border-slate-200")} onclick={() => editSyncToDevice = !editSyncToDevice}>
+                        <Checkbox checked={editSyncToDevice} />
+                        <div>
+                            <p class="font-bold text-sm text-slate-900">Sync to device</p>
+                            <p class="text-[10px] font-medium text-slate-500">Push user info to all connected devices</p>
+                        </div>
+                    </button>
+                {/if}
 
                 <div class="space-y-2">
                     <Label for="edit-notes" class="font-bold uppercase text-[10px] tracking-widest text-slate-500">{i18n.t('notes')}</Label>

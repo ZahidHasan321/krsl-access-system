@@ -1,4 +1,5 @@
 import { eventHub } from '$lib/server/events';
+import type { CheckInData, EnrollmentData, EnrollmentFailedData } from '$lib/server/events';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = ({ locals }) => {
@@ -7,20 +8,43 @@ export const GET: RequestHandler = ({ locals }) => {
     }
 
     let heartbeat: ReturnType<typeof setInterval>;
-    let listener: () => void;
+    let changeListener: () => void;
+    let checkinListener: (data: CheckInData) => void;
+    let enrollmentListener: (data: EnrollmentData) => void;
+    let enrollmentFailedListener: (data: EnrollmentFailedData) => void;
     let closed = false;
 
     const stream = new ReadableStream({
         start(controller) {
-            listener = () => {
+            changeListener = () => {
                 if (!closed) {
                     controller.enqueue("data: update\n\n");
                 }
             };
 
-            eventHub.on('change', listener);
+            checkinListener = (data: CheckInData) => {
+                if (!closed) {
+                    controller.enqueue(`event: checkin\ndata: ${JSON.stringify(data)}\n\n`);
+                }
+            };
 
-            // Keep connection alive with a heartbeat every 30s
+            enrollmentListener = (data: EnrollmentData) => {
+                if (!closed) {
+                    controller.enqueue(`event: enrollment\ndata: ${JSON.stringify(data)}\n\n`);
+                }
+            };
+
+            enrollmentFailedListener = (data: EnrollmentFailedData) => {
+                if (!closed) {
+                    controller.enqueue(`event: enrollment-failed\ndata: ${JSON.stringify(data)}\n\n`);
+                }
+            };
+
+            eventHub.on('change', changeListener);
+            eventHub.on('checkin', checkinListener);
+            eventHub.on('enrollment', enrollmentListener);
+            eventHub.on('enrollment-failed', enrollmentFailedListener);
+
             heartbeat = setInterval(() => {
                 if (!closed) {
                     controller.enqueue(": heartbeat\n\n");
@@ -29,7 +53,10 @@ export const GET: RequestHandler = ({ locals }) => {
         },
         cancel() {
             closed = true;
-            eventHub.off('change', listener);
+            eventHub.off('change', changeListener);
+            eventHub.off('checkin', checkinListener);
+            eventHub.off('enrollment', enrollmentListener);
+            eventHub.off('enrollment-failed', enrollmentFailedListener);
             clearInterval(heartbeat);
         }
     });

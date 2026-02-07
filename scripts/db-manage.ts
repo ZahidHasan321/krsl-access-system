@@ -54,7 +54,8 @@ const PERMISSIONS = [
     { id: 'vehicles.edit', description: 'Edit vehicle entries' },
     { id: 'vehicles.delete', description: 'Delete vehicle entries' },
     { id: 'categories.manage', description: 'Manage person categories (admin)' },
-    { id: 'users.manage', description: 'Manage system users and roles (admin)' }
+    { id: 'users.manage', description: 'Manage system users and roles (admin)' },
+    { id: 'devices.manage', description: 'Manage biometric devices (admin)' }
 ];
 
 // admin gets everything, guard gets view + create only
@@ -94,6 +95,9 @@ function resetDatabase() {
     // We try-catch because tables might not exist yet if starting from true scratch
     try {
         db.exec(`
+            DELETE FROM raw_punches;
+            DELETE FROM device_commands;
+            DELETE FROM devices;
             DELETE FROM attendance_logs;
             DELETE FROM people;
             DELETE FROM person_categories;

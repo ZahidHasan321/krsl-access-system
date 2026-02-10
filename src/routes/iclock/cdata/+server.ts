@@ -1,9 +1,9 @@
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
-import { devices, rawPunches, people, attendanceLogs } from '$lib/server/db/schema';
+import { devices, rawPunches, people, attendanceLogs, bioTemplates } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { buildHandshakeResponse, parseAttLog, parseOperLog, toDateString, verifyCodeToMethod } from '$lib/zkteco';
-import { notifyChange, notifyCheckIn, notifyEnrollment } from '$lib/server/events';
+import { notifyChange, notifyCheckIn, notifyCheckOut, notifyEnrollment } from '$lib/server/events';
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import sharp from 'sharp';
@@ -188,15 +188,22 @@ export const POST: RequestHandler = async ({ url, request }) => {
 		return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
 	}
 
-	// Handle BIODATA — device sends biometric template after successful enrollment
-	if (table === 'BIODATA') {
+	// Handle BIODATA / FACE / FINGERTMP — device sends biometric template after enrollment
+	if (table === 'BIODATA' || table === 'FACE' || table === 'FINGERTMP') {
 		// PIN may be in URL params or in the body (e.g. "BIODATA Pin=2\tNo=0...")
 		let pin = url.searchParams.get('PIN') || url.searchParams.get('pin');
 		if (!pin) {
-			const pinMatch = body.match(/Pin=(\w+)/i);
+			const pinMatch = body.match(/(?:^|\t)PIN=(\w+)/im) || body.match(/Pin=(\w+)/i);
 			pin = pinMatch ? pinMatch[1] : null;
 		}
-		console.log(`[ZK:BioData] Received template for PIN ${pin}`);
+
+		// Parse FID and No from body KV pairs
+		const fidMatch = body.match(/(?:^|\t)FID=(\w+)/im) || body.match(/(?:^|\t)Fid=(\w+)/im);
+		const noMatch = body.match(/(?:^|\t)No=(\w+)/im);
+		const fid = fidMatch ? fidMatch[1] : (table === 'FACE' ? '111' : '0');
+		const templateNo = noMatch ? noMatch[1] : '0';
+
+		console.log(`[ZK:BioData] Received ${table} template for PIN ${pin} FID=${fid} No=${templateNo}`);
 		if (pin) {
 			const person = db
 				.select()
@@ -205,16 +212,50 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				.get();
 
 			if (person) {
+				// Strip table name prefix from body (device sends "BIODATA Pin=1\t..." but we just want the KV pairs)
+				let kvData = body.trim();
+				const prefixPattern = new RegExp(`^${table}\\s+`, 'i');
+				kvData = kvData.replace(prefixPattern, '');
+
+				// Store template data
+				const existingTemplate = db
+					.select()
+					.from(bioTemplates)
+					.where(and(
+						eq(bioTemplates.personId, person.id),
+						eq(bioTemplates.templateType, table!),
+						eq(bioTemplates.fid, fid)
+					))
+					.get();
+
+				if (existingTemplate) {
+					db.update(bioTemplates)
+						.set({ templateData: kvData, templateNo, updatedAt: new Date() })
+						.where(eq(bioTemplates.id, existingTemplate.id))
+						.run();
+					console.log(`[ZK:BioData] Updated ${table} template for ${person.name}`);
+				} else {
+					db.insert(bioTemplates)
+						.values({
+							id: crypto.randomUUID(),
+							personId: person.id,
+							templateType: table!,
+							templateData: kvData,
+							fid,
+							templateNo
+						})
+						.run();
+					console.log(`[ZK:BioData] Stored new ${table} template for ${person.name}`);
+				}
+
+				// Track enrolled methods
 				let methods: string[] = [];
 				try {
 					methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : [];
 				} catch { methods = []; }
 
-				// BIODATA with FID=111 is face, FID=0 is finger — check OpStamp or default to face
-				const opStamp = url.searchParams.get('OpStamp') || '';
-				const method = opStamp === '0' ? 'finger' : 'face';
-
-				console.log(`[ZK:BioData] Associating template (OpStamp=${opStamp}) as ${method} for ${person.name}`);
+				const method = fid === '111' || table === 'FACE' ? 'face' : 'finger';
+				console.log(`[ZK:BioData] Associating template as ${method} for ${person.name}`);
 
 				if (!methods.includes(method)) {
 					methods.push(method);
@@ -304,12 +345,28 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				.set({ exitTime: entry.timestamp, status: 'checked_out' })
 				.where(eq(attendanceLogs.id, activeLog.id))
 				.run();
+
+			// Notify real-time check-out
+			notifyCheckOut({
+				personId: person.id,
+				personName: person.name,
+				verifyMethod: method,
+				photoUrl: person.photoUrl
+			});
 		} else {
 			// CLOSE + NEW: different day → close old, create new
 			db.update(attendanceLogs)
 				.set({ exitTime: entry.timestamp, status: 'checked_out' })
 				.where(eq(attendanceLogs.id, activeLog.id))
 				.run();
+
+			// Notify real-time check-out (closing old log)
+			notifyCheckOut({
+				personId: person.id,
+				personName: person.name,
+				verifyMethod: method,
+				photoUrl: person.photoUrl
+			});
 
 			db.insert(attendanceLogs)
 				.values({

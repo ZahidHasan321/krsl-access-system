@@ -7,13 +7,13 @@
     import * as Dialog from '$lib/components/ui/dialog';
     import { Label } from '$lib/components/ui/label';
     import * as Table from '$lib/components/ui/table';
-    import { Truck, Search, LogIn, LogOut, Clock, User, Phone, Package, AlertCircle, History as LucideHistory, CheckCircle2, Loader2, X, RotateCcw, ChevronLeft, ChevronRight, Printer } from 'lucide-svelte';
+    import { Truck, Search, LogIn, LogOut, Clock, User, Phone, Package, AlertCircle, History as LucideHistory, CheckCircle2, Loader2, X, RotateCcw, ChevronLeft, ChevronRight, Printer, ArrowLeft } from 'lucide-svelte';
     import { enhance } from '$app/forms';
     import { toast } from 'svelte-sonner';
     import { format } from 'date-fns';
     import { goto } from '$app/navigation';
     import { page } from '$app/state';
-    import { cn } from '$lib/utils';
+    import { cn, appToast } from '$lib/utils';
     import type { PageData, ActionData } from './$types';
     import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
     import logo from '$lib/assets/logo.png';
@@ -60,9 +60,8 @@
             isCheckInOpen = false;
             vehicleNumber = '';
             vehicleLookup = null;
-            toast.success(i18n.t('successCheckIn'));
         } else if (form?.message) {
-            toast.error(form.message);
+            appToast.error(form.message);
         }
     });
 

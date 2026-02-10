@@ -28,7 +28,7 @@ export const actions: Actions = {
 			});
 		}
 		if (!validatePassword(password)) {
-			return fail(400, { message: 'Invalid password' });
+			return fail(400, { message: 'Password must be at least 8 characters with both letters and numbers' });
 		}
 
 		const results = await db.select().from(table.user).where(eq(table.user.username, username));
@@ -49,7 +49,7 @@ export const actions: Actions = {
 		}
 
 		const sessionToken = auth.generateSessionToken();
-		const duration = rememberMe ? 1000 * 60 * 60 * 24 * 30 : 1000 * 60 * 60 * 24; // 30 days vs 1 day
+		const duration = rememberMe ? 1000 * 60 * 60 * 24 * 30 : 1000 * 60 * 60 * 24 * 7; // 30 days vs 7 days
 		const session = await auth.createSession(sessionToken, existingUser.id, duration);
 		auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
 
@@ -66,5 +66,11 @@ function validateUsername(username: unknown): username is string {
 }
 
 function validatePassword(password: unknown): password is string {
-	return typeof password === 'string' && password.length >= 6 && password.length <= 255;
+	return (
+		typeof password === 'string' &&
+		password.length >= 8 &&
+		password.length <= 255 &&
+		/[a-zA-Z]/.test(password) &&
+		/[0-9]/.test(password)
+	);
 }

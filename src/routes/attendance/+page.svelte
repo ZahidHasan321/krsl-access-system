@@ -20,7 +20,9 @@
 		Loader2,
 		Scan,
 		Fingerprint,
-		CreditCard
+		CreditCard,
+		History,
+		ArrowLeft
 	} from 'lucide-svelte';
 	import logo from '$lib/assets/logo.png';
 	import { goto } from '$app/navigation';
@@ -30,8 +32,8 @@
 	import { clsx } from 'clsx';
 	import { slide } from 'svelte/transition';
 	import { sineInOut } from 'svelte/easing';
-	import { cn, getCategoryLevelClass, statusBadgeClasses } from '$lib/utils';
-	import type { PageData } from './$types';
+	import { cn, getCategoryLevelClass, statusBadgeClasses, appToast } from '$lib/utils';
+	import type { PageData, ActionData } from './$types';
 	import CheckInDialog from '$lib/components/CheckInDialog.svelte';
 	import RegisterDialog from '../people/RegisterDialog.svelte';
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
@@ -42,7 +44,7 @@
 		getCategoryById
 	} from '$lib/constants/categories';
 
-	let { data }: { data: PageData } = $props();
+	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	const getCategoryPath = (categoryId: string) => {
 		const path: { id: string; name: string; slug: string }[] = [];
@@ -310,12 +312,12 @@
 {/if}
 
 <!-- Screen view -->
-<div class="no-print space-y-6 pt-4 pb-20">
+<div class="no-print pb-20">
 	<!-- Sticky Top Bar for Filters -->
 	<div
 		class="sticky-filter-bar"
 	>
-		<div class="mx-auto flex max-w-400 flex-wrap items-center justify-between gap-4">
+		<div class="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4">
 			<!-- Search Section - Left -->
 			<div class="group relative max-w-md flex-1">
 				<div
@@ -354,6 +356,15 @@
 				</div>
 
 				<div class="flex items-center gap-2">
+					<Button
+						variant="outline"
+						class="h-12 cursor-pointer gap-2 rounded-2xl border-2 border-slate-200 px-6 font-black transition-all hover:border-primary-300 hover:bg-primary-50"
+						onclick={() => goto('/history')}
+					>
+						<History size={18} />
+						<span>{i18n.t('history')}</span>
+					</Button>
+
 					<Button
 						variant="outline"
 						class="h-12 cursor-pointer gap-2 rounded-2xl border-2 border-slate-200 px-6 font-black transition-all hover:border-primary-300 hover:bg-primary-50"
@@ -716,22 +727,22 @@
 
 	<!-- Floating Action Buttons -->
 	{#if data.user?.permissions.includes('people.create')}
-		<div class="fixed right-10 bottom-10 z-30 flex flex-col gap-4">
+		<div class="fixed right-5 bottom-6 z-40 flex flex-col items-end gap-3 sm:right-8 sm:bottom-8">
 			<Button
-				variant="secondary"
-				class="group h-14 animate-in cursor-pointer gap-3 rounded-2xl border-2 border-slate-200 px-6 text-sm font-black shadow-xl transition-all delay-100 duration-500 slide-in-from-bottom-8 hover:scale-105 active:scale-95"
+				variant="outline"
+				class="h-14 cursor-pointer gap-2.5 rounded-full border border-slate-200 bg-white/90 px-6 text-sm font-bold text-slate-600 shadow-lg backdrop-blur-sm transition-all duration-200 hover:border-slate-300 hover:bg-white hover:shadow-xl active:scale-[0.97]"
 				onclick={() => (isRegisterOpen = true)}
 			>
-				<PlusCircle size={20} class="transition-transform duration-300 group-hover:rotate-90" />
+				<PlusCircle size={20} />
 				{i18n.t('register')}
 			</Button>
 
 			<Button
 				variant="default"
-				class="h-16 animate-in cursor-pointer gap-3 rounded-2xl px-8 text-base font-black shadow-2xl shadow-primary/30 transition-all duration-500 slide-in-from-bottom-12 hover:scale-105 active:scale-95"
+				class="h-14 cursor-pointer gap-2.5 rounded-full bg-primary-600 px-6 text-sm font-bold text-white shadow-lg shadow-primary-600/25 transition-all duration-200 hover:bg-primary-700 hover:shadow-xl hover:shadow-primary-600/30 active:scale-[0.97]"
 				onclick={() => (isCheckInOpen = true)}
 			>
-				<PlayCircle size={24} />
+				<PlayCircle size={20} />
 				{i18n.t('checkIn')}
 			</Button>
 		</div>

@@ -49,8 +49,8 @@ export const actions: Actions = {
             return fail(400, { message: 'Username must be between 3 and 31 characters' });
         }
 
-        if (password.length < 6 || password.length > 255) {
-            return fail(400, { message: 'Password must be between 6 and 255 characters' });
+        if (password.length < 8 || password.length > 255 || !/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+            return fail(400, { message: 'Password must be at least 8 characters with both letters and numbers' });
         }
 
         const passwordHash = await hash(password, {

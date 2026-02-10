@@ -23,7 +23,7 @@
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import { format, parseISO } from 'date-fns';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { clsx } from 'clsx';
 	import { cn, getCategoryLevelClass, statusBadgeClasses, getCategoryColorClass } from '$lib/utils';
 	import CheckInDialog from '$lib/components/CheckInDialog.svelte';
@@ -35,27 +35,8 @@
 
 	let { data }: { data: PageData } = $props();
 
-	// Real-time updates using Server-Sent Events
-	$effect(() => {
-		const eventSource = new EventSource('/api/events');
-
-		eventSource.onmessage = (event) => {
-			if (event.data === 'update') {
-				invalidateAll();
-			}
-		};
-
-		eventSource.onerror = () => {
-			// If connection drops, retry after a delay
-			setTimeout(() => {
-				if (eventSource.readyState === EventSource.CLOSED) {
-					// Svelte will re-run effect if we trigger a change or just let it naturally reconnect
-				}
-			}, 5000);
-		};
-
-		return () => eventSource.close();
-	});
+	// Real-time updates are handled by the layout's SSE connection,
+	// which calls invalidateAll() with debounce on every event.
 
 	let isCheckInTypeSelectOpen = $state(false);
 	let isPersonCheckInOpen = $state(false);

@@ -34,7 +34,7 @@
         Briefcase,
         TrendingUp,
         Fingerprint,
-        Scan,
+        ScanFace,
         CreditCard,
         Radio
     } from 'lucide-svelte';
@@ -290,13 +290,13 @@
                             </div>
                             <div class="flex flex-wrap gap-2">
                                 {#if enrolledMethods.includes('finger')}
-                                    <Badge class="bg-emerald-100 text-emerald-700 border-emerald-200 font-bold text-[10px] uppercase gap-1">
+                                    <Badge class="bg-sky-100 text-sky-700 border-sky-200 font-bold text-[10px] uppercase gap-1">
                                         <Fingerprint size={12} /> Finger
                                     </Badge>
                                 {/if}
                                 {#if enrolledMethods.includes('face')}
-                                    <Badge class="bg-blue-100 text-blue-700 border-blue-200 font-bold text-[10px] uppercase gap-1">
-                                        <Scan size={12} /> Face
+                                    <Badge class="bg-violet-100 text-violet-700 border-violet-200 font-bold text-[10px] uppercase gap-1">
+                                        <ScanFace size={12} /> Face
                                     </Badge>
                                 {/if}
                                 {#if enrolledMethods.includes('card')}

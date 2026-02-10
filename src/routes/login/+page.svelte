@@ -5,12 +5,13 @@
     import { Input } from '$lib/components/ui/input';
     import * as Card from '$lib/components/ui/card';
     import { Label } from '$lib/components/ui/label';
-    import { Shield, Loader2, ArrowRight } from 'lucide-svelte';
+    import { Shield, Loader2, ArrowRight, Eye, EyeOff } from 'lucide-svelte';
     import logo from '$lib/assets/logo.png';
     import type { ActionData } from './$types';
 
     let { form }: { form: ActionData } = $props();
     let isLoading = $state(false);
+    let showPassword = $state(false);
 </script>
 
 <div class="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12 sm:px-6 lg:px-8">
@@ -46,27 +47,43 @@
                     <div class="space-y-6">
                         <div class="space-y-2">
                             <Label for="username" class="font-bold uppercase text-[10px] tracking-widest text-slate-500 ml-1">Username</Label>
-                            <Input 
+                            <Input
                                 id="username"
-                                name="username" 
+                                name="username"
                                 placeholder="Enter your username"
-                                required 
+                                required
                                 autocomplete="username"
+                                disabled={isLoading}
                                 class="h-12 text-base border-2"
                             />
                         </div>
                         
                         <div class="space-y-2">
                             <Label for="password" class="font-bold uppercase text-[10px] tracking-widest text-slate-500 ml-1">Password</Label>
-                            <Input 
-                                id="password"
-                                name="password" 
-                                type="password" 
-                                placeholder="••••••••"
-                                required 
-                                autocomplete="current-password"
-                                class="h-12 text-base border-2"
-                            />
+                            <div class="relative">
+                                <Input
+                                    id="password"
+                                    name="password"
+                                    type={showPassword ? 'text' : 'password'}
+                                    placeholder="••••••••"
+                                    required
+                                    autocomplete="current-password"
+                                    disabled={isLoading}
+                                    class="h-12 text-base border-2 pr-12"
+                                />
+                                <button
+                                    type="button"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                    onclick={() => (showPassword = !showPassword)}
+                                    tabindex={-1}
+                                >
+                                    {#if showPassword}
+                                        <EyeOff size={20} />
+                                    {:else}
+                                        <Eye size={20} />
+                                    {/if}
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -84,6 +101,7 @@
                     >
                         {#if isLoading}
                             <Loader2 class="animate-spin" size={24} />
+                            <span>Signing in...</span>
                         {:else}
                             <span>Sign In</span>
                             <ArrowRight size={22} strokeWidth={2.5} class="mt-0.5" />

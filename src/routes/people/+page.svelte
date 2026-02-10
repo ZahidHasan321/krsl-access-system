@@ -8,7 +8,7 @@
     import { Checkbox } from '$lib/components/ui/checkbox';
     import * as Table from '$lib/components/ui/table';
     import * as Dialog from '$lib/components/ui/dialog';
-    import { Search, Users, PlusCircle, Edit2, Trash2, CheckCircle2, XCircle, Save, Eye, RotateCcw, ChevronRight, X, ChevronLeft, Printer, Loader2, Calendar, Fingerprint } from 'lucide-svelte';
+    import { Search, Users, PlusCircle, Edit2, Trash2, CheckCircle2, XCircle, Save, Eye, RotateCcw, ChevronRight, X, ChevronLeft, Printer, Loader2, Calendar, Fingerprint, ScanFace, CreditCard } from 'lucide-svelte';
     import { format } from 'date-fns';
     import { clsx } from 'clsx';
     import { cn, getCategoryBadgeClass, statusBadgeClasses, getPageRange } from '$lib/utils';
@@ -70,11 +70,22 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
     let editBiometricId = $state('');
     let editIsTrained = $state(false);
     let editNotes = $state('');
-    let editSyncToDevice = $state(false);
 
     // Change Category state
     let isChangeCategoryOpen = $state(false);
     let changeCategoryPerson = $state<any>(null);
+
+    // Delete confirmation state
+    let confirmDeleteOpen = $state(false);
+    let personToDelete = $state<any>(null);
+    let deleteFormElement = $state<HTMLFormElement | null>(null);
+
+    function triggerDelete(person: any, form: HTMLFormElement, e: Event) {
+        e.stopPropagation();
+        personToDelete = person;
+        deleteFormElement = form;
+        confirmDeleteOpen = true;
+    }
 
     // Category filter logic
     const selectedCategoryId = $derived(page.url.searchParams.get('category') || '');
@@ -124,9 +135,29 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
         return cat ? (i18n.t(cat.slug as any) || cat.name) : '';
     });
 
+    const selectedTrained = $derived(page.url.searchParams.get('trained') || '');
+
     const hasActiveFilters = $derived(
-        !!searchQuery || !!selectedCategoryId
+        !!searchQuery || !!selectedCategoryId || !!selectedTrained
     );
+
+    function parseEnrolledMethods(raw: string | null): string[] {
+        if (!raw) return [];
+        try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+
+    function setFilter(key: string, value: string) {
+        const url = new URL(page.url);
+        if (value) url.searchParams.set(key, value);
+        else url.searchParams.delete(key);
+        url.searchParams.set('page', '1');
+        goto(url.toString(), { keepFocus: true, noScroll: true });
+    }
 
     function handleSearch() {
         const url = new URL(page.url);
@@ -149,6 +180,7 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
         const url = new URL(page.url);
         url.searchParams.delete('q');
         url.searchParams.delete('category');
+        url.searchParams.delete('trained');
         url.searchParams.set('page', '1');
         goto(url.toString(), { keepFocus: true, noScroll: true });
     }
@@ -164,7 +196,6 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
         editDesignation = person.designation || '';
         editIsTrained = person.isTrained;
         editNotes = person.notes || '';
-        editSyncToDevice = false;
         isEditOpen = true;
     }
 
@@ -413,6 +444,32 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
                 </div>
             </div>
 
+            <!-- Training Status Filter -->
+            <div class="space-y-3">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{i18n.t('trainingStatus')}</p>
+                <div class="flex flex-col gap-1">
+                    {#each [{ label: i18n.t('all'), value: '' }, { label: i18n.t('trained'), value: 'yes' }, { label: i18n.t('untrained'), value: 'no' }] as opt}
+                        <Button
+                            variant={selectedTrained === opt.value ? "secondary" : "ghost"}
+                            class={cn(
+                                "justify-start font-bold h-10 px-3 transition-all cursor-pointer",
+                                selectedTrained === opt.value
+                                    ? "bg-primary-600 text-white hover:bg-primary-700 shadow-md"
+                                    : "text-slate-600"
+                            )}
+                            onclick={() => setFilter('trained', opt.value)}
+                        >
+                            <div class="flex items-center gap-2">
+                                {#if selectedTrained === opt.value}
+                                    <div class="size-1.5 rounded-full bg-white animate-pulse"></div>
+                                {/if}
+                                {opt.label}
+                            </div>
+                        </Button>
+                    {/each}
+                </div>
+            </div>
+
             <!-- Summary Stats -->
             <div class="p-4 rounded-xl bg-white border-2 border-slate-100 shadow-sm space-y-3">
                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Summary</p>
@@ -478,7 +535,7 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
                                                 };
                                             }}>
                                                 <input type="hidden" name="id" value={person.id} />
-                                                <Button type="submit" variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50" onclick={(e: MouseEvent) => e.stopPropagation()}>
+                                                <Button type="button" variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50" onclick={(e: MouseEvent) => triggerDelete(person, (e.currentTarget as HTMLButtonElement).form as HTMLFormElement, e)}>
                                                     <Trash2 size={15} />
                                                 </Button>
                                             </form>
@@ -504,6 +561,19 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
                                             <div class="flex items-center gap-1.5 text-rose-500 font-bold">
                                                 <XCircle size={14} />
                                                 <span>Not Trained</span>
+                                            </div>
+                                        {/if}
+                                        {#if parseEnrolledMethods(person.enrolledMethods).length > 0}
+                                            <div class="flex items-center gap-1.5 ml-auto">
+                                                {#if parseEnrolledMethods(person.enrolledMethods).includes('finger')}
+                                                    <Fingerprint size={14} class="text-sky-500" />
+                                                {/if}
+                                                {#if parseEnrolledMethods(person.enrolledMethods).includes('face')}
+                                                    <ScanFace size={14} class="text-violet-500" />
+                                                {/if}
+                                                {#if parseEnrolledMethods(person.enrolledMethods).includes('card')}
+                                                    <CreditCard size={14} class="text-amber-500" />
+                                                {/if}
                                             </div>
                                         {/if}
                                     </div>
@@ -539,8 +609,23 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
                                                             {#each data.people as person (person.id)}
                                                                 <Table.Row class="cursor-pointer group" onclick={() => goto(`/people/${person.id}`)}>                                        <Table.Cell class="py-4">
                                             <div class="font-bold text-slate-900 group-hover:text-primary-600 transition-colors">{person.name}</div>
-                                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
-                                                {person.designation || 'N/A'}
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                                                    {person.designation || 'N/A'}
+                                                </span>
+                                                {#if parseEnrolledMethods(person.enrolledMethods).length > 0}
+                                                    <div class="flex items-center gap-1">
+                                                        {#if parseEnrolledMethods(person.enrolledMethods).includes('finger')}
+                                                            <Fingerprint size={12} class="text-sky-500" />
+                                                        {/if}
+                                                        {#if parseEnrolledMethods(person.enrolledMethods).includes('face')}
+                                                            <ScanFace size={12} class="text-violet-500" />
+                                                        {/if}
+                                                        {#if parseEnrolledMethods(person.enrolledMethods).includes('card')}
+                                                            <CreditCard size={12} class="text-amber-500" />
+                                                        {/if}
+                                                    </div>
+                                                {/if}
                                             </div>
                                         </Table.Cell>
                                         <Table.Cell>
@@ -596,7 +681,7 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
                                                         };
                                                     }}>
                                                         <input type="hidden" name="id" value={person.id} />
-                                                        <Button type="submit" variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50" onclick={(e: MouseEvent) => e.stopPropagation()}>
+                                                        <Button type="button" variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50" onclick={(e: MouseEvent) => triggerDelete(person, (e.currentTarget as HTMLButtonElement).form as HTMLFormElement, e)}>
                                                             <Trash2 size={15} />
                                                         </Button>
                                                     </form>
@@ -706,6 +791,15 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
     onconfirm={printPeople}
 />
 
+<ConfirmModal
+    bind:open={confirmDeleteOpen}
+    title="Delete Person"
+    message="Are you sure you want to delete '{personToDelete?.name}'? All history and records for this person will be permanently removed. This action cannot be undone."
+    confirmText="Delete"
+    variant="danger"
+    onconfirm={() => deleteFormElement?.requestSubmit()}
+/>
+
 <!-- Edit Dialog -->
 {#if editPerson}
 <Dialog.Root bind:open={isEditOpen}>
@@ -758,20 +852,9 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
                     </div>
                     <div class="space-y-2">
                         <Label for="edit-biometricId" class="font-bold uppercase text-[10px] tracking-widest text-slate-500">Biometric ID</Label>
-                        <Input id="edit-biometricId" name="biometricId" bind:value={editBiometricId} class="h-11 border-2" placeholder="Device user PIN" />
+                        <Input id="edit-biometricId" name="biometricId" bind:value={editBiometricId} readonly class="h-11 border-2 bg-slate-50 text-slate-500 cursor-not-allowed" placeholder="Device user PIN" />
                     </div>
                 </div>
-
-                <input type="hidden" name="syncToDevice" value={editSyncToDevice && editBiometricId ? 'true' : 'false'} />
-                {#if editBiometricId}
-                    <button type="button" class={cn("flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left cursor-pointer w-full", editSyncToDevice ? "border-sky-200 bg-sky-50" : "border-slate-100 hover:border-slate-200")} onclick={() => editSyncToDevice = !editSyncToDevice}>
-                        <Checkbox checked={editSyncToDevice} />
-                        <div>
-                            <p class="font-bold text-sm text-slate-900">Sync to device</p>
-                            <p class="text-[10px] font-medium text-slate-500">Push user info to all connected devices</p>
-                        </div>
-                    </button>
-                {/if}
 
                 <div class="space-y-2">
                     <Label for="edit-notes" class="font-bold uppercase text-[10px] tracking-widest text-slate-500">{i18n.t('notes')}</Label>

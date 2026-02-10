@@ -6,7 +6,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { requirePermission } from '$lib/server/rbac';
 import { notifyChange } from '$lib/server/events';
-// Device sync is handled by enrollment flow (devicecmd on success, or /api/enroll/sync on skip)
+import { queueDeviceSync, queueDeviceDelete } from '$lib/server/device-sync';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
 
@@ -45,6 +45,7 @@ export const load: PageServerLoad = async (event) => {
 
     const query = event.url.searchParams.get('q') || '';
     const categoryId = event.url.searchParams.get('category') || '';
+    const trained = event.url.searchParams.get('trained') || '';
     const page = parseInt(event.url.searchParams.get('page') || '1');
     const limit = Math.min(100, Math.max(1, parseInt(event.url.searchParams.get('limit') || '20')));
     const offset = (page - 1) * limit;
@@ -62,7 +63,11 @@ export const load: PageServerLoad = async (event) => {
         const descendantIds = getDescendantIds(categoryId);
         whereClauses.push(inArray(people.categoryId, descendantIds));
     }
-
+    if (trained === 'yes') {
+        whereClauses.push(eq(people.isTrained, true));
+    } else if (trained === 'no') {
+        whereClauses.push(eq(people.isTrained, false));
+    }
     const where = whereClauses.length > 0 ? and(...whereClauses) : undefined;
 
     const list = await db
@@ -76,6 +81,7 @@ export const load: PageServerLoad = async (event) => {
             biometricId: people.biometricId,
             notes: people.notes,
             isTrained: people.isTrained,
+            enrolledMethods: people.enrolledMethods,
             categoryId: people.categoryId,
             createdAt: people.createdAt,
             category: {
@@ -122,7 +128,8 @@ export const load: PageServerLoad = async (event) => {
         },
         filters: {
             query,
-            categoryId
+            categoryId,
+            trained
         },
         pagination: {
             page,
@@ -272,11 +279,17 @@ export const actions: Actions = {
         if (!id) return fail(400, { message: 'ID required' });
 
         try {
+            // Look up biometricId before deletion so we can remove from devices
+            const person = db.select().from(people).where(eq(people.id, id)).get();
+            if (person?.biometricId) {
+                queueDeviceDelete(person.biometricId);
+            }
+
             await db.delete(people).where(eq(people.id, id));
             notifyChange();
             return { success: true };
         } catch (e) {
-            return fail(500, { message: 'Cannot delete person with attendance history' });
+            return fail(500, { message: 'Failed to delete person' });
         }
     }
 };

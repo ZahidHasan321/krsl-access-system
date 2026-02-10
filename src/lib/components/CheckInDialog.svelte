@@ -7,10 +7,9 @@
     import { Label } from '$lib/components/ui/label';
     import { Badge } from '$lib/components/ui/badge';
     import { Skeleton } from '$lib/components/ui/skeleton';
-    import { cn, getCategoryBadgeClass, statusBadgeClasses } from '$lib/utils';
+    import { cn, getCategoryBadgeClass, statusBadgeClasses, appToast } from '$lib/utils';
     import { Users, Search, Loader2, CheckCircle2, Building2, IdCard, Clock, AlertCircle, ChevronRight, X } from 'lucide-svelte';
     import { enhance } from '$app/forms';
-    import { toast } from 'svelte-sonner';
     import { fade, fly, slide } from 'svelte/transition';
     import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '$lib/constants/categories';
 
@@ -245,12 +244,27 @@
                                 onclick={() => selectPerson(person)}
                                 in:fly={{ y: 10, duration: 200 }}
                             >
-                                <div class="size-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
-                                    <Users size={18} />
+                                <div class="size-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0">
+                                    {#if person.photoUrl}
+                                        <img src={person.photoUrl} alt={person.title} class="size-full object-cover" loading="lazy" />
+                                    {:else}
+                                        <div class="flex size-full items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 text-xs font-black text-white">
+                                            {person.title.trim().split(/\s+/).length > 1
+                                                ? person.title.trim().split(/\s+/).slice(0, 2).map((n: string) => [...n][0]).join('')
+                                                : [...person.title.trim()][0] ?? '?'}
+                                        </div>
+                                    {/if}
                                 </div>
                                 <div class="min-w-0 flex-1">
                                     <p class="font-bold text-slate-900 truncate">{person.title}</p>
-                                    <p class="text-xs font-medium text-slate-500 truncate">{person.subtitle}</p>
+                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                        <Badge variant="outline" class={cn("text-[9px] font-bold uppercase tracking-wider px-1.5 h-4", getCategoryBadgeClass(person.rootCategorySlug))}>
+                                            {person.category}
+                                        </Badge>
+                                        {#if person.codeNo}
+                                            <span class="text-[10px] font-medium text-slate-400 truncate">{person.codeNo}</span>
+                                        {/if}
+                                    </div>
                                 </div>
                                 <div class="flex flex-col items-end gap-1 shrink-0">
                                     {#if person.status === 'on_premises'}
@@ -291,8 +305,16 @@
                         </div>
                         
                         <div class="flex items-start gap-4 relative">
-                            <div class="size-16 rounded-2xl bg-white flex items-center justify-center text-primary-500 border-2 border-primary-100 shadow-sm shrink-0">
-                                <Users size={32} />
+                            <div class="size-16 rounded-2xl bg-white flex items-center justify-center overflow-hidden border-2 border-primary-100 shadow-sm shrink-0">
+                                {#if selectedPerson.photoUrl}
+                                    <img src={selectedPerson.photoUrl} alt={selectedPerson.title} class="size-full object-cover" loading="lazy" />
+                                {:else}
+                                    <div class="flex size-full items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 text-xl font-black text-white">
+                                        {selectedPerson.title.trim().split(/\s+/).length > 1
+                                            ? selectedPerson.title.trim().split(/\s+/).slice(0, 2).map((n: string) => [...n][0]).join('')
+                                            : [...selectedPerson.title.trim()][0] ?? '?'}
+                                    </div>
+                                {/if}
                             </div>
                             <div class="min-w-0 flex-1">
                                 <h3 class="text-xl font-black text-slate-900 truncate">{selectedPerson.title}</h3>
@@ -363,13 +385,12 @@
                                 return async ({ result, update }) => {
                                     if (result.type === 'success') {
                                         open = false;
-                                        toast.success('Check-in successful');
                                         await update();
                                     } else if (result.type === 'failure') {
                                         const msg = (result.data as any)?.message || 'Check-in failed';
-                                        toast.error(msg);
+                                        appToast.error(msg);
                                     } else if (result.type === 'error') {
-                                        toast.error('An unexpected error occurred');
+                                        appToast.error('An unexpected error occurred');
                                     }
                                 };
                             }}>

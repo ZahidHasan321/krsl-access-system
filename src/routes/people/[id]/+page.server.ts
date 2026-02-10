@@ -4,7 +4,7 @@ import { eq, and, desc, sql, count } from 'drizzle-orm';
 import { error, fail } from '@sveltejs/kit';
 import { requirePermission } from '$lib/server/rbac';
 import { notifyChange } from '$lib/server/events';
-import { queueDeviceSync } from '$lib/server/device-sync';
+import { queueDeviceSync, queueDeviceDelete } from '$lib/server/device-sync';
 import type { PageServerLoad, Actions } from './$types';
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
@@ -165,7 +165,16 @@ export const actions: Actions = {
         const { id } = event.params;
 
         try {
+            // Look up person to get biometricId before deleting
+            const person = db.select().from(people).where(eq(people.id, id)).get();
+
             await db.delete(people).where(eq(people.id, id));
+
+            // Remove user from all ZK devices so the PIN is fully cleared
+            if (person?.biometricId) {
+                queueDeviceDelete(person.biometricId);
+            }
+
             notifyChange();
             return { success: true };
         } catch (e) {

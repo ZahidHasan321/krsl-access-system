@@ -1,9 +1,31 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { toast } from "svelte-sonner";
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
+
+/**
+ * Enhanced toast utility for specific application contexts
+ */
+export const appToast = {
+    checkIn: (message: string) => toast.success(message, {
+        style: "background-color: #ecfdf5; border: 1px solid #10b981; color: #065f46; font-weight: 700; border-radius: 1rem;",
+    }),
+    checkOut: (message: string) => toast.success(message, {
+        style: "background-color: #fff1f2; border: 1px solid #f43f5e; color: #9f1239; font-weight: 700; border-radius: 1rem;",
+    }),
+    success: (message: string) => toast.success(message, {
+        style: "background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; font-weight: 600; border-radius: 1rem;"
+    }),
+    error: (message: string) => toast.error(message, {
+        style: "background-color: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-weight: 600; border-radius: 1rem;"
+    }),
+    info: (message: string) => toast.info(message, {
+        style: "background-color: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; font-weight: 600; border-radius: 1rem;"
+    })
+};
 
 export type WithElementRef<T> = T & {
 	ref?: HTMLElement;

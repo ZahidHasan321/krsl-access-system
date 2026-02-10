@@ -6,9 +6,9 @@
     import { Label } from '$lib/components/ui/label';
     import { Badge } from '$lib/components/ui/badge';
     import { Skeleton } from '$lib/components/ui/skeleton';
+    import { appToast } from '$lib/utils';
     import { Truck, Search, LogIn, Clock, User, Phone, Package, AlertCircle, History as LucideHistory, CheckCircle2, Loader2 } from 'lucide-svelte';
     import { enhance } from '$app/forms';
-    import { toast } from 'svelte-sonner';
     import { format } from 'date-fns';
 
     let { open = $bindable() } = $props<{ open: boolean }>();
@@ -68,13 +68,12 @@
                 return async ({ result, update }) => {
                                                     if (result.type === 'success') {
                                                         open = false;
-                                                        toast.success('Vehicle checked in');
                                                         await update();
                                                     } else if (result.type === 'failure') {
                                                         const msg = (result.data as any)?.message || 'Check-in failed';
-                                                        toast.error(msg);
+                                                        appToast.error(msg);
                                                     } else if (result.type === 'error') {
-                                                        toast.error('An unexpected error occurred');
+                                                        appToast.error('An unexpected error occurred');
                                                     }                };
             }} class="space-y-5">
                 <div class="space-y-2">

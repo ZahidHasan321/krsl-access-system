@@ -10,6 +10,7 @@ export const GET: RequestHandler = ({ locals }) => {
     let heartbeat: ReturnType<typeof setInterval>;
     let changeListener: () => void;
     let checkinListener: (data: CheckInData) => void;
+    let checkoutListener: (data: CheckInData) => void;
     let enrollmentListener: (data: EnrollmentData) => void;
     let enrollmentFailedListener: (data: EnrollmentFailedData) => void;
     let closed = false;
@@ -28,6 +29,12 @@ export const GET: RequestHandler = ({ locals }) => {
                 }
             };
 
+            checkoutListener = (data: CheckInData) => {
+                if (!closed) {
+                    controller.enqueue(`event: checkout\ndata: ${JSON.stringify(data)}\n\n`);
+                }
+            };
+
             enrollmentListener = (data: EnrollmentData) => {
                 if (!closed) {
                     controller.enqueue(`event: enrollment\ndata: ${JSON.stringify(data)}\n\n`);
@@ -42,6 +49,7 @@ export const GET: RequestHandler = ({ locals }) => {
 
             eventHub.on('change', changeListener);
             eventHub.on('checkin', checkinListener);
+            eventHub.on('checkout', checkoutListener);
             eventHub.on('enrollment', enrollmentListener);
             eventHub.on('enrollment-failed', enrollmentFailedListener);
 
@@ -55,6 +63,7 @@ export const GET: RequestHandler = ({ locals }) => {
             closed = true;
             eventHub.off('change', changeListener);
             eventHub.off('checkin', checkinListener);
+            eventHub.off('checkout', checkoutListener);
             eventHub.off('enrollment', enrollmentListener);
             eventHub.off('enrollment-failed', enrollmentFailedListener);
             clearInterval(heartbeat);

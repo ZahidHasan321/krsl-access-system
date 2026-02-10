@@ -1,7 +1,7 @@
 <script lang="ts">
     import { i18n } from '$lib/i18n.svelte';
     import LangSwitch from './LangSwitch.svelte';
-    import { Menu, X, LayoutDashboard, Users, UserCheck, Truck, Search, Loader2, ShieldCheck, History, LogOut, Settings2 } from 'lucide-svelte';
+    import { Menu, X, LayoutDashboard, Users, UserCheck, Truck, Search, Loader2, ShieldCheck, History, LogOut, Settings2, Monitor } from 'lucide-svelte';
     import { page } from '$app/state';
     import { clsx } from 'clsx';
     import logo from '$lib/assets/logo.png';
@@ -68,32 +68,17 @@
 
     const navLinks = [
         { href: '/', label: 'dashboard', icon: LayoutDashboard },
-        {
-            label: 'entryLog',
-            icon: UserCheck,
-            permission: 'people.view',
-            sub: [
-                { href: '/attendance', label: 'checkIn', icon: UserCheck },
-                { href: '/history', label: 'history', icon: History }
-            ]
-        },
+        { href: '/attendance', label: 'entryLog', icon: UserCheck, permission: 'people.view' },
         { href: '/people', label: 'people', icon: Users, permission: 'people.view' },
-        {
-            label: 'vehicles',
-            icon: Truck,
-            permission: 'vehicles.view',
-            sub: [
-                { href: '/vehicles', label: 'checkIn', icon: Truck },
-                { href: '/vehicles/history', label: 'history', icon: History }
-            ]
-        },
+        { href: '/vehicles', label: 'vehicles', icon: Truck, permission: 'vehicles.view' },
         {
             label: 'admin',
             icon: ShieldCheck,
             permission: 'users.manage',
             sub: [
                 { href: '/admin/users', label: 'userManagement', icon: Users },
-                { href: '/admin/roles', label: 'roleManagement', icon: Settings2 }
+                { href: '/admin/roles', label: 'roleManagement', icon: Settings2 },
+                { href: '/devices', label: 'devices', icon: Monitor }
             ]
         }
     ];

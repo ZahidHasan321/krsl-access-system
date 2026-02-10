@@ -191,7 +191,7 @@
         <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-4">
             <!-- Search & Back Section - Left -->
             <div class="flex items-center gap-4 flex-1 max-w-2xl">
-                <Button variant="ghost" size="icon" class="shrink-0 rounded-xl hover:bg-slate-100" onclick={() => goto('/vehicles')}>
+                <Button variant="ghost" size="icon" class="shrink-0 rounded-xl hover:bg-slate-100" onclick={() => history.back()}>
                     <ArrowLeft size={20} />
                 </Button>
                 <div class="flex-1 relative group">

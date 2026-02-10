@@ -10,8 +10,8 @@
 	import { i18n } from '$lib/i18n.svelte';
 	import { clsx } from 'clsx';
 	import { format } from 'date-fns';
-	import { Calendar, Mail, Shield, Trash2, UserPlus, Users } from 'lucide-svelte';
-	import { toast } from 'svelte-sonner';
+	import { Calendar, Eye, EyeOff, Loader2, Mail, Shield, Trash2, UserPlus, Users } from 'lucide-svelte';
+	import { appToast } from '$lib/utils';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -20,6 +20,8 @@
 	let confirmDeleteOpen = $state(false);
 	let userToDelete = $state<{ id: string; username: string } | null>(null);
 	let deleteFormElement = $state<HTMLFormElement | null>(null);
+	let showPassword = $state(false);
+	let isCreating = $state(false);
 
 	function triggerDelete(u: any, form: HTMLFormElement) {
 		userToDelete = u;
@@ -30,9 +32,9 @@
 	$effect(() => {
 		if (form && 'success' in form && form.success) {
 			isCreateDialogOpen = false;
-			toast.success('Operation successful');
+			appToast.success('Operation successful');
 		} else if (form?.message) {
-			toast.error(form.message);
+			appToast.error(form.message);
 		}
 	});
 </script>
@@ -156,7 +158,13 @@
 		<Dialog.Header>
 			<Dialog.Title class="text-2xl font-black">Create User</Dialog.Title>
 		</Dialog.Header>
-		<form method="POST" action="?/createUser" use:enhance class="space-y-6 pt-4">
+		<form method="POST" action="?/createUser" use:enhance={() => {
+			isCreating = true;
+			return async ({ update }) => {
+				await update();
+				isCreating = false;
+			};
+		}} class="space-y-6 pt-4">
 			<div class="space-y-2">
 				<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">Username</Label>
 				<Input
@@ -170,14 +178,29 @@
 			</div>
 			<div class="space-y-2">
 				<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">Password</Label>
-				<Input
-					name="password"
-					type="password"
-					required
-					minlength={6}
-					placeholder="••••••••"
-					class="h-11 border-2"
-				/>
+				<div class="relative">
+					<Input
+						name="password"
+						type={showPassword ? 'text' : 'password'}
+						required
+						minlength={8}
+						placeholder="••••••••"
+						class="h-11 border-2 pr-12"
+					/>
+					<button
+						type="button"
+						class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+						onclick={() => (showPassword = !showPassword)}
+						tabindex={-1}
+					>
+						{#if showPassword}
+							<EyeOff size={20} />
+						{:else}
+							<Eye size={20} />
+						{/if}
+					</button>
+				</div>
+				<p class="text-xs text-slate-400">At least 8 characters with both letters and numbers</p>
 			</div>
 			<div class="space-y-2">
 				<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">Assign Role</Label
@@ -200,9 +223,14 @@
 				>
 					Cancel
 				</Button>
-				<Button type="submit" class="h-12 flex-1 gap-2 text-base font-black">
-					<UserPlus size={20} />
-					Create
+				<Button type="submit" class="h-12 flex-1 gap-2 text-base font-black" disabled={isCreating}>
+					{#if isCreating}
+						<Loader2 class="animate-spin" size={20} />
+						Creating...
+					{:else}
+						<UserPlus size={20} />
+						Create
+					{/if}
 				</Button>
 			</div>
 		</form>

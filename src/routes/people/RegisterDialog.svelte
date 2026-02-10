@@ -6,15 +6,37 @@
     import { Checkbox } from '$lib/components/ui/checkbox';
     import { Label } from '$lib/components/ui/label';
     import { Badge } from '$lib/components/ui/badge';
-    import { Users, Briefcase, HardHat, UserCheck, ChevronRight, Save, X, Camera, Upload } from 'lucide-svelte';
+    import { Users, Briefcase, HardHat, UserCheck, ChevronRight, Save, X, Camera, Upload, Wifi, WifiOff, Loader2 } from 'lucide-svelte';
     import { enhance } from '$app/forms';
-    import { toast } from 'svelte-sonner';
+    import { appToast } from '$lib/utils';
     import { fade, fly, slide } from 'svelte/transition';
     import { cn, getCategoryBadgeClass } from '$lib/utils';
     import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '$lib/constants/categories';
     import EnrollmentPanel from './EnrollmentPanel.svelte';
+    import { onMount } from 'svelte';
 
     let { open = $bindable() } = $props<{ open: boolean }>();
+
+    let deviceOnline = $state(false);
+    let deviceLoading = $state(true);
+
+    async function checkDeviceStatus() {
+        try {
+            const res = await fetch('/api/devices/status');
+            const data = await res.json();
+            deviceOnline = data.online;
+        } catch {
+            deviceOnline = false;
+        } finally {
+            deviceLoading = false;
+        }
+    }
+
+    onMount(() => {
+        checkDeviceStatus();
+        const interval = setInterval(checkDeviceStatus, 10000); // Check every 10s
+        return () => clearInterval(interval);
+    });
 
     let selectedRootCategoryId = $state<string>('');
     let selectedSubCategoryId = $state<string>('');
@@ -116,31 +138,54 @@
 
 <Dialog.Root bind:open>
     <Dialog.Content class="sm:max-w-[650px] p-0 overflow-hidden max-h-[90vh] flex flex-col">
-        <div class="p-6 border-b bg-slate-50 shrink-0">
-            <Dialog.Title class="text-xl font-black">
-                {#if registeredPerson}
-                    {#if showSummary}
-                        Registration Complete
+        <div class="p-6 border-b bg-slate-50 shrink-0 flex items-center justify-between">
+            <div>
+                <Dialog.Title class="text-xl font-black">
+                    {#if registeredPerson}
+                        {#if showSummary}
+                            Registration Complete
+                        {:else}
+                            Device Enrollment
+                        {/if}
                     {:else}
-                        Device Enrollment
+                        {i18n.t('register')}
                     {/if}
-                {:else}
-                    {i18n.t('register')}
-                {/if}
-            </Dialog.Title>
-            <Dialog.Description class="font-bold text-xs uppercase tracking-widest text-slate-500">
-                {#if registeredPerson}
-                    {#if showSummary}
-                        Successfully added {registeredPerson.name}
+                </Dialog.Title>
+                <Dialog.Description class="font-bold text-xs uppercase tracking-widest text-slate-500">
+                    {#if registeredPerson}
+                        {#if showSummary}
+                            Successfully added {registeredPerson.name}
+                        {:else}
+                            Register {registeredPerson.name} on a device
+                        {/if}
+                    {:else if selectedRootCategory}
+                        Registering new {i18n.t(selectedRootCategory.slug as any) || selectedRootCategory.name}
                     {:else}
-                        Register {registeredPerson.name} on a device
+                        Select a category to continue
                     {/if}
-                {:else if selectedRootCategory}
-                    Registering new {i18n.t(selectedRootCategory.slug as any) || selectedRootCategory.name}
-                {:else}
-                    Select a category to continue
-                {/if}
-            </Dialog.Description>
+                </Dialog.Description>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <!-- Device status indicator -->
+                <div class={cn(
+                    "flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider transition-colors",
+                    deviceLoading ? "bg-slate-100 border-slate-200 text-slate-400" :
+                    deviceOnline ? "bg-emerald-50 border-emerald-200 text-emerald-600" : 
+                    "bg-rose-50 border-rose-200 text-rose-600"
+                )}>
+                    {#if deviceLoading}
+                        <Loader2 size={12} class="animate-spin" />
+                        <span>Checking...</span>
+                    {:else if deviceOnline}
+                        <Wifi size={12} />
+                        <span>Online</span>
+                    {:else}
+                        <WifiOff size={12} />
+                        <span>Offline</span>
+                    {/if}
+                </div>
+            </div>
         </div>
 
         <div class="p-6 overflow-y-auto flex-1">
@@ -305,7 +350,12 @@
                         action="/people?/create"
                         class="space-y-5"
                         enctype="multipart/form-data"
-                        use:enhance={({ formData }) => {
+                        use:enhance={({ formData, cancel }) => {
+                            if (!deviceOnline) {
+                                appToast.error('Device is offline. Registration requires a connected device.');
+                                cancel();
+                                return;
+                            }
                             // Capture form values before submission
                             const formName = formData.get('name') as string;
                             const formCompany = formData.get('company') as string || null;
@@ -320,7 +370,7 @@
                             return async ({ result, update }) => {
                                 if (result.type === 'success') {
                                     const data = result.data as any;
-                                    toast.success('Registration successful');
+                                    appToast.success('Registration successful');
                                     await update();
                                     // Transition to enrollment step
                                     registeredPerson = {
@@ -338,9 +388,9 @@
                                     };
                                 } else if (result.type === 'failure') {
                                     const msg = (result.data as any)?.message || 'Registration failed';
-                                    toast.error(msg);
+                                    appToast.error(msg);
                                 } else {
-                                    toast.error('An unexpected error occurred');
+                                    appToast.error('An unexpected error occurred');
                                 }
                             };
                         }}

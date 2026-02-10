@@ -46,8 +46,7 @@ ${body.substring(0, 200)}...`);
 
 	const response = buildHandshakeResponse(sn);
 	console.log(`[ZK:Registry] Response to ${sn}:
-${response.replace(/
-/g, ' | ')}`);
+${response.replace(/\n/g, ' | ')}`);
 
 	return new Response(response, {
 		headers: { 'Content-Type': 'text/plain' }

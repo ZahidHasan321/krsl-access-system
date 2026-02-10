@@ -71,7 +71,7 @@ export function parseAttLog(body: string): AttLogEntry[] {
 }
 
 /** Format a command for heartbeat response */
-export function formatCommand(id: string, commandString: string): string {
+export function formatCommand(id: number | string, commandString: string): string {
 	return `C:${id}:${commandString}`;
 }
 
@@ -119,6 +119,9 @@ export const Commands = {
 	},
 	reloadOptions(): string {
 		return 'RELOAD OPTIONS';
+	},
+	updateTemplate(table: string, kvString: string): string {
+		return `DATA UPDATE ${table} ${kvString}`;
 	}
 };
 

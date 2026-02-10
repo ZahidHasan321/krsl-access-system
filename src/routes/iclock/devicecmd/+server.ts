@@ -5,12 +5,12 @@ import { eq, sql } from 'drizzle-orm';
 import { Commands } from '$lib/zkteco';
 import { notifyEnrollment, notifyEnrollmentFailed } from '$lib/server/events';
 
-function nextCommandId(): string {
+function nextCommandId(): number {
 	const [row] = db
-		.select({ maxId: sql<number>`COALESCE(MAX(CAST(id AS INTEGER)), 999)` })
+		.select({ maxId: sql<number>`COALESCE(MAX(id), 999)` })
 		.from(deviceCommands)
 		.all();
-	return String((row.maxId || 999) + 1);
+	return (row.maxId || 999) + 1;
 }
 
 /** POST — Command confirmation from device */
@@ -20,7 +20,8 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 	// Parse: ID=<cmd_id>&Return=<code>&CMD=<string>
 	const params = new URLSearchParams(body);
-	const cmdId = params.get('ID');
+	const cmdIdRaw = params.get('ID');
+	const cmdId = cmdIdRaw ? Number(cmdIdRaw) : null;
 	const returnCode = params.get('Return');
 
 	if (cmdId) {

@@ -89,7 +89,7 @@ export const people = sqliteTable('people', {
 // --- Attendance Logs ---
 export const attendanceLogs = sqliteTable('attendance_logs', {
     id: text('id').primaryKey(),
-    personId: text('person_id').notNull().references(() => people.id, { onDelete: 'restrict' }),
+    personId: text('person_id').notNull().references(() => people.id, { onDelete: 'cascade' }),
     entryTime: integer('entry_time', { mode: 'timestamp' }).notNull(),
     exitTime: integer('exit_time', { mode: 'timestamp' }), // null = currently inside
     status: text('status', { enum: ['on_premises', 'checked_out'] }).notNull(),
@@ -154,6 +154,21 @@ export const deviceCommands = sqliteTable('device_commands', {
 }, (table) => ({
     deviceSnIdx: index('device_commands_device_sn_idx').on(table.deviceSn),
     statusIdx: index('device_commands_status_idx').on(table.status),
+}));
+
+// --- Biometric Templates ---
+export const bioTemplates = sqliteTable('bio_templates', {
+    id: text('id').primaryKey(),
+    personId: text('person_id').notNull().references(() => people.id, { onDelete: 'cascade' }),
+    templateType: text('template_type').notNull(), // 'FACE' | 'FINGERTMP' | 'BIODATA'
+    templateData: text('template_data').notNull(), // Raw tab-separated KV string from device
+    fid: text('fid'),           // '0'=finger, '111'=face
+    templateNo: text('template_no'), // Template index from device
+    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
+}, (table) => ({
+    personIdIdx: index('bio_templates_person_id_idx').on(table.personId),
+    uniqueIdx: index('bio_templates_unique_idx').on(table.personId, table.templateType, table.fid),
 }));
 
 // --- Raw Punches (audit trail) ---

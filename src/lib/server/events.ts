@@ -19,6 +19,10 @@ export function notifyCheckIn(data: CheckInData) {
     eventHub.emit('checkin', data);
 }
 
+export function notifyCheckOut(data: CheckInData) {
+    eventHub.emit('checkout', data);
+}
+
 export interface EnrollmentData {
     personId: string;
     method: string;

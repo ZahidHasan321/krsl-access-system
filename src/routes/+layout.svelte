@@ -3,6 +3,7 @@
     import { onMount, onDestroy } from 'svelte';
     import { Toaster, toast } from 'svelte-sonner';
     import { initI18n } from '$lib/i18n.svelte';
+    import { appToast } from '$lib/utils';
     import Navbar from '$lib/components/Navbar.svelte';
 	import favicon from '$lib/assets/favicon.svg';
     import { page } from '$app/state';
@@ -52,12 +53,15 @@
             try {
                 const data = JSON.parse(e.data);
                 const method = data.verifyMethod ? ` (${data.verifyMethod})` : '';
-                toast.info(`${data.personName} checked in${method}`, {
-                    action: {
-                        label: 'View',
-                        onClick: () => goto(`/people/${data.personId}`)
-                    }
-                });
+                appToast.checkIn(`${data.personName} checked in${method}`);
+            } catch {}
+        });
+
+        eventSource.addEventListener('checkout', (e) => {
+            try {
+                const data = JSON.parse(e.data);
+                const method = data.verifyMethod ? ` (${data.verifyMethod})` : '';
+                appToast.checkOut(`${data.personName} checked out${method}`);
             } catch {}
         });
 

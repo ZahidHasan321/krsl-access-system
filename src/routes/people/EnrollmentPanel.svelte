@@ -4,7 +4,7 @@
     import { Input } from '$lib/components/ui/input';
     import { Label } from '$lib/components/ui/label';
     import { Fingerprint, Scan, CreditCard, Wifi, WifiOff, Loader2, X, AlertTriangle, CheckCircle } from 'lucide-svelte';
-    import { cn } from '$lib/utils';
+    import { cn, appToast } from '$lib/utils';
     import { fade } from 'svelte/transition';
 
     let {
@@ -67,6 +67,10 @@
     });
 
     async function startEnroll(method: 'face' | 'finger') {
+        if (!deviceOnline) {
+            appToast.error('Device is offline');
+            return;
+        }
         selectedMethod = method;
         step = 'waiting';
         try {
@@ -78,6 +82,7 @@
         } catch {
             failureCode = 'network';
             step = 'failed';
+            appToast.error('Network error during enrollment');
         }
     }
 
@@ -96,10 +101,12 @@
             } else {
                 failureCode = 'card-failed';
                 step = 'failed';
+                appToast.error('Failed to register card');
             }
         } catch {
             failureCode = 'network';
             step = 'failed';
+            appToast.error('Network error during card registration');
         }
     }
 

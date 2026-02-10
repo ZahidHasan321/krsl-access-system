@@ -5,7 +5,7 @@
     import { Input } from '$lib/components/ui/input';
     import { Badge } from '$lib/components/ui/badge';
     import * as Table from '$lib/components/ui/table';
-    import { Search, Calendar, Filter, Clock, Users, TrendingUp, X, RotateCcw, ChevronRight, ChevronLeft, Printer, Loader2 } from 'lucide-svelte';
+    import { Search, Calendar, Filter, Clock, Users, TrendingUp, X, RotateCcw, ChevronRight, ChevronLeft, Printer, Loader2, UserCheck, ArrowLeft } from 'lucide-svelte';
     import logo from '$lib/assets/logo.png';
     import { clsx } from 'clsx';
     import { cn, getCategoryBadgeClass, statusBadgeClasses } from '$lib/utils';
@@ -344,10 +344,14 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
     <div class="sticky-filter-bar">
         <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-4">
             <!-- Search Section - Left -->
-            <div class="flex-1 max-w-md relative group">
-                <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors">
-                    <Search size={20} />
-                </div>
+            <div class="flex items-center gap-4 flex-1 max-w-md">
+                <Button variant="ghost" size="icon" class="shrink-0 rounded-xl hover:bg-slate-100" onclick={() => history.back()}>
+                    <ArrowLeft size={20} />
+                </Button>
+                <div class="flex-1 relative group">
+                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors">
+                        <Search size={20} />
+                    </div>
                 <Input 
                     bind:value={searchQuery}
                     oninput={handleSearchInput}
@@ -362,6 +366,7 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
                         <X size={16} />
                     </button>
                 {/if}
+                </div>
             </div>
 
             <!-- Range and Actions - Right -->

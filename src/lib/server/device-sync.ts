@@ -3,6 +3,14 @@ import { devices, deviceCommands, people, bioTemplates } from '$lib/server/db/sc
 import { Commands } from '$lib/zkteco';
 import { sql, eq, isNotNull } from 'drizzle-orm';
 
+/** Device is considered online if last heartbeat was within this threshold */
+const ONLINE_THRESHOLD_MS = 15 * 1000; // 15 seconds (device polls every ~2s)
+
+/** Check if a device is online based on its last heartbeat */
+export function isDeviceOnline(lastHeartbeat: Date | null): boolean {
+	return !!lastHeartbeat && (Date.now() - lastHeartbeat.getTime()) < ONLINE_THRESHOLD_MS;
+}
+
 /** Generate sequential integer command IDs (like Python's 1000, 1001, ...) */
 function nextCommandId(): number {
 	const [row] = db

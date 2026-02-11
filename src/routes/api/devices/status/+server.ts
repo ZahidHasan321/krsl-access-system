@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { devices } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { isDeviceOnline } from '$lib/server/device-sync';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = ({ locals }) => {
@@ -8,11 +8,12 @@ export const GET: RequestHandler = ({ locals }) => {
 		return new Response('Unauthorized', { status: 401 });
 	}
 
-	const onlineDevices = db
-		.select({ id: devices.id, name: devices.name, serialNumber: devices.serialNumber })
+	const allDevices = db
+		.select({ id: devices.id, name: devices.name, serialNumber: devices.serialNumber, lastHeartbeat: devices.lastHeartbeat })
 		.from(devices)
-		.where(eq(devices.status, 'online'))
 		.all();
+
+	const onlineDevices = allDevices.filter(d => isDeviceOnline(d.lastHeartbeat));
 
 	return new Response(JSON.stringify({
 		online: onlineDevices.length > 0,

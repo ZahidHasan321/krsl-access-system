@@ -2,6 +2,7 @@ import { db } from '$lib/server/db';
 import { devices, deviceCommands, bioTemplates, people } from '$lib/server/db/schema';
 import { eq, sql, isNotNull } from 'drizzle-orm';
 import { requirePermission } from '$lib/server/rbac';
+import { isDeviceOnline } from '$lib/server/device-sync';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -42,6 +43,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		devices: allDevices.map(d => ({
 			...d,
+			status: isDeviceOnline(d.lastHeartbeat) ? 'online' : 'offline',
 			pendingCommands: pendingMap[d.serialNumber] || 0
 		})),
 		templateStats: {

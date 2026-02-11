@@ -224,11 +224,11 @@
    =========================================== */
 @page {
   size: auto;
-  margin: 1.6cm 1.2cm; /* Professional standard margins for all pages */
+  margin: 0; /* Remove browser default headers/footers (URL, title, date) */
 }
 
 @page :first {
-  margin-top: 0.8cm; /* Reduced top margin for the first page because it has a header */
+  margin: 0;
 }
 
 /* Filter Bar sticky behavior */
@@ -285,6 +285,7 @@
   /* Force print-only sections to be visible and correctly structured */
   .print-only {
     display: block !important;
+    padding: 1.2cm !important; /* Content padding since @page margin is 0 */
   }
 
   /* Official Audit Table Styling */

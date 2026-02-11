@@ -135,6 +135,18 @@ const translations = {
         duration: 'Duration',
         logout: 'Logout',
         total: 'Total',
+        auditReport: 'Audit Report',
+        generate: 'Generate',
+        selectAll: 'Select All',
+        deselectAll: 'Deselect All',
+        entryRange: 'Entry Time Range',
+        exitRange: 'Exit Time Range',
+        clearAll: 'Clear All',
+        removeEntry: 'Remove',
+        printReport: 'Print Report',
+        generationPanel: 'Generation Panel',
+        useRealEntryTime: 'Use Real Entry Time',
+        warning: 'Warning',
     },
     bn: {
         // Navigation
@@ -270,6 +282,18 @@ const translations = {
         duration: 'সময়কাল',
         logout: 'লগআউট',
         total: 'মোট',
+        auditReport: 'অডিট রিপোর্ট',
+        generate: 'তৈরি করুন',
+        selectAll: 'সব নির্বাচন',
+        deselectAll: 'সব বাতিল',
+        entryRange: 'প্রবেশের সময় পরিসীমা',
+        exitRange: 'বাহিরের সময় পরিসীমা',
+        clearAll: 'সব মুছুন',
+        removeEntry: 'সরান',
+        printReport: 'রিপোর্ট প্রিন্ট',
+        generationPanel: 'তৈরি প্যানেল',
+        useRealEntryTime: 'প্রকৃত প্রবেশের সময় ব্যবহার করুন',
+        warning: 'সতর্কতা',
     }
 };
 

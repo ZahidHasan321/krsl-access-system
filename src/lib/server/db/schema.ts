@@ -187,3 +187,17 @@ export const rawPunches = sqliteTable('raw_punches', {
     pinIdx: index('raw_punches_pin_idx').on(table.pin),
     processedIdx: index('raw_punches_processed_idx').on(table.processed),
 }));
+
+// --- Audit Entries ---
+export const auditEntries = sqliteTable('audit_entries', {
+    id: text('id').primaryKey(),
+    personId: text('person_id').notNull().references(() => people.id, { onDelete: 'cascade' }),
+    entryTime: integer('entry_time', { mode: 'timestamp' }).notNull(),
+    exitTime: integer('exit_time', { mode: 'timestamp' }),
+    purpose: text('purpose'),
+    date: text('date').notNull(), // 'YYYY-MM-DD'
+    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
+}, (table) => ({
+    personIdIdx: index('audit_entries_person_id_idx').on(table.personId),
+    dateIdx: index('audit_entries_date_idx').on(table.date),
+}));

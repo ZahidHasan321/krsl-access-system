@@ -1,7 +1,7 @@
 <script lang="ts">
     import { i18n } from '$lib/i18n.svelte';
     import LangSwitch from './LangSwitch.svelte';
-    import { Menu, X, LayoutDashboard, Users, UserCheck, Truck, Search, Loader2, ShieldCheck, History, LogOut, Settings2, Monitor } from 'lucide-svelte';
+    import { Menu, X, LayoutDashboard, Users, UserCheck, Truck, Search, Loader2, ShieldCheck, History, LogOut, Settings2, Monitor, ClipboardList } from 'lucide-svelte';
     import { page } from '$app/state';
     import { clsx } from 'clsx';
     import logo from '$lib/assets/logo.png';
@@ -78,7 +78,8 @@
             sub: [
                 { href: '/admin/users', label: 'userManagement', icon: Users },
                 { href: '/admin/roles', label: 'roleManagement', icon: Settings2 },
-                { href: '/devices', label: 'devices', icon: Monitor }
+                { href: '/devices', label: 'devices', icon: Monitor },
+                { href: '/admin/audit-report', label: 'auditReport', icon: ClipboardList }
             ]
         }
     ];

@@ -61,6 +61,31 @@
 	// People list search in generation panel
 	let genPeopleSearch = $state('');
 
+	// Virtual scroll state for people list
+	const ITEM_HEIGHT = 40; // px per row
+	const CONTAINER_HEIGHT = 448; // max-h-[28rem] = 28 * 16 = 448px
+	let scrollTop = $state(0);
+	let peopleListEl = $state<HTMLDivElement | null>(null);
+
+	const virtualSlice = $derived.by(() => {
+		const total = genFilteredPeople.length;
+		const buffer = 5;
+		const startIdx = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - buffer);
+		const visibleCount = Math.ceil(CONTAINER_HEIGHT / ITEM_HEIGHT) + buffer * 2;
+		const endIdx = Math.min(total, startIdx + visibleCount);
+		return { startIdx, endIdx, totalHeight: total * ITEM_HEIGHT };
+	});
+
+	// Reset scroll when filter changes
+	$effect(() => {
+		// Track filter dependencies
+		genFilteredPeople.length;
+		if (peopleListEl) {
+			peopleListEl.scrollTop = 0;
+			scrollTop = 0;
+		}
+	});
+
 	// Editable entries (local state for inline editing)
 	let editableEntries = $state<Map<string, { entryTime: string; exitTime: string; purpose: string }>>(new Map());
 	let isSaving = $state(false);
@@ -702,38 +727,46 @@
 									</button>
 								{/if}
 							</div>
-							<div class="max-h-[28rem] overflow-y-auto rounded-xl border-2 border-slate-100 bg-slate-50 p-2 space-y-0.5">
-								{#each genFilteredPeople as person (person.id)}
-									{@const isSelected = selectedPersonIds.has(person.id)}
-									{@const isPresent = !!data.realLogMap[person.id]}
-									<button
-										class={clsx(
-											'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-all cursor-pointer',
-											isSelected ? 'bg-primary-50 text-primary-700 font-bold' : 'text-slate-600 hover:bg-white'
-										)}
-										onclick={() => togglePerson(person.id)}
-									>
-										<div class={clsx(
-											'size-4 rounded border-2 flex items-center justify-center transition-all shrink-0',
-											isSelected ? 'border-primary-600 bg-primary-600' : 'border-slate-300 bg-white'
-										)}>
-											{#if isSelected}
-												<svg class="size-3 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
-													<path d="M2 6l3 3 5-5" />
-												</svg>
-											{/if}
-										</div>
-										<span class="truncate">{person.name}</span>
-										{#if isPresent}
-											<span class="shrink-0 rounded-full bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 text-[10px] font-black text-emerald-700 uppercase tracking-wider">Present</span>
-										{/if}
-										{#if person.company}
-											<span class="text-xs text-slate-400 truncate hidden sm:inline">{person.company}</span>
-										{/if}
-										<span class="ml-auto text-xs text-slate-400 shrink-0">{person.codeNo || ''}</span>
-									</button>
-								{/each}
-								{#if genFilteredPeople.length === 0}
+							<div
+								bind:this={peopleListEl}
+								onscroll={(e) => scrollTop = (e.target as HTMLDivElement).scrollTop}
+								class="max-h-[28rem] overflow-y-auto rounded-xl border-2 border-slate-100 bg-slate-50 p-2"
+							>
+								{#if genFilteredPeople.length > 0}
+									<div style="height: {virtualSlice.totalHeight}px; position: relative;">
+										{#each genFilteredPeople.slice(virtualSlice.startIdx, virtualSlice.endIdx) as person, i (person.id)}
+											{@const isSelected = selectedPersonIds.has(person.id)}
+											{@const isPresent = !!data.realLogMap[person.id]}
+											<button
+												class={clsx(
+													'flex w-full items-center gap-3 rounded-lg px-3 text-left text-sm transition-all cursor-pointer absolute left-0 right-0 mx-2',
+													isSelected ? 'bg-primary-50 text-primary-700 font-bold' : 'text-slate-600 hover:bg-white'
+												)}
+												style="height: {ITEM_HEIGHT}px; top: {(virtualSlice.startIdx + i) * ITEM_HEIGHT}px;"
+												onclick={() => togglePerson(person.id)}
+											>
+												<div class={clsx(
+													'size-4 rounded border-2 flex items-center justify-center transition-all shrink-0',
+													isSelected ? 'border-primary-600 bg-primary-600' : 'border-slate-300 bg-white'
+												)}>
+													{#if isSelected}
+														<svg class="size-3 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+															<path d="M2 6l3 3 5-5" />
+														</svg>
+													{/if}
+												</div>
+												<span class="truncate">{person.name}</span>
+												{#if isPresent}
+													<span class="shrink-0 rounded-full bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 text-[10px] font-black text-emerald-700 uppercase tracking-wider">Present</span>
+												{/if}
+												{#if person.company}
+													<span class="text-xs text-slate-400 truncate hidden sm:inline">{person.company}</span>
+												{/if}
+												<span class="ml-auto text-xs text-slate-400 shrink-0">{person.codeNo || ''}</span>
+											</button>
+										{/each}
+									</div>
+								{:else}
 									<p class="text-center text-sm text-slate-400 py-8">
 										{genPeopleSearch ? 'No people matching your search' : 'No people in this category'}
 									</p>

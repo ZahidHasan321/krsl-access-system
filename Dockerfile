@@ -3,11 +3,6 @@ FROM node:24-slim AS builder
 
 RUN corepack enable && corepack prepare pnpm@10.28.0 --activate
 
-# Install build tools for native addons (better-sqlite3)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 make g++ \
-    && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
 # Install dependencies first (layer caching)
@@ -23,11 +18,6 @@ FROM node:24-slim AS production
 
 RUN corepack enable && corepack prepare pnpm@10.28.0 --activate
 
-# Install sqlite3 + build tools to compile native addons
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    sqlite3 python3 make g++ \
-    && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
 # Copy built output
@@ -38,11 +28,8 @@ COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/drizzle.config.json ./drizzle.config.json
 COPY --from=builder /app/scripts ./scripts
 
-# Rebuild native addons for production environment
-RUN pnpm rebuild better-sqlite3
-
 # Create directories for persistent data
-RUN mkdir -p /app/data /app/static/uploads
+RUN mkdir -p /app/static/uploads
 
 ENV NODE_ENV=production
 ENV PORT=3000

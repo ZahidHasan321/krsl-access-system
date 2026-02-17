@@ -1,5 +1,5 @@
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pg from 'pg';
 import * as schema from './schema';
 import { env } from '$env/dynamic/private';
 
@@ -8,9 +8,8 @@ let _db: ReturnType<typeof drizzle<typeof schema>>;
 export function getDb() {
 	if (!_db) {
 		if (!env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
-		const client = new Database(env.DATABASE_URL);
-		client.pragma('foreign_keys = ON');
-		_db = drizzle(client, { schema });
+		const pool = new pg.Pool({ connectionString: env.DATABASE_URL });
+		_db = drizzle(pool, { schema });
 	}
 	return _db;
 }

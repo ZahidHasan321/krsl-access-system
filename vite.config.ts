@@ -11,6 +11,9 @@ export default defineConfig({
 			registerType: 'autoUpdate',
 			injectRegister: false,
 			manifestFilename: 'manifest.json',
+			workbox: {
+				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}']
+			},
 			manifest: {
 				name: 'KR Steel HRM',
 				short_name: 'KR Steel',
@@ -47,6 +50,14 @@ export default defineConfig({
 			}
 		})
 	],
+	build: {
+		rollupOptions: {
+			onwarn(warning, defaultHandler) {
+				if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message?.includes('drizzle-orm')) return;
+				defaultHandler(warning);
+			}
+		}
+	},
 	server: {
 		allowedHosts: true
 	},

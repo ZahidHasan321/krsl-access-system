@@ -1,19 +1,19 @@
-import { sqliteTable, text, integer, index, primaryKey } from 'drizzle-orm/sqlite-core';
+import { pgTable, text, integer, boolean, serial, timestamp, index, primaryKey } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // --- RBAC ---
-export const roles = sqliteTable('roles', {
+export const roles = pgTable('roles', {
     id: text('id').primaryKey(), // 'admin', 'guard'
     name: text('name').notNull().unique(), // Display name
     description: text('description')
 });
 
-export const permissions = sqliteTable('permissions', {
+export const permissions = pgTable('permissions', {
     id: text('id').primaryKey(), // 'people.view', 'people.create', etc.
     description: text('description')
 });
 
-export const rolePermissions = sqliteTable('role_permissions', {
+export const rolePermissions = pgTable('role_permissions', {
     roleId: text('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
     permissionId: text('permission_id').notNull().references(() => permissions.id, { onDelete: 'cascade' }),
 }, (table) => ({
@@ -21,40 +21,40 @@ export const rolePermissions = sqliteTable('role_permissions', {
 }));
 
 // --- Auth ---
-export const user = sqliteTable('user', {
+export const user = pgTable('user', {
     id: text('id').primaryKey(),
     username: text('username').notNull().unique(),
     passwordHash: text('password_hash').notNull(),
     roleId: text('role_id').notNull().references(() => roles.id),
     failedAttempts: integer('failed_attempts').notNull().default(0),
-    lockoutUntil: integer('lockout_until', { mode: 'timestamp' }),
-    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
+    lockoutUntil: timestamp('lockout_until', { mode: 'date' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`)
 });
 
-export const session = sqliteTable('session', {
+export const session = pgTable('session', {
     id: text('id').primaryKey(),
     userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
-    expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
+    expiresAt: timestamp('expires_at', { mode: 'date' }).notNull()
 });
 
 export type Session = typeof session.$inferSelect;
 export type User = typeof user.$inferSelect;
 
 // --- People Category System ---
-export const personCategories = sqliteTable('person_categories', {
+export const personCategories = pgTable('person_categories', {
     id: text('id').primaryKey(), // uuid
     name: text('name').notNull(), // e.g. "Customer", "Dokandari", "Employee"
     slug: text('slug').notNull().unique(), // url-safe: "customer", "dokandari"
     parentId: text('parent_id').references((): any => personCategories.id, { onDelete: 'restrict' }), // null = root category
     sortOrder: integer('sort_order').default(0), // ordering within siblings
-    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
+    createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`)
 }, (table) => ({
     parentIdIdx: index('category_parent_id_idx').on(table.parentId),
     slugIdx: index('category_slug_idx').on(table.slug),
 }));
 
 // --- People Table ---
-export const people = sqliteTable('people', {
+export const people = pgTable('people', {
     id: text('id').primaryKey(), // uuid
     name: text('name').notNull(),
     categoryId: text('category_id').notNull().references(() => personCategories.id),
@@ -72,12 +72,12 @@ export const people = sqliteTable('people', {
     designation: text('designation'),
 
     // Training
-    isTrained: integer('is_trained', { mode: 'boolean' }).notNull().default(false),
+    isTrained: boolean('is_trained').notNull().default(false),
 
     // Metadata
-    joinDate: integer('join_date', { mode: 'timestamp' }),
+    joinDate: timestamp('join_date', { mode: 'date' }),
     notes: text('notes'),
-    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
+    createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`)
 }, (table) => ({
     nameIdx: index('people_name_idx').on(table.name),
     categoryIdx: index('people_category_id_idx').on(table.categoryId),
@@ -89,17 +89,17 @@ export const people = sqliteTable('people', {
 }));
 
 // --- Attendance Logs ---
-export const attendanceLogs = sqliteTable('attendance_logs', {
+export const attendanceLogs = pgTable('attendance_logs', {
     id: text('id').primaryKey(),
     personId: text('person_id').notNull().references(() => people.id, { onDelete: 'cascade' }),
-    entryTime: integer('entry_time', { mode: 'timestamp' }).notNull(),
-    exitTime: integer('exit_time', { mode: 'timestamp' }), // null = currently inside
+    entryTime: timestamp('entry_time', { mode: 'date' }).notNull(),
+    exitTime: timestamp('exit_time', { mode: 'date' }), // null = currently inside
     status: text('status', { enum: ['on_premises', 'checked_out'] }).notNull(),
     verifyMethod: text('verify_method'), // 'finger' | 'face' | 'card' | 'password' | null
     date: text('date').notNull(), // 'YYYY-MM-DD'
     purpose: text('purpose'), // Reason for visit (for non-employees)
     notes: text('notes'),
-    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
+    createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`)
 }, (table) => ({
     personIdIdx: index('attendance_person_id_idx').on(table.personId),
     statusIdx: index('attendance_status_idx').on(table.status),
@@ -109,7 +109,7 @@ export const attendanceLogs = sqliteTable('attendance_logs', {
 }));
 
 // --- Vehicles ---
-export const vehicles = sqliteTable('vehicles', {
+export const vehicles = pgTable('vehicles', {
     id: text('id').primaryKey(),
     vehicleNumber: text('vehicle_number').notNull(),
     type: text('type', { enum: ['transport', 'regular'] }).notNull(),
@@ -119,10 +119,10 @@ export const vehicles = sqliteTable('vehicles', {
     helperName: text('helper_name'),
     mobile: text('mobile'),
     note: text('note'),
-    entryTime: integer('entry_time', { mode: 'timestamp' }).notNull(),
-    exitTime: integer('exit_time', { mode: 'timestamp' }),
+    entryTime: timestamp('entry_time', { mode: 'date' }).notNull(),
+    exitTime: timestamp('exit_time', { mode: 'date' }),
     status: text('status', { enum: ['on_premises', 'checked_out'] }).notNull(),
-    date: text('date').notNull() 
+    date: text('date').notNull()
 }, (table) => ({
     vehicleNumIdx: index('vehicle_num_idx').on(table.vehicleNumber),
     statusIdx: index('vehicle_status_idx').on(table.status),
@@ -133,57 +133,57 @@ export const vehicles = sqliteTable('vehicles', {
 }));
 
 // --- ZKTeco Devices ---
-export const devices = sqliteTable('devices', {
+export const devices = pgTable('devices', {
     id: text('id').primaryKey(),
     serialNumber: text('serial_number').notNull().unique(),
     name: text('name').notNull(),
     location: text('location'),
-    lastHeartbeat: integer('last_heartbeat', { mode: 'timestamp' }),
+    lastHeartbeat: timestamp('last_heartbeat', { mode: 'date' }),
     status: text('status', { enum: ['online', 'offline'] }).notNull().default('offline'),
-    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
+    createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`)
 }, (table) => ({
     snIdx: index('devices_serial_number_idx').on(table.serialNumber),
 }));
 
 // --- Device Commands ---
-export const deviceCommands = sqliteTable('device_commands', {
-    id: integer('id').primaryKey({ autoIncrement: true }),
+export const deviceCommands = pgTable('device_commands', {
+    id: serial('id').primaryKey(),
     deviceSn: text('device_sn').notNull().references(() => devices.serialNumber, { onDelete: 'cascade' }),
     commandString: text('command_string').notNull(),
     status: text('status', { enum: ['PENDING', 'SENT', 'SUCCESS', 'FAILED'] }).notNull().default('PENDING'),
-    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
-    updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
+    createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).default(sql`now()`)
 }, (table) => ({
     deviceSnIdx: index('device_commands_device_sn_idx').on(table.deviceSn),
     statusIdx: index('device_commands_status_idx').on(table.status),
 }));
 
 // --- Biometric Templates ---
-export const bioTemplates = sqliteTable('bio_templates', {
+export const bioTemplates = pgTable('bio_templates', {
     id: text('id').primaryKey(),
     personId: text('person_id').notNull().references(() => people.id, { onDelete: 'cascade' }),
     templateType: text('template_type').notNull(), // 'FACE' | 'FINGERTMP' | 'BIODATA'
     templateData: text('template_data').notNull(), // Raw tab-separated KV string from device
     fid: text('fid'),           // '0'=finger, '111'=face
     templateNo: text('template_no'), // Template index from device
-    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
-    updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
+    createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).default(sql`now()`)
 }, (table) => ({
     personIdIdx: index('bio_templates_person_id_idx').on(table.personId),
     uniqueIdx: index('bio_templates_unique_idx').on(table.personId, table.templateType, table.fid),
 }));
 
 // --- Raw Punches (audit trail) ---
-export const rawPunches = sqliteTable('raw_punches', {
+export const rawPunches = pgTable('raw_punches', {
     id: text('id').primaryKey(),
     deviceSn: text('device_sn').notNull(),
     pin: text('pin').notNull(),
-    punchTime: integer('punch_time', { mode: 'timestamp' }).notNull(),
+    punchTime: timestamp('punch_time', { mode: 'date' }).notNull(),
     status: integer('status'),
     verify: integer('verify'),
     rawLine: text('raw_line').notNull(),
-    processed: integer('processed', { mode: 'boolean' }).notNull().default(false),
-    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
+    processed: boolean('processed').notNull().default(false),
+    createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`)
 }, (table) => ({
     deviceSnIdx: index('raw_punches_device_sn_idx').on(table.deviceSn),
     pinIdx: index('raw_punches_pin_idx').on(table.pin),
@@ -191,14 +191,14 @@ export const rawPunches = sqliteTable('raw_punches', {
 }));
 
 // --- Audit Entries ---
-export const auditEntries = sqliteTable('audit_entries', {
+export const auditEntries = pgTable('audit_entries', {
     id: text('id').primaryKey(),
     personId: text('person_id').notNull().references(() => people.id, { onDelete: 'cascade' }),
-    entryTime: integer('entry_time', { mode: 'timestamp' }).notNull(),
-    exitTime: integer('exit_time', { mode: 'timestamp' }),
+    entryTime: timestamp('entry_time', { mode: 'date' }).notNull(),
+    exitTime: timestamp('exit_time', { mode: 'date' }),
     purpose: text('purpose'),
     date: text('date').notNull(), // 'YYYY-MM-DD'
-    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
+    createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`)
 }, (table) => ({
     personIdIdx: index('audit_entries_person_id_idx').on(table.personId),
     dateIdx: index('audit_entries_date_idx').on(table.date),

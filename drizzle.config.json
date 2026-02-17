@@ -1,7 +1,7 @@
 {
-	"dialect": "sqlite",
+	"dialect": "postgresql",
 	"out": "./drizzle",
 	"dbCredentials": {
-		"url": "/app/data/local.db"
+		"url": "postgresql://krcrm:krcrm@postgres:5432/krcrm"
 	}
 }

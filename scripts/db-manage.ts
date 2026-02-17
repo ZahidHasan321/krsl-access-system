@@ -6,18 +6,19 @@
  *   pnpm db:reset          — Drop all data, re-seed, create admin user
  *
  * Env:
- *   DATABASE_URL  (defaults to "local.db")
+ *   DATABASE_URL  (e.g. "postgresql://krcrm:krcrm@localhost:5432/krcrm")
  */
 
-import Database from 'better-sqlite3';
+import pg from 'pg';
 import { hash } from '@node-rs/argon2';
 import { encodeBase32LowerCase } from '@oslojs/encoding';
 import { randomBytes } from 'crypto';
 
-const DB_PATH = process.env.DATABASE_URL || 'local.db';
-const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) throw new Error('DATABASE_URL is not set');
+
+const client = new pg.Client({ connectionString: DATABASE_URL });
+await client.connect();
 
 const command = process.argv[2]; // 'seed' or 'reset'
 
@@ -97,11 +98,10 @@ const DEFAULT_CATEGORIES = [
 
 // ── Actions ──────────────────────────────────────────────
 
-function resetDatabase() {
+async function resetDatabase() {
     console.log('Dropping all data...');
-    // We try-catch because tables might not exist yet if starting from true scratch
     try {
-        db.exec(`
+        await client.query(`
             DELETE FROM raw_punches;
             DELETE FROM device_commands;
             DELETE FROM devices;
@@ -111,11 +111,11 @@ function resetDatabase() {
             DELETE FROM vehicles;
             DELETE FROM session;
             DELETE FROM role_permissions;
-            DELETE FROM user;
+            DELETE FROM "user";
             DELETE FROM permissions;
             DELETE FROM roles;
         `);
-    } catch (e) {
+    } catch (e: any) {
         console.warn('Warning: Some tables might not exist yet.', e.message);
     }
     console.log('All data cleared.');
@@ -123,64 +123,71 @@ function resetDatabase() {
 
 async function seedDatabase() {
     console.log('Seeding roles...');
-    // Delete roles that are no longer in the ROLES list (excluding those with users if you want safety, but here we go for clean sync)
     const validRoleIds = ROLES.map(r => r.id);
-    const rolePlaceholders = validRoleIds.map(() => '?').join(',');
-    db.prepare(`DELETE FROM roles WHERE id NOT IN (${rolePlaceholders})`).run(...validRoleIds);
-
-    const insertRole = db.prepare(
-        'INSERT OR REPLACE INTO roles (id, name, description) VALUES (?, ?, ?)'
+    await client.query(
+        `DELETE FROM roles WHERE id != ALL($1)`,
+        [validRoleIds]
     );
+
     for (const r of ROLES) {
-        insertRole.run(r.id, r.name, r.description);
+        await client.query(
+            `INSERT INTO roles (id, name, description) VALUES ($1, $2, $3)
+             ON CONFLICT (id) DO UPDATE SET name = $2, description = $3`,
+            [r.id, r.name, r.description]
+        );
     }
 
     console.log('Syncing permissions...');
-    // 1. Delete permissions that are no longer in the PERMISSIONS list
     const validPermIds = PERMISSIONS.map(p => p.id);
-    const placeholders = validPermIds.map(() => '?').join(',');
-    db.prepare(`DELETE FROM permissions WHERE id NOT IN (${placeholders})`).run(...validPermIds);
+    await client.query(
+        `DELETE FROM permissions WHERE id != ALL($1)`,
+        [validPermIds]
+    );
 
-    // 2. Insert or update defined permissions
-    const insertPerm = db.prepare('INSERT OR REPLACE INTO permissions (id, description) VALUES (?, ?)');
     for (const p of PERMISSIONS) {
-        insertPerm.run(p.id, p.description);
+        await client.query(
+            `INSERT INTO permissions (id, description) VALUES ($1, $2)
+             ON CONFLICT (id) DO UPDATE SET description = $2`,
+            [p.id, p.description]
+        );
     }
 
     console.log('Syncing role-permissions...');
-    // Clear all existing role-permissions to ensure a clean sync
-    db.prepare('DELETE FROM role_permissions').run();
-    
-    const insertRP = db.prepare(
-        'INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)'
-    );
+    await client.query('DELETE FROM role_permissions');
+
     for (const [roleId, permIds] of Object.entries(ROLE_PERMISSIONS)) {
         for (const permId of permIds) {
-            insertRP.run(roleId, permId);
+            await client.query(
+                'INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)',
+                [roleId, permId]
+            );
         }
     }
 
     console.log('Creating admin user...');
-    const existing = db
-        .prepare('SELECT id FROM user WHERE username = ?')
-        .get(ADMIN_USER.username) as { id: string } | undefined;
+    const result = await client.query(
+        'SELECT id FROM "user" WHERE username = $1',
+        [ADMIN_USER.username]
+    );
 
-    if (existing) {
+    if (result.rows.length > 0) {
         console.log(`  User "${ADMIN_USER.username}" already exists, skipping.`);
     } else {
         const passwordHash = await hashPassword(ADMIN_USER.password);
-        db.prepare(
-            'INSERT INTO user (id, username, password_hash, role_id) VALUES (?, ?, ?, ?)'
-        ).run(generateId(), ADMIN_USER.username, passwordHash, ADMIN_USER.roleId);
+        await client.query(
+            'INSERT INTO "user" (id, username, password_hash, role_id) VALUES ($1, $2, $3, $4)',
+            [generateId(), ADMIN_USER.username, passwordHash, ADMIN_USER.roleId]
+        );
         console.log(`  Created user "${ADMIN_USER.username}" with password "${ADMIN_USER.password}"`);
     }
 
     console.log('Seeding default categories...');
-    const insertCategory = db.prepare(
-        'INSERT OR IGNORE INTO person_categories (id, name, slug, parent_id, sort_order) VALUES (?, ?, ?, ?, ?)'
-    );
     for (const c of DEFAULT_CATEGORIES) {
-        insertCategory.run(c.id, c.name, c.slug, c.parentId, c.sortOrder);
+        await client.query(
+            `INSERT INTO person_categories (id, name, slug, parent_id, sort_order) VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (id) DO NOTHING`,
+            [c.id, c.name, c.slug, c.parentId, c.sortOrder]
+        );
     }
 
     console.log('Done.');
@@ -190,17 +197,18 @@ async function seedDatabase() {
 
 async function main() {
     if (command === 'reset') {
-        resetDatabase();
+        await resetDatabase();
     } else if (command !== 'seed') {
         console.log('Usage: tsx scripts/db-manage.ts <seed|reset>');
         process.exit(1);
     }
 
     await seedDatabase();
-    db.close();
+    await client.end();
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
     console.error(err);
+    await client.end();
     process.exit(1);
 });

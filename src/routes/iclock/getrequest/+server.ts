@@ -36,9 +36,19 @@ export const GET: RequestHandler = async ({ url }) => {
 		console.log(`[ZK:Command] Sending command to ${sn}: ${cmd.commandString}`);
 
 		return new Response(formatCommand(cmd.id, cmd.commandString), {
-			headers: { 'Content-Type': 'text/plain' }
+			headers: { 
+				'Content-Type': 'text/plain',
+				'X-Accel-Buffering': 'no',
+				'Cache-Control': 'no-cache, no-store, must-revalidate',
+				'Connection': 'close'
+			}
 		});
 	}
 
-	return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+	return new Response('OK', { 
+		headers: { 
+			'Content-Type': 'text/plain',
+			'X-Accel-Buffering': 'no'
+		} 
+	});
 };

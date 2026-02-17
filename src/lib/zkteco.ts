@@ -72,7 +72,7 @@ export function parseAttLog(body: string): AttLogEntry[] {
 
 /** Format a command for heartbeat response */
 export function formatCommand(id: number | string, commandString: string): string {
-	return `C:${id}:${commandString}`;
+	return `C:${id}:${commandString}\n`;
 }
 
 /** Format date as YYYY-MM-DD */

@@ -63,7 +63,7 @@
 
 	// Virtual scroll state for people list
 	const ITEM_HEIGHT = 40; // px per row
-	const CONTAINER_HEIGHT = 448; // max-h-[28rem] = 28 * 16 = 448px
+	const CONTAINER_HEIGHT = 384; // max-h-[24rem] = 24 * 16 = 384px
 	let scrollTop = $state(0);
 	let peopleListEl = $state<HTMLDivElement | null>(null);
 
@@ -552,251 +552,234 @@
 				</button>
 
 				{#if isGenerationOpen}
-					<div class="border-t border-slate-100 p-5 space-y-5" transition:slide={{ duration: 150, easing: cubicOut }}>
-						<!-- Category selector for generation -->
-						<div class="space-y-3">
-							<label class="text-xs font-black text-slate-500 uppercase tracking-wider">{i18n.t('category')}</label>
-							<!-- Root category pills -->
-							<div class="flex flex-wrap gap-2">
-								<button
-									class={clsx(
-										'cursor-pointer rounded-xl border-2 px-4 py-2 text-sm font-black transition-all',
-										genCategoryId === ''
-											? 'border-primary-600 bg-primary-600 text-white shadow-md'
-											: 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-									)}
-									onclick={() => genCategoryId = ''}
-								>
-									{i18n.t('all')}
-									<span class={clsx('ml-1.5 text-xs', genCategoryId === '' ? 'text-primary-200' : 'text-slate-400')}>
-										{data.allPeople.length}
-									</span>
-								</button>
-								{#each ROOT_CATEGORIES as cat (cat.id)}
-									{@const isActive = genCategoryId === cat.id || getSubCategories(cat.id).some(sc => sc.id === genCategoryId)}
-									{@const catCount = data.allPeople.filter(p => getDescendantIds(cat.id).includes(p.categoryId)).length}
-									<button
-										class={clsx(
-											'cursor-pointer rounded-xl border-2 px-4 py-2 text-sm font-black transition-all',
-											isActive
-												? 'border-primary-600 bg-primary-50 text-primary-700 shadow-sm'
-												: 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-										)}
-										onclick={() => genCategoryId = cat.id}
-									>
-										{i18n.t(cat.slug as any) || cat.name}
-										<span class={clsx('ml-1.5 text-xs', isActive ? 'text-primary-400' : 'text-slate-400')}>
-											{catCount}
-										</span>
-									</button>
-								{/each}
-							</div>
-							<!-- Subcategory pills (shown when a root category is active) -->
-							{#if activeGenRoot && activeGenSubs.length > 0}
-								<div class="flex flex-wrap gap-1.5 ml-2 pl-3 border-l-2 border-primary-200" transition:slide={{ duration: 200, easing: sineInOut }}>
-									<button
-										class={clsx(
-											'cursor-pointer rounded-full border px-3 py-1 text-xs font-bold transition-all',
-											genCategoryId === activeGenRoot
-												? 'border-primary-500 bg-primary-500 text-white'
-												: 'border-slate-200 bg-white text-slate-500 hover:border-primary-300'
-										)}
-										onclick={() => genCategoryId = activeGenRoot}
-									>
-										All
-									</button>
-									{#each activeGenSubs as sub (sub.id)}
-										{@const subCount = data.allPeople.filter(p => p.categoryId === sub.id).length}
+					<div class="border-t border-slate-100" transition:slide={{ duration: 150, easing: cubicOut }}>
+						<!-- Two-column layout: Settings left, People right -->
+						<div class="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+							<!-- Left Column: Settings -->
+							<div class="p-4 flex flex-col gap-3">
+								<!-- Category selector -->
+								<div>
+									<label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">{i18n.t('category')}</label>
+									<div class="flex flex-wrap gap-1">
 										<button
 											class={clsx(
-												'cursor-pointer rounded-full border px-3 py-1 text-xs font-bold transition-all',
-												genCategoryId === sub.id
-													? 'border-primary-500 bg-primary-500 text-white'
-													: 'border-slate-200 bg-white text-slate-500 hover:border-primary-300'
+												'cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-bold transition-all',
+												genCategoryId === ''
+													? 'bg-primary-600 text-white'
+													: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
 											)}
-											onclick={() => genCategoryId = sub.id}
+											onclick={() => genCategoryId = ''}
 										>
-											{i18n.t(sub.slug as any) || sub.name}
-											<span class={clsx('ml-1', genCategoryId === sub.id ? 'text-primary-200' : 'text-slate-400')}>{subCount}</span>
+											{i18n.t('all')} ({data.allPeople.length})
 										</button>
-									{/each}
-								</div>
-							{/if}
-						</div>
-
-						<!-- Time Ranges -->
-						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-							<div class="space-y-2">
-								<label class="text-xs font-black text-slate-500 uppercase tracking-wider">{i18n.t('entryRange')}</label>
-								<div class="flex items-center gap-2">
-									<input type="time" bind:value={entryRangeStart} class="flex-1 rounded-xl border-2 border-slate-100 bg-white px-3 py-2 text-sm font-bold focus:border-primary-500 focus:outline-none" />
-									<span class="text-slate-400 font-bold">—</span>
-									<input type="time" bind:value={entryRangeEnd} class="flex-1 rounded-xl border-2 border-slate-100 bg-white px-3 py-2 text-sm font-bold focus:border-primary-500 focus:outline-none" />
-								</div>
-							</div>
-							<div class="space-y-2">
-								<label class="text-xs font-black text-slate-500 uppercase tracking-wider">{i18n.t('exitRange')}</label>
-								<div class="flex items-center gap-2">
-									<input type="time" bind:value={exitRangeStart} class="flex-1 rounded-xl border-2 border-slate-100 bg-white px-3 py-2 text-sm font-bold focus:border-primary-500 focus:outline-none" />
-									<span class="text-slate-400 font-bold">—</span>
-									<input type="time" bind:value={exitRangeEnd} class="flex-1 rounded-xl border-2 border-slate-100 bg-white px-3 py-2 text-sm font-bold focus:border-primary-500 focus:outline-none" />
-								</div>
-							</div>
-						</div>
-
-						<!-- Warning Thresholds -->
-						<div class="space-y-2">
-							<label class="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-2">
-								<AlertTriangle size={12} class="text-amber-500" />
-								{i18n.t('warning')} Thresholds (BD Time)
-							</label>
-							<div class="flex flex-wrap items-center gap-4">
-								<div class="flex items-center gap-2">
-									<span class="text-xs font-bold text-slate-500">Entry before</span>
-									<input
-										type="time"
-										bind:value={warnEntryBefore}
-										class="rounded-lg border-2 border-amber-200 bg-amber-50 px-2.5 py-1.5 text-sm font-bold text-amber-700 focus:border-amber-400 focus:outline-none w-28"
-									/>
-								</div>
-								<div class="flex items-center gap-2">
-									<span class="text-xs font-bold text-slate-500">Exit after</span>
-									<input
-										type="time"
-										bind:value={warnExitAfter}
-										class="rounded-lg border-2 border-amber-200 bg-amber-50 px-2.5 py-1.5 text-sm font-bold text-amber-700 focus:border-amber-400 focus:outline-none w-28"
-									/>
-								</div>
-							</div>
-						</div>
-
-						<!-- Use real entry toggle -->
-						<label class="flex items-center gap-3 cursor-pointer">
-							<input type="checkbox" bind:checked={useRealEntry} class="size-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
-							<span class="text-sm font-bold text-slate-700">{i18n.t('useRealEntryTime')}</span>
-							<span class="text-xs text-slate-400">(for visitors with real attendance data)</span>
-						</label>
-
-						<!-- People Selection -->
-						<div class="space-y-2">
-							<div class="flex items-center justify-between flex-wrap gap-2">
-								<label class="text-xs font-black text-slate-500 uppercase tracking-wider">
-									People ({selectedPersonIds.size} selected of {genCategoryFiltered.length})
-								</label>
-								<div class="flex gap-2 flex-wrap">
-									{#if presentCount > 0}
-										<button
-											class="flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer bg-emerald-50 rounded-full px-2.5 py-1 border border-emerald-200 hover:bg-emerald-100 transition-all"
-											onclick={selectPresent}
-										>
-											<CheckSquare size={13} />
-											Select Present ({presentCount})
-										</button>
-									{/if}
-									<button
-										class="flex items-center gap-1 text-xs font-bold text-primary-600 hover:text-primary-700 cursor-pointer"
-										onclick={selectAll}
-									>
-										<CheckSquare size={14} />
-										{i18n.t('selectAll')}
-									</button>
-									<button
-										class="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-700 cursor-pointer"
-										onclick={deselectAll}
-									>
-										<Square size={14} />
-										{i18n.t('deselectAll')}
-									</button>
-								</div>
-							</div>
-							<!-- Search within people list -->
-							<div class="relative">
-								<Search size={15} class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-								<input
-									type="text"
-									bind:value={genPeopleSearch}
-									placeholder="Search people by name, code, company..."
-									class="w-full rounded-xl border-2 border-slate-100 bg-white py-2 pl-9 pr-8 text-sm font-bold shadow-sm placeholder:text-slate-400 focus:border-primary-500 focus:outline-none"
-								/>
-								{#if genPeopleSearch}
-									<button
-										class="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer rounded p-0.5 text-slate-400 hover:text-slate-600"
-										onclick={() => genPeopleSearch = ''}
-									>
-										<X size={14} />
-									</button>
-								{/if}
-							</div>
-							<div
-								bind:this={peopleListEl}
-								onscroll={(e) => scrollTop = (e.target as HTMLDivElement).scrollTop}
-								class="max-h-[28rem] overflow-y-auto rounded-xl border-2 border-slate-100 bg-slate-50 p-2"
-							>
-								{#if genFilteredPeople.length > 0}
-									<div style="height: {virtualSlice.totalHeight}px; position: relative;">
-										{#each genFilteredPeople.slice(virtualSlice.startIdx, virtualSlice.endIdx) as person, i (person.id)}
-											{@const isSelected = selectedPersonIds.has(person.id)}
-											{@const isPresent = !!data.realLogMap[person.id]}
+										{#each ROOT_CATEGORIES as cat (cat.id)}
+											{@const isActive = genCategoryId === cat.id || getSubCategories(cat.id).some(sc => sc.id === genCategoryId)}
+											{@const catCount = data.allPeople.filter(p => getDescendantIds(cat.id).includes(p.categoryId)).length}
 											<button
 												class={clsx(
-													'flex w-full items-center gap-3 rounded-lg px-3 text-left text-sm transition-all cursor-pointer absolute left-0 right-0 mx-2',
-													isSelected ? 'bg-primary-50 text-primary-700 font-bold' : 'text-slate-600 hover:bg-white'
+													'cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-bold transition-all',
+													isActive
+														? 'bg-primary-100 text-primary-700'
+														: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
 												)}
-												style="height: {ITEM_HEIGHT}px; top: {(virtualSlice.startIdx + i) * ITEM_HEIGHT}px;"
-												onclick={() => togglePerson(person.id)}
+												onclick={() => genCategoryId = cat.id}
 											>
-												<div class={clsx(
-													'size-4 rounded border-2 flex items-center justify-center transition-all shrink-0',
-													isSelected ? 'border-primary-600 bg-primary-600' : 'border-slate-300 bg-white'
-												)}>
-													{#if isSelected}
-														<svg class="size-3 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
-															<path d="M2 6l3 3 5-5" />
-														</svg>
-													{/if}
-												</div>
-												<span class="truncate">{person.name}</span>
-												{#if isPresent}
-													<span class="shrink-0 rounded-full bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 text-[10px] font-black text-emerald-700 uppercase tracking-wider">Present</span>
-												{/if}
-												{#if person.company}
-													<span class="text-xs text-slate-400 truncate hidden sm:inline">{person.company}</span>
-												{/if}
-												<span class="ml-auto text-xs text-slate-400 shrink-0">{person.codeNo || ''}</span>
+												{i18n.t(cat.slug as any) || cat.name} ({catCount})
 											</button>
 										{/each}
 									</div>
-								{:else}
-									<p class="text-center text-sm text-slate-400 py-8">
-										{genPeopleSearch ? 'No people matching your search' : 'No people in this category'}
-									</p>
-								{/if}
+									{#if activeGenRoot && activeGenSubs.length > 0}
+										<div class="flex flex-wrap gap-1 mt-1.5 pl-2 border-l-2 border-primary-200" transition:slide={{ duration: 200, easing: sineInOut }}>
+											<button
+												class={clsx(
+													'cursor-pointer rounded-full px-2 py-0.5 text-[10px] font-bold transition-all',
+													genCategoryId === activeGenRoot
+														? 'bg-primary-500 text-white'
+														: 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+												)}
+												onclick={() => genCategoryId = activeGenRoot}
+											>All</button>
+											{#each activeGenSubs as sub (sub.id)}
+												{@const subCount = data.allPeople.filter(p => p.categoryId === sub.id).length}
+												<button
+													class={clsx(
+														'cursor-pointer rounded-full px-2 py-0.5 text-[10px] font-bold transition-all',
+														genCategoryId === sub.id
+															? 'bg-primary-500 text-white'
+															: 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+													)}
+													onclick={() => genCategoryId = sub.id}
+												>
+													{i18n.t(sub.slug as any) || sub.name} ({subCount})
+												</button>
+											{/each}
+										</div>
+									{/if}
+								</div>
+
+								<!-- Time Configuration -->
+								<div class="max-w-xs space-y-2.5">
+									<!-- Entry Time -->
+									<div class="space-y-1">
+										<label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{i18n.t('entryTime')}</label>
+										<div class="flex items-center gap-1.5">
+											<input type="time" bind:value={entryRangeStart} class="w-24 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-bold focus:border-primary-500 focus:outline-none" />
+											<span class="text-slate-300 text-[10px]">to</span>
+											<input type="time" bind:value={entryRangeEnd} class="w-24 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-bold focus:border-primary-500 focus:outline-none" />
+											<span class="text-[10px] text-amber-500 ml-1" title="Warn if before">
+												<AlertTriangle size={10} class="inline" />
+											</span>
+											<input type="time" bind:value={warnEntryBefore} class="w-26 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-1 text-[11px] font-bold text-amber-700 focus:border-amber-400 focus:outline-none" />
+										</div>
+									</div>
+									<!-- Exit Time -->
+									<div class="space-y-1">
+										<label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{i18n.t('exitTime')}</label>
+										<div class="flex items-center gap-1.5">
+											<input type="time" bind:value={exitRangeStart} class="w-24 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-bold focus:border-primary-500 focus:outline-none" />
+											<span class="text-slate-300 text-[10px]">to</span>
+											<input type="time" bind:value={exitRangeEnd} class="w-24 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-bold focus:border-primary-500 focus:outline-none" />
+											<span class="text-[10px] text-amber-500 ml-1" title="Warn if after">
+												<AlertTriangle size={10} class="inline" />
+											</span>
+											<input type="time" bind:value={warnExitAfter} class="w-26 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-1 text-[11px] font-bold text-amber-700 focus:border-amber-400 focus:outline-none" />
+										</div>
+									</div>
+								</div>
+
+								<!-- Options + Actions -->
+								<div class="flex items-center justify-between gap-2">
+									<label class="flex items-center gap-1.5 cursor-pointer">
+										<input type="checkbox" bind:checked={useRealEntry} class="size-3.5 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
+										<span class="text-[11px] font-bold text-slate-600">{i18n.t('useRealEntryTime')}</span>
+									</label>
+									<div class="flex items-center gap-1.5">
+										{#if data.entries.length > 0}
+											<Button
+												variant="outline"
+												size="sm"
+												class="h-8 cursor-pointer gap-1.5 rounded-lg border border-rose-200 px-3 text-xs font-bold text-rose-600 hover:bg-rose-50"
+												onclick={() => isClearConfirmOpen = true}
+											>
+												<Trash2 size={13} />
+												{i18n.t('clearAll')}
+											</Button>
+										{/if}
+										<Button
+											size="sm"
+											class="h-8 cursor-pointer gap-1.5 rounded-lg bg-primary-600 px-4 text-xs font-black text-white hover:bg-primary-700"
+											onclick={handleGenerate}
+											disabled={isGenerating || selectedPersonIds.size === 0}
+										>
+											{#if isGenerating}
+												<Loader2 size={14} class="animate-spin" />
+											{/if}
+											{i18n.t('generate')} ({selectedPersonIds.size})
+										</Button>
+									</div>
+								</div>
 							</div>
-						</div>
 
-						<!-- Generate Button -->
-						<div class="flex items-center gap-3">
-							<Button
-								class="h-12 cursor-pointer gap-2 rounded-2xl bg-primary-600 px-8 font-black text-white shadow-lg hover:bg-primary-700"
-								onclick={handleGenerate}
-								disabled={isGenerating || selectedPersonIds.size === 0}
-							>
-								{#if isGenerating}
-									<Loader2 size={18} class="animate-spin" />
-								{/if}
-								{i18n.t('generate')} ({selectedPersonIds.size})
-							</Button>
-
-							{#if data.entries.length > 0}
-								<Button
-									variant="outline"
-									class="h-12 cursor-pointer gap-2 rounded-2xl border-2 border-rose-200 px-6 font-black text-rose-600 hover:bg-rose-50"
-									onclick={() => isClearConfirmOpen = true}
+							<!-- Right Column: People Selection -->
+							<div class="p-4 space-y-2">
+								<div class="flex items-center justify-between gap-2">
+									<label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+										People
+										<span class="text-primary-600">{selectedPersonIds.size}</span>
+										<span class="text-slate-300">/</span>
+										{genCategoryFiltered.length}
+									</label>
+									<div class="flex items-center gap-1.5">
+										{#if presentCount > 0}
+											<button
+												class="flex items-center gap-1 text-[11px] font-bold text-emerald-600 cursor-pointer rounded-md px-2 py-0.5 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition-all"
+												onclick={selectPresent}
+											>
+												<CheckSquare size={12} />
+												Present ({presentCount})
+											</button>
+										{/if}
+										<button
+											class="flex items-center gap-1 text-[11px] font-bold text-primary-600 hover:text-primary-700 cursor-pointer px-1.5 py-0.5"
+											onclick={selectAll}
+										>
+											<CheckSquare size={12} />
+											All
+										</button>
+										<button
+											class="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-slate-600 cursor-pointer px-1.5 py-0.5"
+											onclick={deselectAll}
+										>
+											<Square size={12} />
+											None
+										</button>
+									</div>
+								</div>
+								<!-- Search -->
+								<div class="relative">
+									<Search size={14} class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+									<input
+										type="text"
+										bind:value={genPeopleSearch}
+										placeholder="Search by name, code, company..."
+										class="w-full rounded-lg border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-7 text-xs font-bold placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:outline-none"
+									/>
+									{#if genPeopleSearch}
+										<button
+											class="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer rounded p-0.5 text-slate-400 hover:text-slate-600"
+											onclick={() => genPeopleSearch = ''}
+										>
+											<X size={12} />
+										</button>
+									{/if}
+								</div>
+								<!-- Virtual list -->
+								<div
+									bind:this={peopleListEl}
+									onscroll={(e) => scrollTop = (e.target as HTMLDivElement).scrollTop}
+									class="max-h-[24rem] overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/50"
 								>
-									<Trash2 size={18} />
-									{i18n.t('clearAll')}
-								</Button>
-							{/if}
+									{#if genFilteredPeople.length > 0}
+										<div style="height: {virtualSlice.totalHeight}px; position: relative;">
+											{#each genFilteredPeople.slice(virtualSlice.startIdx, virtualSlice.endIdx) as person, i (person.id)}
+												{@const isSelected = selectedPersonIds.has(person.id)}
+												{@const isPresent = !!data.realLogMap[person.id]}
+												<button
+													class={clsx(
+														'flex w-full items-center gap-2 px-3 text-left text-xs transition-colors cursor-pointer absolute inset-x-0',
+														isSelected ? 'bg-primary-50 text-primary-700 font-bold' : 'text-slate-600 hover:bg-white'
+													)}
+													style="height: {ITEM_HEIGHT}px; top: {(virtualSlice.startIdx + i) * ITEM_HEIGHT}px;"
+													onclick={() => togglePerson(person.id)}
+												>
+													<div class={clsx(
+														'size-3.5 rounded border-[1.5px] flex items-center justify-center shrink-0',
+														isSelected ? 'border-primary-600 bg-primary-600' : 'border-slate-300 bg-white'
+													)}>
+														{#if isSelected}
+															<svg class="size-2.5 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5">
+																<path d="M2 6l3 3 5-5" />
+															</svg>
+														{/if}
+													</div>
+													<span class="truncate font-semibold">{person.name}</span>
+													{#if isPresent}
+														<span class="shrink-0 size-1.5 rounded-full bg-emerald-500"></span>
+													{/if}
+													{#if person.company}
+														<span class="text-[10px] text-slate-400 truncate hidden sm:inline ml-auto">{person.company}</span>
+													{/if}
+													<span class="text-[10px] text-slate-400 shrink-0 {person.company ? '' : 'ml-auto'}">{person.codeNo || ''}</span>
+												</button>
+											{/each}
+										</div>
+									{:else}
+										<p class="text-center text-xs text-slate-400 py-6">
+											{genPeopleSearch ? 'No people matching your search' : 'No people in this category'}
+										</p>
+									{/if}
+								</div>
+							</div>
 						</div>
 					</div>
 				{/if}

@@ -3,6 +3,11 @@ FROM node:24-slim AS builder
 
 RUN corepack enable && corepack prepare pnpm@10.28.0 --activate
 
+# Install build tools for native addons (better-sqlite3)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Install dependencies first (layer caching)
@@ -11,7 +16,7 @@ RUN pnpm install --frozen-lockfile
 
 # Copy source and build
 COPY . .
-RUN DATABASE_URL=/tmp/build.db pnpm build && rm -f /tmp/build.db
+RUN pnpm build
 
 # ---- Production stage ----
 FROM node:24-slim AS production

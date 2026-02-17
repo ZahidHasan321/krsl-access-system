@@ -197,15 +197,14 @@ export const actions: Actions = {
             const photoUrl = await savePhoto(photo);
             const id = crypto.randomUUID();
 
-            // Auto-generate biometricId atomically (SQLite is single-writer, no race)
-            const nextBiometricId = db.transaction((tx) => {
-                const [maxResult] = tx
+            // Auto-generate biometricId atomically
+            const nextBiometricId = await db.transaction(async (tx) => {
+                const [maxResult] = await tx
                     .select({ maxId: sql<number>`COALESCE(MAX(CAST(biometric_id AS INTEGER)), 0)` })
-                    .from(people)
-                    .all();
+                    .from(people);
                 const nextId = String((maxResult.maxId || 0) + 1);
 
-                tx.insert(people).values({
+                await tx.insert(people).values({
                     id,
                     name,
                     categoryId,
@@ -218,7 +217,7 @@ export const actions: Actions = {
                     notes,
                     photoUrl,
                     createdAt: new Date()
-                }).run();
+                });
 
                 return nextId;
             });
@@ -242,7 +241,7 @@ export const actions: Actions = {
             notifyChange();
             return { success: true, personId: id, biometricId: nextBiometricId, personName: name };
         } catch (e: any) {
-            if (e.message?.includes('UNIQUE constraint failed: people.code_no')) {
+            if (e.message?.includes('duplicate key value violates unique constraint')) {
                 return fail(400, { message: 'Code Number already exists' });
             }
             if (e.message?.includes('File size exceeds') || e.message?.includes('Invalid file type')) {
@@ -284,7 +283,7 @@ export const actions: Actions = {
             const photoUrl = await savePhoto(photo);
             if (photoUrl) {
                 // Get old photo URL to delete it
-                const oldPerson = db.select({ photoUrl: people.photoUrl }).from(people).where(eq(people.id, id)).get();
+                const [oldPerson] = await db.select({ photoUrl: people.photoUrl }).from(people).where(eq(people.id, id));
                 if (oldPerson?.photoUrl) {
                     const oldPhotoPath = join(process.cwd(), 'static', oldPerson.photoUrl);
                     try {
@@ -303,16 +302,16 @@ export const actions: Actions = {
                 .where(eq(people.id, id));
 
             // Auto-sync to device if person has biometricId
-            const person = db.select().from(people).where(eq(people.id, id)).get();
+            const [person] = await db.select().from(people).where(eq(people.id, id));
             if (person?.biometricId) {
                 const cardNo = person.cardNo;
-                queueDeviceSync(person.biometricId, name, cardNo);
+                await queueDeviceSync(person.biometricId, name, cardNo);
             }
 
             notifyChange();
             return { success: true };
         } catch (e: any) {
-            if (e.message?.includes('UNIQUE constraint failed: people.code_no')) {
+            if (e.message?.includes('duplicate key value violates unique constraint')) {
                 return fail(400, { message: 'Code Number already exists' });
             }
             if (e.message?.includes('File size exceeds') || e.message?.includes('Invalid file type')) {
@@ -331,8 +330,8 @@ export const actions: Actions = {
 
         try {
             // Look up person to get biometricId and photoUrl before deletion
-            const person = db.select().from(people).where(eq(people.id, id)).get();
-            
+            const [person] = await db.select().from(people).where(eq(people.id, id));
+
             if (person?.photoUrl) {
                 const photoPath = join(process.cwd(), 'static', person.photoUrl);
                 try {
@@ -345,7 +344,7 @@ export const actions: Actions = {
             }
 
             if (person?.biometricId) {
-                queueDeviceDelete(person.biometricId);
+                await queueDeviceDelete(person.biometricId);
             }
 
             await db.delete(people).where(eq(people.id, id));

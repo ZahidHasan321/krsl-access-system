@@ -5,11 +5,10 @@ import { eq, sql } from 'drizzle-orm';
 import { Commands } from '$lib/zkteco';
 import { notifyEnrollment, notifyEnrollmentFailed } from '$lib/server/events';
 
-function nextCommandId(): number {
-	const [row] = db
+async function nextCommandId(): Promise<number> {
+	const [row] = await db
 		.select({ maxId: sql<number>`COALESCE(MAX(id), 999)` })
-		.from(deviceCommands)
-		.all();
+		.from(deviceCommands);
 	return (row.maxId || 999) + 1;
 }
 
@@ -29,16 +28,14 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		console.log(`[ZK:Result] Command ${cmdId} finished with status ${newStatus} (Return=${returnCode})`);
 
 		// Fetch the command to see what it was
-		const cmd = db
+		const [cmd] = await db
 			.select()
 			.from(deviceCommands)
-			.where(eq(deviceCommands.id, cmdId))
-			.get();
+			.where(eq(deviceCommands.id, cmdId));
 
-		db.update(deviceCommands)
+		await db.update(deviceCommands)
 			.set({ status: newStatus as 'SUCCESS' | 'FAILED', updatedAt: new Date() })
-			.where(eq(deviceCommands.id, cmdId))
-			.run();
+			.where(eq(deviceCommands.id, cmdId));
 
 		// Handle enrollment command results
 		const isEnrollCmd = cmd && (cmd.commandString.startsWith('ENROLL_FP') || cmd.commandString.startsWith('ENROLL_BIO') || cmd.commandString.startsWith('ENROLL_MF'));
@@ -47,22 +44,20 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			const pin = match ? match[1] : null;
 
 			if (pin) {
-				const person = db
+				const [person] = await db
 					.select()
 					.from(people)
-					.where(eq(people.biometricId, pin))
-					.get();
+					.where(eq(people.biometricId, pin));
 
 				if (newStatus === 'SUCCESS' && person) {
 					// Enrollment succeeded — create/sync user on device
-					db.insert(deviceCommands)
+					await db.insert(deviceCommands)
 						.values({
-							id: nextCommandId(),
+							id: await nextCommandId(),
 							deviceSn: sn,
 							commandString: Commands.setUser(pin, person.name),
 							status: 'PENDING'
-						})
-						.run();
+						});
 
 					// Determine method from command string
 					const method = cmd.commandString.includes('FID=111') ? 'face'
@@ -74,10 +69,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					try { methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : []; } catch { methods = []; }
 					if (!methods.includes(method)) {
 						methods.push(method);
-						db.update(people)
+						await db.update(people)
 							.set({ enrolledMethods: JSON.stringify(methods) })
-							.where(eq(people.id, person.id))
-							.run();
+							.where(eq(people.id, person.id));
 					}
 
 					// Notify UI — enrollment complete

@@ -8,37 +8,33 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals }) => {
 	requirePermission(locals, 'users.manage');
 
-	const allDevices = db.select().from(devices).all();
+	const allDevices = await db.select().from(devices);
 
 	// Pending command count per device
-	const pendingCounts = db
+	const pendingCounts = await db
 		.select({
 			deviceSn: deviceCommands.deviceSn,
 			count: sql<number>`COUNT(*)`.as('count')
 		})
 		.from(deviceCommands)
 		.where(eq(deviceCommands.status, 'PENDING'))
-		.groupBy(deviceCommands.deviceSn)
-		.all();
+		.groupBy(deviceCommands.deviceSn);
 
 	const pendingMap = Object.fromEntries(pendingCounts.map(r => [r.deviceSn, r.count]));
 
 	// Template stats
-	const templateCount = db
+	const [templateCount] = await db
 		.select({ count: sql<number>`COUNT(DISTINCT person_id)`.as('count') })
-		.from(bioTemplates)
-		.get();
+		.from(bioTemplates);
 
-	const totalTemplates = db
+	const [totalTemplates] = await db
 		.select({ count: sql<number>`COUNT(*)`.as('count') })
-		.from(bioTemplates)
-		.get();
+		.from(bioTemplates);
 
-	const peopleWithBiometric = db
+	const [peopleWithBiometric] = await db
 		.select({ count: sql<number>`COUNT(*)`.as('count') })
 		.from(people)
-		.where(isNotNull(people.biometricId))
-		.get();
+		.where(isNotNull(people.biometricId));
 
 	return {
 		devices: allDevices.map(d => ({

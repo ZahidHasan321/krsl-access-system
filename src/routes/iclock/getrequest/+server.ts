@@ -10,13 +10,12 @@ export const GET: RequestHandler = async ({ url }) => {
 	if (!sn) return new Response('Missing SN', { status: 400 });
 
 	// Update heartbeat
-	db.update(devices)
+	await db.update(devices)
 		.set({ lastHeartbeat: new Date(), status: 'online' })
-		.where(eq(devices.serialNumber, sn))
-		.run();
+		.where(eq(devices.serialNumber, sn));
 
 	// Find oldest pending command for this device
-	const cmd = db
+	const [cmd] = await db
 		.select()
 		.from(deviceCommands)
 		.where(
@@ -26,15 +25,13 @@ export const GET: RequestHandler = async ({ url }) => {
 			)
 		)
 		.orderBy(asc(deviceCommands.createdAt))
-		.limit(1)
-		.get();
+		.limit(1);
 
 	if (cmd) {
 		// Mark as SENT
-		db.update(deviceCommands)
+		await db.update(deviceCommands)
 			.set({ status: 'SENT', updatedAt: new Date() })
-			.where(eq(deviceCommands.id, cmd.id))
-			.run();
+			.where(eq(deviceCommands.id, cmd.id));
 
 		console.log(`[ZK:Command] Sending command to ${sn}: ${cmd.commandString}`);
 

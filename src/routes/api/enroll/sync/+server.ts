@@ -15,11 +15,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return new Response(JSON.stringify({ error: 'Missing personId' }), { status: 400 });
 	}
 
-	const person = db.select().from(people).where(eq(people.id, personId)).get();
+	const [person] = await db.select().from(people).where(eq(people.id, personId));
 	if (!person || !person.biometricId) {
 		return new Response(JSON.stringify({ error: 'Person not found' }), { status: 404 });
 	}
 
-	queueDeviceSync(person.biometricId, person.name, person.cardNo);
+	await queueDeviceSync(person.biometricId, person.name, person.cardNo);
 	return new Response(JSON.stringify({ success: true }));
 };

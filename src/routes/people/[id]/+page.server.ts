@@ -55,7 +55,7 @@ export const load: PageServerLoad = async (event) => {
     requirePermission(event.locals, 'people.view');
     const { id } = event.params;
 
-    const person = await db
+    const [person] = await db
         .select({
             id: people.id,
             name: people.name,
@@ -79,8 +79,7 @@ export const load: PageServerLoad = async (event) => {
         })
         .from(people)
         .innerJoin(personCategories, eq(people.categoryId, personCategories.id))
-        .where(eq(people.id, id))
-        .get();
+        .where(eq(people.id, id));
 
     if (!person) {
         error(404, 'Person not found');
@@ -161,7 +160,7 @@ export const actions: Actions = {
             const photoUrl = await savePhoto(photo);
             if (photoUrl) {
                 // Get old photo URL to delete it
-                const oldPerson = db.select({ photoUrl: people.photoUrl }).from(people).where(eq(people.id, id)).get();
+                const [oldPerson] = await db.select({ photoUrl: people.photoUrl }).from(people).where(eq(people.id, id));
                 if (oldPerson?.photoUrl) {
                     const oldPhotoPath = join(process.cwd(), 'static', oldPerson.photoUrl);
                     try {
@@ -180,15 +179,15 @@ export const actions: Actions = {
                 .where(eq(people.id, id));
 
             // Auto-sync to device if person has biometricId
-            const person = db.select().from(people).where(eq(people.id, id)).get();
+            const [person] = await db.select().from(people).where(eq(people.id, id));
             if (person?.biometricId) {
-                queueDeviceSync(person.biometricId, name, person.cardNo);
+                await queueDeviceSync(person.biometricId, name, person.cardNo);
             }
 
             notifyChange();
             return { success: true };
         } catch (e: any) {
-            if (e.message?.includes('UNIQUE constraint failed: people.code_no')) {
+            if (e.message?.includes('duplicate key value violates unique constraint')) {
                 return fail(400, { message: 'Code Number already exists' });
             }
             if (e.message?.includes('File size exceeds') || e.message?.includes('Invalid file type')) {
@@ -204,7 +203,7 @@ export const actions: Actions = {
 
         try {
             // Look up person to get biometricId and photoUrl before deleting
-            const person = db.select().from(people).where(eq(people.id, id)).get();
+            const [person] = await db.select().from(people).where(eq(people.id, id));
 
             if (person?.photoUrl) {
                 const photoPath = join(process.cwd(), 'static', person.photoUrl);
@@ -221,7 +220,7 @@ export const actions: Actions = {
 
             // Remove user from all ZK devices so the PIN is fully cleared
             if (person?.biometricId) {
-                queueDeviceDelete(person.biometricId);
+                await queueDeviceDelete(person.biometricId);
             }
 
             notifyChange();

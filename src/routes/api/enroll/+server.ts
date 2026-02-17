@@ -16,7 +16,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
 	}
 
-	const person = db.select().from(people).where(eq(people.id, personId)).get();
+	const [person] = await db.select().from(people).where(eq(people.id, personId));
 	if (!person || !person.biometricId) {
 		return new Response(JSON.stringify({ error: 'Person not found or has no biometric ID' }), { status: 404 });
 	}
@@ -26,15 +26,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return new Response(JSON.stringify({ error: 'Card number required' }), { status: 400 });
 		}
 		// Update person's cardNo
-		db.update(people).set({ cardNo }).where(eq(people.id, personId)).run();
+		await db.update(people).set({ cardNo }).where(eq(people.id, personId));
 		// Queue setUser with card number
-		queueDeviceSync(person.biometricId, person.name, cardNo);
+		await queueDeviceSync(person.biometricId, person.name, cardNo);
 		// Update enrolledMethods
 		let methods: string[] = [];
 		try { methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : []; } catch { methods = []; }
 		if (!methods.includes('card')) {
 			methods.push('card');
-			db.update(people).set({ enrolledMethods: JSON.stringify(methods) }).where(eq(people.id, personId)).run();
+			await db.update(people).set({ enrolledMethods: JSON.stringify(methods) }).where(eq(people.id, personId));
 		}
 		notifyChange();
 		return new Response(JSON.stringify({ success: true }));
@@ -43,6 +43,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	// Face or finger — queue enrollment command FIRST, then user creation follows on success.
 	// Important: ZKTeco devices reject enrollment (-1002) if user already exists at that PIN.
 	// The devicecmd handler will queue DATA UPDATE USERINFO after enrollment succeeds.
-	queueDeviceEnroll(person.biometricId, method as 'face' | 'finger');
+	await queueDeviceEnroll(person.biometricId, method as 'face' | 'finger');
 	return new Response(JSON.stringify({ success: true }));
 };

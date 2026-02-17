@@ -79,7 +79,7 @@ export const actions: Actions = {
             });
         } catch (e: any) {
             // Check for unique constraint violation (code 'SQLITE_CONSTRAINT_UNIQUE' or similar message)
-            if (e.message?.includes('UNIQUE constraint failed')) {
+            if (e.message?.includes('duplicate key value violates unique constraint')) {
                 return fail(400, { message: 'Username already exists' });
             }
             return fail(500, { message: e.message || 'Failed to create user' });
@@ -97,7 +97,7 @@ export const actions: Actions = {
         }
 
         try {
-            const targetUser = await db.select().from(user).where(eq(user.id, userId)).get();
+            const [targetUser] = await db.select().from(user).where(eq(user.id, userId));
             if (targetUser && isMasterUser(targetUser.username)) {
                 return fail(400, { message: 'Cannot modify the master account' });
             }
@@ -124,7 +124,7 @@ export const actions: Actions = {
         if (!id) return fail(400, { message: 'ID is required' });
 
         try {
-            const targetUser = await db.select().from(user).where(eq(user.id, id)).get();
+            const [targetUser] = await db.select().from(user).where(eq(user.id, id));
             if (targetUser && isMasterUser(targetUser.username)) {
                 return fail(400, { message: 'Cannot delete the master account' });
             }

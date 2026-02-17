@@ -17,7 +17,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	// Verify device exists
-	const device = db.select().from(devices).where(eq(devices.serialNumber, deviceSn)).get();
+	const [device] = await db.select().from(devices).where(eq(devices.serialNumber, deviceSn));
 	if (!device) {
 		return new Response(JSON.stringify({ error: 'Device not found' }), {
 			status: 404,
@@ -25,7 +25,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		});
 	}
 
-	const count = queueDeviceRestore(deviceSn);
+	const count = await queueDeviceRestore(deviceSn);
 
 	return new Response(JSON.stringify({ success: true, commandsQueued: count }), {
 		headers: { 'Content-Type': 'application/json' }

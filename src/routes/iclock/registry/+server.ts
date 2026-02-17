@@ -21,27 +21,24 @@ ${body.substring(0, 200)}...`);
 	}
 
 	// Upsert device (ensure it exists)
-	const existing = db
+	const [existing] = await db
 		.select()
 		.from(devices)
-		.where(eq(devices.serialNumber, sn))
-		.get();
+		.where(eq(devices.serialNumber, sn));
 
 	if (existing) {
-		db.update(devices)
+		await db.update(devices)
 			.set({ lastHeartbeat: new Date(), status: 'online' })
-			.where(eq(devices.serialNumber, sn))
-			.run();
+			.where(eq(devices.serialNumber, sn));
 	} else {
-		db.insert(devices)
+		await db.insert(devices)
 			.values({
 				id: crypto.randomUUID(),
 				serialNumber: sn,
 				name: `Device ${sn}`,
 				lastHeartbeat: new Date(),
 				status: 'online'
-			})
-			.run();
+			});
 	}
 
 	const response = buildHandshakeResponse(sn);

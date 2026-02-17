@@ -11,7 +11,7 @@ RUN pnpm install --frozen-lockfile
 
 # Copy source and build
 COPY . .
-RUN pnpm build
+RUN DATABASE_URL=/tmp/build.db pnpm build && rm -f /tmp/build.db
 
 # ---- Production stage ----
 FROM node:24-slim AS production

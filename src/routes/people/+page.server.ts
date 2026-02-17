@@ -141,7 +141,7 @@ export const load: PageServerLoad = async (event) => {
     const [summaryStats] = await db
         .select({
             total: sql<number>`count(*)`,
-            trained: sql<number>`sum(case when ${people.isTrained} = 1 then 1 else 0 end)`,
+            trained: sql<number>`sum(case when ${people.isTrained} = true then 1 else 0 end)`,
             inside: sql<number>`count(distinct case when attendance_logs.status = 'on_premises' then people.id else null end)`
         })
         .from(people)

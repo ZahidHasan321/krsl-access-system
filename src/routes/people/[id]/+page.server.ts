@@ -95,7 +95,7 @@ export const load: PageServerLoad = async (event) => {
     const [stats] = await db
         .select({
             totalVisits: count(),
-            avgDuration: sql<number>`AVG(CASE WHEN ${attendanceLogs.exitTime} IS NOT NULL THEN (${attendanceLogs.exitTime} - ${attendanceLogs.entryTime}) ELSE NULL END)`
+            avgDuration: sql<number>`AVG(CASE WHEN ${attendanceLogs.exitTime} IS NOT NULL THEN EXTRACT(EPOCH FROM (${attendanceLogs.exitTime} - ${attendanceLogs.entryTime})) ELSE NULL END)`
         })
         .from(attendanceLogs)
         .where(eq(attendanceLogs.personId, id));

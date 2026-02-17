@@ -129,7 +129,7 @@ export const load: PageServerLoad = async (event) => {
                 date: attendanceLogs.date,
                 totalEntries: count(attendanceLogs.id),
                 uniquePeople: sql<number>`COUNT(DISTINCT ${attendanceLogs.personId})`,
-                totalDuration: sql<number>`SUM(CASE WHEN ${attendanceLogs.exitTime} IS NOT NULL THEN (${attendanceLogs.exitTime} - ${attendanceLogs.entryTime}) ELSE 0 END)`
+                totalDuration: sql<number>`SUM(CASE WHEN ${attendanceLogs.exitTime} IS NOT NULL THEN EXTRACT(EPOCH FROM (${attendanceLogs.exitTime} - ${attendanceLogs.entryTime})) ELSE 0 END)`
             })
             .from(attendanceLogs)
             .innerJoin(people, eq(attendanceLogs.personId, people.id))
@@ -151,7 +151,7 @@ export const load: PageServerLoad = async (event) => {
     } else if (view === 'monthly') {
         const summary = await db
             .select({
-                month: sql<string>`strftime('%Y-%m', ${attendanceLogs.date})`,
+                month: sql<string>`to_char(${attendanceLogs.date}::date, 'YYYY-MM')`,
                 totalEntries: count(attendanceLogs.id),
                 uniquePeople: sql<number>`COUNT(DISTINCT ${attendanceLogs.personId})`,
                 activeDays: sql<number>`COUNT(DISTINCT ${attendanceLogs.date})`
@@ -159,15 +159,15 @@ export const load: PageServerLoad = async (event) => {
             .from(attendanceLogs)
             .innerJoin(people, eq(attendanceLogs.personId, people.id))
             .where(where)
-            .groupBy(sql`strftime('%Y-%m', ${attendanceLogs.date})`)
-            .orderBy(desc(sql`strftime('%Y-%m', ${attendanceLogs.date})`))
+            .groupBy(sql`to_char(${attendanceLogs.date}::date, 'YYYY-MM')`)
+            .orderBy(desc(sql`to_char(${attendanceLogs.date}::date, 'YYYY-MM')`))
             .limit(limit)
             .offset(offset);
 
         data = summary;
 
         const [countResult] = await db
-            .select({ value: sql<number>`COUNT(DISTINCT strftime('%Y-%m', ${attendanceLogs.date}))` })
+            .select({ value: sql<number>`COUNT(DISTINCT to_char(${attendanceLogs.date}::date, 'YYYY-MM'))` })
             .from(attendanceLogs)
             .innerJoin(people, eq(attendanceLogs.personId, people.id))
             .where(where);
@@ -179,7 +179,7 @@ export const load: PageServerLoad = async (event) => {
         .select({
             totalEntries: count(attendanceLogs.id),
             uniquePeople: sql<number>`COUNT(DISTINCT ${attendanceLogs.personId})`,
-            totalDuration: sql<number>`SUM(CASE WHEN ${attendanceLogs.exitTime} IS NOT NULL THEN (${attendanceLogs.exitTime} - ${attendanceLogs.entryTime}) ELSE 0 END)`,
+            totalDuration: sql<number>`SUM(CASE WHEN ${attendanceLogs.exitTime} IS NOT NULL THEN EXTRACT(EPOCH FROM (${attendanceLogs.exitTime} - ${attendanceLogs.entryTime})) ELSE 0 END)`,
             activeDays: sql<number>`COUNT(DISTINCT ${attendanceLogs.date})`
         })
         .from(attendanceLogs)

@@ -35,7 +35,7 @@ export function buildHandshakeResponse(sn: string): string {
 		'MultiBioDataSupport=0:1:0:0:0:0:0:0:1:1',
 		'MultiBioPhotoSupport=0:0:0:0:0:0:0:0:0:1',
 		'PushOptions=UserPicURLFunOn,MultiBioDataSupport,MultiBioPhotoSupport'
-	].join('\n') + '\n';
+	].join('\r\n') + '\r\n';
 }
 
 export interface AttLogEntry {
@@ -50,7 +50,7 @@ export interface AttLogEntry {
 export function parseAttLog(body: string): AttLogEntry[] {
 	const entries: AttLogEntry[] = [];
 
-	for (const line of body.split('\n')) {
+	for (const line of body.split(/\r?\n/)) {
 		const trimmed = line.trim();
 		if (!trimmed) continue;
 
@@ -72,7 +72,7 @@ export function parseAttLog(body: string): AttLogEntry[] {
 
 /** Format a command for heartbeat response */
 export function formatCommand(id: number | string, commandString: string): string {
-	return `C:${id}:${commandString}\n`;
+	return `C:${id}:${commandString}\r\n`;
 }
 
 /** Format date as YYYY-MM-DD */

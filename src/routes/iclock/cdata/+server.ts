@@ -87,7 +87,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 	if (table === 'ATTPHOTO') {
 		const pin = url.searchParams.get('PIN') || url.searchParams.get('pin');
 		console.log(`[ZK:Photo] Received ATTPHOTO for PIN ${pin}`);
-		if (!pin) return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+		if (!pin) return new Response('OK\r\n', { headers: { 'Content-Type': 'text/plain', 'X-Accel-Buffering': 'no' } });
 
 		try {
 			const imageBuffer = Buffer.from(await request.arrayBuffer());
@@ -112,7 +112,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 			console.error(`[ZK:Photo] Error saving photo:`, e);
 		}
 
-		return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+		return new Response('OK\r\n', { headers: { 'Content-Type': 'text/plain', 'X-Accel-Buffering': 'no' } });
 	}
 
 	const body = await request.text();
@@ -176,7 +176,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 			}
 		}
 		notifyChange();
-		return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+		return new Response('OK\r\n', { headers: { 'Content-Type': 'text/plain', 'X-Accel-Buffering': 'no' } });
 	}
 
 	// Handle BIODATA / FACE / FINGERTMP — device sends biometric template after enrollment
@@ -254,12 +254,12 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				notifyChange();
 			}
 		}
-		return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+		return new Response('OK\r\n', { headers: { 'Content-Type': 'text/plain', 'X-Accel-Buffering': 'no' } });
 	}
 
 	// Only process ATTLOG beyond this point, acknowledge everything else
 	if (table !== 'ATTLOG') {
-		return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+		return new Response('OK\r\n', { headers: { 'Content-Type': 'text/plain', 'X-Accel-Buffering': 'no' } });
 	}
 	const entries = parseAttLog(body);
 
@@ -375,5 +375,5 @@ export const POST: RequestHandler = async ({ url, request }) => {
 
 	notifyChange();
 
-	return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+	return new Response('OK\r\n', { headers: { 'Content-Type': 'text/plain', 'X-Accel-Buffering': 'no' } });
 };

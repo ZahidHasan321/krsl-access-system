@@ -42,7 +42,8 @@ export const GET: RequestHandler = async ({ url }) => {
 				'Content-Length': responseBody.length.toString(),
 				'X-Accel-Buffering': 'no',
 				'Cache-Control': 'no-cache, no-store, must-revalidate',
-				'Connection': 'close'
+				'Connection': 'close',
+				'Server': 'ZK ADMS'
 			}
 		});
 	}
@@ -52,6 +53,8 @@ export const GET: RequestHandler = async ({ url }) => {
 		headers: { 
 			'Content-Type': 'text/plain',
 			'Content-Length': okBody.length.toString(),
+			'Connection': 'close',
+			'Server': 'ZK ADMS',
 			'X-Accel-Buffering': 'no'
 		} 
 	});

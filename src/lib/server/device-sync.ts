@@ -32,20 +32,18 @@ export async function queueDeviceSync(biometricId: string, name: string, cardNo?
 	}
 }
 
-export async function queueDeviceEnroll(biometricId: string, method: 'face' | 'finger') {
-	const allDevices = await db.select().from(devices);
-	for (const device of allDevices) {
-		const commandString = method === 'face'
-			? Commands.enrollFace(biometricId)
-			: Commands.enrollFinger(biometricId);
-		await db.insert(deviceCommands)
-			.values({
-				id: await nextCommandId(),
-				deviceSn: device.serialNumber,
-				commandString,
-				status: 'PENDING'
-			});
-	}
+export async function queueDeviceEnroll(biometricId: string, method: 'face' | 'finger', deviceSn: string) {
+	const commandString = method === 'face'
+		? Commands.enrollFace(biometricId)
+		: Commands.enrollFinger(biometricId);
+	
+	await db.insert(deviceCommands)
+		.values({
+			id: await nextCommandId(),
+			deviceSn: deviceSn,
+			commandString,
+			status: 'PENDING'
+		});
 }
 
 /** Queue DELETE USERINFO on all devices */

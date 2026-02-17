@@ -125,13 +125,6 @@
 										<span>Last seen: {format(new Date(device.lastHeartbeat), 'PPp')}</span>
 									{/if}
 								</div>
-								{#if device.pendingCommands > 0}
-									<div class="mt-1">
-										<Badge variant="outline" class="text-[10px] font-bold tracking-widest uppercase border-amber-200 bg-amber-50 text-amber-700">
-											{device.pendingCommands} pending commands
-										</Badge>
-									</div>
-								{/if}
 							</div>
 						</div>
 

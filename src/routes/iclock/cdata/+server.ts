@@ -70,7 +70,13 @@ export const GET: RequestHandler = async ({ url }) => {
 	console.log(`[ZK:Handshake] Response to ${sn}:\n${response.replace(/\n/g, ' | ')}`);
 
 	return new Response(response, {
-		headers: { 'Content-Type': 'text/plain' }
+		headers: { 
+			'Content-Type': 'text/plain',
+			'Content-Length': response.length.toString(),
+			'Connection': 'close',
+			'Server': 'ZK ADMS',
+			'X-Accel-Buffering': 'no'
+		}
 	});
 };
 
@@ -192,7 +198,6 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				console.log(`[ZK:Enroll] Detected ${entry.enrollMethod} enrollment for ${person.name}`);
 				notifyEnrollment({ personId: person.id, method: entry.enrollMethod });
 			}
-		}
 		notifyChange();
 		const okBody = 'OK\r\n';
 		return new Response(okBody, { 
@@ -200,6 +205,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				'Content-Type': 'text/plain', 
 				'Content-Length': okBody.length.toString(),
 				'Connection': 'close',
+				'Server': 'ZK ADMS',
 				'X-Accel-Buffering': 'no' 
 			} 
 		});
@@ -286,6 +292,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				'Content-Type': 'text/plain', 
 				'Content-Length': okBody.length.toString(),
 				'Connection': 'close',
+				'Server': 'ZK ADMS',
 				'X-Accel-Buffering': 'no' 
 			} 
 		});
@@ -299,6 +306,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				'Content-Type': 'text/plain', 
 				'Content-Length': okBody.length.toString(),
 				'Connection': 'close',
+				'Server': 'ZK ADMS',
 				'X-Accel-Buffering': 'no' 
 			} 
 		});
@@ -423,6 +431,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 			'Content-Type': 'text/plain', 
 			'Content-Length': okBody.length.toString(),
 			'Connection': 'close',
+			'Server': 'ZK ADMS',
 			'X-Accel-Buffering': 'no' 
 		} 
 	});

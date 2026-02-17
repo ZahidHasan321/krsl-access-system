@@ -10,7 +10,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 	}
 
-	const { personId, method, cardNo } = await request.json();
+	const { personId, method, cardNo, deviceSn } = await request.json();
 
 	if (!personId || !method || !['face', 'finger', 'card'].includes(method)) {
 		return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
@@ -27,7 +27,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 		// Update person's cardNo
 		await db.update(people).set({ cardNo }).where(eq(people.id, personId));
-		// Queue setUser with card number
+		// Queue setUser with card number (broadcast to all)
 		await queueDeviceSync(person.biometricId, person.name, cardNo);
 		// Update enrolledMethods
 		let methods: string[] = [];
@@ -40,9 +40,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return new Response(JSON.stringify({ success: true }));
 	}
 
+	if (!deviceSn && (method === 'face' || method === 'finger')) {
+		return new Response(JSON.stringify({ error: 'Target device SN required' }), { status: 400 });
+	}
+
 	// Face or finger — queue enrollment command FIRST, then user creation follows on success.
 	// Important: ZKTeco devices reject enrollment (-1002) if user already exists at that PIN.
 	// The devicecmd handler will queue DATA UPDATE USERINFO after enrollment succeeds.
-	await queueDeviceEnroll(person.biometricId, method as 'face' | 'finger');
+	await queueDeviceEnroll(person.biometricId, method as 'face' | 'finger', deviceSn);
 	return new Response(JSON.stringify({ success: true }));
 };

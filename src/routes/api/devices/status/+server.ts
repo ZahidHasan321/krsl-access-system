@@ -12,11 +12,14 @@ export const GET: RequestHandler = async ({ locals }) => {
 		.select({ id: devices.id, name: devices.name, serialNumber: devices.serialNumber, lastHeartbeat: devices.lastHeartbeat })
 		.from(devices);
 
-	const onlineDevices = allDevices.filter(d => isDeviceOnline(d.lastHeartbeat));
+	const onlineDevices = allDevices.map(d => ({
+		...d,
+		isOnline: isDeviceOnline(d.lastHeartbeat)
+	}));
 
 	return new Response(JSON.stringify({
-		online: onlineDevices.length > 0,
-		count: onlineDevices.length,
+		online: onlineDevices.some(d => d.isOnline),
+		count: onlineDevices.filter(d => d.isOnline).length,
 		devices: onlineDevices
 	}), {
 		headers: { 'Content-Type': 'application/json' }

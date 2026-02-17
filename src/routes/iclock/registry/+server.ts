@@ -50,6 +50,7 @@ ${response.replace(/\n/g, ' | ')}`);
 			'Content-Type': 'text/plain',
 			'Content-Length': response.length.toString(),
 			'Connection': 'close',
+			'Server': 'ZK ADMS',
 			'X-Accel-Buffering': 'no'
 		}
 	});

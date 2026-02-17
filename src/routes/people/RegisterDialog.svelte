@@ -6,7 +6,7 @@
     import { Checkbox } from '$lib/components/ui/checkbox';
     import { Label } from '$lib/components/ui/label';
     import { Badge } from '$lib/components/ui/badge';
-    import { Users, Briefcase, HardHat, UserCheck, ChevronRight, Save, X, Camera, Upload, Wifi, WifiOff, Loader2 } from 'lucide-svelte';
+    import { Users, Briefcase, HardHat, UserCheck, ChevronRight, Save, X, Camera, Upload, Wifi, WifiOff, Loader2, AlertTriangle } from 'lucide-svelte';
     import { enhance } from '$app/forms';
     import { appToast } from '$lib/utils';
     import { fade, fly, slide } from 'svelte/transition';
@@ -19,6 +19,8 @@
 
     let deviceOnline = $state(false);
     let deviceLoading = $state(true);
+    let showOfflineWarning = $state(false);
+    let pendingFormSubmit = $state<(() => void) | null>(null);
 
     async function checkDeviceStatus() {
         try {
@@ -113,6 +115,8 @@
         registeredPerson = null;
         showSummary = false;
         enrolledMethod = null;
+        showOfflineWarning = false;
+        pendingFormSubmit = null;
     }
 
     $effect(() => {
@@ -351,11 +355,13 @@
                         class="space-y-5"
                         enctype="multipart/form-data"
                         use:enhance={({ formData, cancel }) => {
-                            if (!deviceOnline) {
-                                appToast.error('Device is offline. Registration requires a connected device.');
+                            if (!deviceOnline && !showOfflineWarning) {
+                                showOfflineWarning = true;
+                                pendingFormSubmit = null;
                                 cancel();
                                 return;
                             }
+                            showOfflineWarning = false;
                             // Capture form values before submission
                             const formName = formData.get('name') as string;
                             const formCompany = formData.get('company') as string || null;
@@ -479,10 +485,30 @@
                             </div>
                         {/if}
 
-                        <Button type="submit" disabled={!canSubmit} class="w-full h-14 text-sm font-black gap-2 shadow-lg uppercase tracking-widest">
-                            <Save size={20} />
-                            {i18n.t('save')}
-                        </Button>
+                        {#if showOfflineWarning}
+                            <div class="p-4 rounded-xl border-2 border-amber-300 bg-amber-50 space-y-3" transition:slide>
+                                <div class="flex items-start gap-3">
+                                    <AlertTriangle size={20} class="text-amber-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p class="font-black text-sm text-amber-800">Device is Offline</p>
+                                        <p class="text-xs text-amber-700 mt-1">No device is currently connected. The person will be registered in the system but biometric enrollment and device sync will not happen until a device comes online.</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <Button type="submit" variant="outline" class="flex-1 h-10 text-xs font-black uppercase tracking-widest border-amber-300 text-amber-800 hover:bg-amber-100">
+                                        Register Anyway
+                                    </Button>
+                                    <Button type="button" variant="ghost" class="h-10 text-xs font-black uppercase tracking-widest text-slate-500" onclick={() => showOfflineWarning = false}>
+                                        Cancel
+                                    </Button>
+                                </div>
+                            </div>
+                        {:else}
+                            <Button type="submit" disabled={!canSubmit} class="w-full h-14 text-sm font-black gap-2 shadow-lg uppercase tracking-widest">
+                                <Save size={20} />
+                                {i18n.t('save')}
+                            </Button>
+                        {/if}
                     </form>
                 </div>
             {/if}

@@ -87,7 +87,17 @@ export const POST: RequestHandler = async ({ url, request }) => {
 	if (table === 'ATTPHOTO') {
 		const pin = url.searchParams.get('PIN') || url.searchParams.get('pin');
 		console.log(`[ZK:Photo] Received ATTPHOTO for PIN ${pin}`);
-		if (!pin) return new Response('OK\r\n', { headers: { 'Content-Type': 'text/plain', 'X-Accel-Buffering': 'no' } });
+		if (!pin) {
+			const okBody = 'OK\r\n';
+			return new Response(okBody, { 
+				headers: { 
+					'Content-Type': 'text/plain', 
+					'Content-Length': okBody.length.toString(),
+					'Connection': 'close',
+					'X-Accel-Buffering': 'no' 
+				} 
+			});
+		}
 
 		try {
 			const imageBuffer = Buffer.from(await request.arrayBuffer());
@@ -112,7 +122,15 @@ export const POST: RequestHandler = async ({ url, request }) => {
 			console.error(`[ZK:Photo] Error saving photo:`, e);
 		}
 
-		return new Response('OK\r\n', { headers: { 'Content-Type': 'text/plain', 'X-Accel-Buffering': 'no' } });
+		const okBody = 'OK\r\n';
+		return new Response(okBody, { 
+			headers: { 
+				'Content-Type': 'text/plain', 
+				'Content-Length': okBody.length.toString(),
+				'Connection': 'close',
+				'X-Accel-Buffering': 'no' 
+			} 
+		});
 	}
 
 	const body = await request.text();
@@ -176,7 +194,15 @@ export const POST: RequestHandler = async ({ url, request }) => {
 			}
 		}
 		notifyChange();
-		return new Response('OK\r\n', { headers: { 'Content-Type': 'text/plain', 'X-Accel-Buffering': 'no' } });
+		const okBody = 'OK\r\n';
+		return new Response(okBody, { 
+			headers: { 
+				'Content-Type': 'text/plain', 
+				'Content-Length': okBody.length.toString(),
+				'Connection': 'close',
+				'X-Accel-Buffering': 'no' 
+			} 
+		});
 	}
 
 	// Handle BIODATA / FACE / FINGERTMP — device sends biometric template after enrollment
@@ -254,12 +280,28 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				notifyChange();
 			}
 		}
-		return new Response('OK\r\n', { headers: { 'Content-Type': 'text/plain', 'X-Accel-Buffering': 'no' } });
+		const okBody = 'OK\r\n';
+		return new Response(okBody, { 
+			headers: { 
+				'Content-Type': 'text/plain', 
+				'Content-Length': okBody.length.toString(),
+				'Connection': 'close',
+				'X-Accel-Buffering': 'no' 
+			} 
+		});
 	}
 
 	// Only process ATTLOG beyond this point, acknowledge everything else
 	if (table !== 'ATTLOG') {
-		return new Response('OK\r\n', { headers: { 'Content-Type': 'text/plain', 'X-Accel-Buffering': 'no' } });
+		const okBody = 'OK\r\n';
+		return new Response(okBody, { 
+			headers: { 
+				'Content-Type': 'text/plain', 
+				'Content-Length': okBody.length.toString(),
+				'Connection': 'close',
+				'X-Accel-Buffering': 'no' 
+			} 
+		});
 	}
 	const entries = parseAttLog(body);
 
@@ -375,5 +417,13 @@ export const POST: RequestHandler = async ({ url, request }) => {
 
 	notifyChange();
 
-	return new Response('OK\r\n', { headers: { 'Content-Type': 'text/plain', 'X-Accel-Buffering': 'no' } });
+	const okBody = 'OK\r\n';
+	return new Response(okBody, { 
+		headers: { 
+			'Content-Type': 'text/plain', 
+			'Content-Length': okBody.length.toString(),
+			'Connection': 'close',
+			'X-Accel-Buffering': 'no' 
+		} 
+	});
 };

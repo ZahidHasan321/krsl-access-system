@@ -46,6 +46,11 @@ ${body.substring(0, 200)}...`);
 ${response.replace(/\n/g, ' | ')}`);
 
 	return new Response(response, {
-		headers: { 'Content-Type': 'text/plain' }
+		headers: { 
+			'Content-Type': 'text/plain',
+			'Content-Length': response.length.toString(),
+			'Connection': 'close',
+			'X-Accel-Buffering': 'no'
+		}
 	});
 };

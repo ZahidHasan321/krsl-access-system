@@ -69,9 +69,16 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     ]
 };
 
+const MASTER_USERNAME = process.env.MASTER_USERNAME;
+const MASTER_PASSWORD = process.env.MASTER_PASSWORD;
+
+if (!MASTER_USERNAME || !MASTER_PASSWORD) {
+    throw new Error('MASTER_USERNAME and MASTER_PASSWORD must be set in .env');
+}
+
 const ADMIN_USER = {
-    username: 'admin',
-    password: 'admin123',
+    username: MASTER_USERNAME.trim().toLowerCase(),
+    password: MASTER_PASSWORD,
     roleId: 'admin'
 };
 

@@ -12,6 +12,7 @@
 	import { clsx } from 'clsx';
 	import { Lock, Plus, Save, Shield, Trash2 } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
+	import { ROLES } from '$lib/constants/roles';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -97,7 +98,7 @@
 								{role.description || 'No description provided.'}
 							</p>
 						</div>
-						{#if role.id !== 'admin'}
+						{#if role.id !== ROLES.ADMIN}
 							<form method="POST" action="?/deleteRole" use:enhance bind:this={deleteFormElement}>
 								<input type="hidden" name="id" value={role.id} />
 								<Button
@@ -126,7 +127,7 @@
 						>
 							<input type="hidden" name="roleId" value={role.id} />
 
-							{#if role.id === 'admin'}
+							{#if role.id === ROLES.ADMIN}
 								<div
 									class="mb-4 flex items-center gap-4 rounded-2xl border-2 border-amber-100 bg-amber-50 p-4 text-amber-900"
 								>
@@ -144,11 +145,11 @@
 
 							<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
 								{#each data.allPermissions as perm (perm.id)}
-									{@const isChecked = role.id === 'admin' || role.permissions.includes(perm.id)}
+									{@const isChecked = role.id === ROLES.ADMIN || role.permissions.includes(perm.id)}
 									<label
 										class={clsx(
 											'flex items-start gap-4 rounded-2xl border-2 p-5 transition-all',
-											role.id === 'admin'
+											role.id === ROLES.ADMIN
 												? 'cursor-not-allowed border-slate-100 bg-slate-50 opacity-80'
 												: 'group cursor-pointer border-slate-50 hover:bg-slate-50'
 										)}
@@ -157,7 +158,7 @@
 											name="permissions"
 											value={perm.id}
 											checked={isChecked}
-											disabled={role.id === 'admin'}
+											disabled={role.id === ROLES.ADMIN}
 											class="mt-0.5"
 										/>
 										<div>
@@ -172,7 +173,7 @@
 								{/each}
 							</div>
 
-							{#if role.id !== 'admin'}
+							{#if role.id !== ROLES.ADMIN}
 								<div class="mt-10 flex justify-end">
 									<Button type="submit" class="h-12 gap-2 px-8 text-base font-black shadow-lg">
 										<Save size={20} />

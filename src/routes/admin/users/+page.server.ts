@@ -1,11 +1,21 @@
 import { db } from '$lib/server/db';
-import { user, roles } from '$lib/server/db/schema';
+import { user, roles, session } from '$lib/server/db/schema';
 import { fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { hash } from '@node-rs/argon2';
 import { encodeBase32LowerCase } from '@oslojs/encoding';
 import type { PageServerLoad, Actions } from './$types';
 import { requirePermission } from '$lib/server/rbac';
+import { ROLES } from '$lib/constants/roles';
+import { env } from '$env/dynamic/private';
+
+function isMasterUser(username: string): boolean {
+    return !!env.MASTER_USERNAME && username === env.MASTER_USERNAME.trim().toLowerCase();
+}
+
+function isCurrentUserMaster(locals: App.Locals): boolean {
+    return !!locals.user && isMasterUser(locals.user.username);
+}
 
 export const load: PageServerLoad = async (event) => {
     requirePermission(event.locals, 'users.manage');
@@ -88,13 +98,19 @@ export const actions: Actions = {
 
         try {
             const targetUser = await db.select().from(user).where(eq(user.id, userId)).get();
-            if (targetUser?.roleId === 'admin' && roleId !== 'admin') {
+            if (targetUser && isMasterUser(targetUser.username)) {
+                return fail(400, { message: 'Cannot modify the master account' });
+            }
+            if (targetUser?.roleId === ROLES.ADMIN && roleId !== ROLES.ADMIN) {
                 return fail(400, { message: 'Cannot demote an Administrator' });
             }
 
             await db.update(user).set({ 
                 roleId
             }).where(eq(user.id, userId));
+
+            // Invalidate all sessions for this user so they are forced to re-login with new permissions
+            await db.delete(session).where(eq(session.userId, userId));
         } catch (e: any) {
             return fail(500, { message: e.message || 'Failed to update user role' });
         }
@@ -109,10 +125,14 @@ export const actions: Actions = {
 
         try {
             const targetUser = await db.select().from(user).where(eq(user.id, id)).get();
-            if (targetUser?.roleId === 'admin') {
-                return fail(400, { message: 'Cannot delete an Administrator account' });
+            if (targetUser && isMasterUser(targetUser.username)) {
+                return fail(400, { message: 'Cannot delete the master account' });
+            }
+            if (targetUser?.roleId === ROLES.ADMIN && !isCurrentUserMaster(locals)) {
+                return fail(400, { message: 'Only the master account can delete administrators' });
             }
 
+            await db.delete(session).where(eq(session.userId, id));
             await db.delete(user).where(eq(user.id, id));
         } catch (e: any) {
             return fail(500, { message: e.message || 'Failed to delete user' });

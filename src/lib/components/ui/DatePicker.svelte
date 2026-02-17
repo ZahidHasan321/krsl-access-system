@@ -33,7 +33,7 @@
   let open = $state(false);
   
   // Internal state for bits-ui
-  let dateValue = $derived.by(() => toCalendarDate(value));
+  let dateValue = $derived.by(() => toCalendarDate(value || new Date().toISOString().split('T')[0]));
   let placeholderDate = $state(today(getLocalTimeZone()));
 
   function handleSelect(v: any) {

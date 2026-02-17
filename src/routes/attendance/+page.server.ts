@@ -71,6 +71,18 @@ export const load: PageServerLoad = async (event) => {
 
     const where = and(...whereClauses.filter((c): c is SQL => !!c));
 
+    const [totalCountResult] = await db
+        .select({ count: count() })
+        .from(attendanceLogs)
+        .innerJoin(people, eq(attendanceLogs.personId, people.id))
+        .innerJoin(personCategories, eq(people.categoryId, personCategories.id))
+        .where(where);
+    
+    const totalCount = totalCountResult?.count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+    const validatedPage = Math.max(1, Math.min(page, totalPages || 1));
+    const validatedOffset = (validatedPage - 1) * limit;
+
     // Load active entries (on_premises) only with filtering
     const logs = await db
         .select({
@@ -101,16 +113,7 @@ export const load: PageServerLoad = async (event) => {
         .where(where)
         .orderBy(desc(attendanceLogs.entryTime))
         .limit(limit)
-        .offset(offset);
-
-    const [totalCountResult] = await db
-        .select({ count: count() })
-        .from(attendanceLogs)
-        .innerJoin(people, eq(attendanceLogs.personId, people.id))
-        .innerJoin(personCategories, eq(people.categoryId, personCategories.id))
-        .where(where);
-    
-    const totalCount = totalCountResult?.count || 0;
+        .offset(validatedOffset);
 
     // Add root category info to each log
     const logsWithRoot = logs.map(log => {
@@ -128,9 +131,9 @@ export const load: PageServerLoad = async (event) => {
             categoryId
         },
         pagination: {
-            page,
+            page: validatedPage,
             limit,
-            totalPages: Math.ceil(totalCount / limit),
+            totalPages,
             totalCount
         }
     };

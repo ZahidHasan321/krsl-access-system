@@ -6,26 +6,49 @@ import { requirePermission } from '$lib/server/rbac';
 import { notifyChange } from '$lib/server/events';
 import { queueDeviceSync, queueDeviceDelete } from '$lib/server/device-sync';
 import type { PageServerLoad, Actions } from './$types';
-import { writeFileSync, mkdirSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
+import sharp from 'sharp';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 async function savePhoto(photo: FormDataEntryValue | null): Promise<string | null> {
     if (!photo || !(photo instanceof File) || photo.size === 0) return null;
 
-    const ext = photo.name.split('.').pop() || 'jpg';
-    const fileName = `${crypto.randomUUID()}.${ext}`;
+    if (photo.size > MAX_FILE_SIZE) {
+        throw new Error('File size exceeds 5MB limit');
+    }
+
+    const fileName = `${crypto.randomUUID()}.webp`;
     const uploadDir = join(process.cwd(), 'static', 'uploads', 'people');
 
-    try {
+    if (!existsSync(uploadDir)) {
         mkdirSync(uploadDir, { recursive: true });
-    } catch (e) {}
+    }
 
     const filePath = join(uploadDir, fileName);
 
-    const buffer = Buffer.from(await photo.arrayBuffer());
-    writeFileSync(filePath, buffer);
+    try {
+        const buffer = Buffer.from(await photo.arrayBuffer());
+        
+        const processedImage = sharp(buffer);
+        const metadata = await processedImage.metadata();
 
-    return `/uploads/people/${fileName}`;
+        if (!metadata.format || !ALLOWED_MIME_TYPES.includes(`image/${metadata.format}`)) {
+            throw new Error('Invalid file type. Only JPEG, PNG and WebP are allowed.');
+        }
+
+        await processedImage
+            .webp({ quality: 80 })
+            .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
+            .toFile(filePath);
+
+        return `/uploads/people/${fileName}`;
+    } catch (e: any) {
+        console.error('Photo processing error:', e);
+        throw new Error(e.message || 'Failed to process photo');
+    }
 }
 
 export const load: PageServerLoad = async (event) => {
@@ -137,6 +160,18 @@ export const actions: Actions = {
         try {
             const photoUrl = await savePhoto(photo);
             if (photoUrl) {
+                // Get old photo URL to delete it
+                const oldPerson = db.select({ photoUrl: people.photoUrl }).from(people).where(eq(people.id, id)).get();
+                if (oldPerson?.photoUrl) {
+                    const oldPhotoPath = join(process.cwd(), 'static', oldPerson.photoUrl);
+                    try {
+                        if (existsSync(oldPhotoPath)) {
+                            unlinkSync(oldPhotoPath);
+                        }
+                    } catch (err) {
+                        console.error('Failed to delete old photo file:', err);
+                    }
+                }
                 updates.photoUrl = photoUrl;
             }
 
@@ -156,6 +191,9 @@ export const actions: Actions = {
             if (e.message?.includes('UNIQUE constraint failed: people.code_no')) {
                 return fail(400, { message: 'Code Number already exists' });
             }
+            if (e.message?.includes('File size exceeds') || e.message?.includes('Invalid file type')) {
+                return fail(400, { message: e.message });
+            }
             return fail(500, { message: 'Failed to update person' });
         }
     },
@@ -165,8 +203,19 @@ export const actions: Actions = {
         const { id } = event.params;
 
         try {
-            // Look up person to get biometricId before deleting
+            // Look up person to get biometricId and photoUrl before deleting
             const person = db.select().from(people).where(eq(people.id, id)).get();
+
+            if (person?.photoUrl) {
+                const photoPath = join(process.cwd(), 'static', person.photoUrl);
+                try {
+                    if (existsSync(photoPath)) {
+                        unlinkSync(photoPath);
+                    }
+                } catch (err) {
+                    console.error('Failed to delete photo file:', err);
+                }
+            }
 
             await db.delete(people).where(eq(people.id, id));
 

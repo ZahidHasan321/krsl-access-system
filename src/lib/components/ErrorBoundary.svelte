@@ -23,7 +23,7 @@
 			<p class="mb-6 max-w-md text-sm font-medium text-slate-500">
 				An unexpected error occurred in this section of the application.
 				<code class="mt-2 block rounded bg-rose-100/50 px-2 py-1 text-xs text-rose-700 font-mono">
-					{error?.message || 'Unknown Error'}
+					{(error as any)?.message || 'Unknown Error'}
 				</code>
 			</p>
 			<Button variant="outline" class="font-bold gap-2 border-2 border-rose-200 text-rose-700 hover:bg-rose-100" onclick={handleReset}>

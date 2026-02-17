@@ -38,15 +38,48 @@ export const actions: Actions = {
 			return fail(400, { message: 'Incorrect username or password' });
 		}
 
+		// Check for account lockout
+		if (existingUser.lockoutUntil && existingUser.lockoutUntil > new Date()) {
+			const minutesLeft = Math.ceil((existingUser.lockoutUntil.getTime() - Date.now()) / (1000 * 60));
+			return fail(403, { 
+				message: `Account locked due to too many failed attempts. Try again in ${minutesLeft} minutes.` 
+			});
+		}
+
 		const validPassword = await verify(existingUser.passwordHash, password, {
 			memoryCost: 19456,
 			timeCost: 2,
 			outputLen: 32,
 			parallelism: 1
 		});
+
 		if (!validPassword) {
+			const newAttempts = existingUser.failedAttempts + 1;
+			const MAX_ATTEMPTS = 5;
+			const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
+			const updates: any = {
+				failedAttempts: newAttempts
+			};
+
+			if (newAttempts >= MAX_ATTEMPTS) {
+				updates.lockoutUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
+			}
+
+			await db.update(table.user).set(updates).where(eq(table.user.id, existingUser.id));
+
+			if (newAttempts >= MAX_ATTEMPTS) {
+				return fail(403, { message: 'Account locked for 15 minutes due to too many failed attempts.' });
+			}
+
 			return fail(400, { message: 'Incorrect username or password' });
 		}
+
+		// Reset failed attempts on successful login
+		await db.update(table.user).set({
+			failedAttempts: 0,
+			lockoutUntil: null
+		}).where(eq(table.user.id, existingUser.id));
 
 		const sessionToken = auth.generateSessionToken();
 		const duration = rememberMe ? 1000 * 60 * 60 * 24 * 30 : 1000 * 60 * 60 * 24 * 7; // 30 days vs 7 days

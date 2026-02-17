@@ -26,6 +26,8 @@ export const user = sqliteTable('user', {
     username: text('username').notNull().unique(),
     passwordHash: text('password_hash').notNull(),
     roleId: text('role_id').notNull().references(() => roles.id),
+    failedAttempts: integer('failed_attempts').notNull().default(0),
+    lockoutUntil: integer('lockout_until', { mode: 'timestamp' }),
     createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
 });
 
@@ -43,7 +45,7 @@ export const personCategories = sqliteTable('person_categories', {
     id: text('id').primaryKey(), // uuid
     name: text('name').notNull(), // e.g. "Customer", "Dokandari", "Employee"
     slug: text('slug').notNull().unique(), // url-safe: "customer", "dokandari"
-    parentId: text('parent_id').references((): any => personCategories.id, { onDelete: 'cascade' }), // null = root category
+    parentId: text('parent_id').references((): any => personCategories.id, { onDelete: 'restrict' }), // null = root category
     sortOrder: integer('sort_order').default(0), // ordering within siblings
     createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`)
 }, (table) => ({

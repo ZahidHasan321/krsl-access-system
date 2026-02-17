@@ -66,12 +66,17 @@
 	    	let confirmCheckOutOpen = $state(false);
 	    	let checkOutFormElement = $state<HTMLFormElement | null>(null);
 	    	let previousLimit = $state(20);
-	    	let debounceTimer: any;
-	    	let isPrintConfirmOpen = $state(false);
-	    
-	    	$effect(() => {
-	    		searchQuery = data.filters.query;
-	    		selectedCategoryId = data.filters.categoryId;
+	    			let debounceTimer: any;
+	    			let isPrintConfirmOpen = $state(false);
+	    		
+	    			$effect(() => {
+	    				return () => {
+	    					clearTimeout(debounceTimer);
+	    				};
+	    			});
+	    		
+	    			$effect(() => {
+	    				searchQuery = data.filters.query;	    		selectedCategoryId = data.filters.categoryId;
 	    	});
 	    
 	    	function triggerCheckOut(form: HTMLFormElement) {

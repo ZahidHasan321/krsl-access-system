@@ -4,6 +4,7 @@ import { error, fail } from '@sveltejs/kit';
 import { eq, and } from 'drizzle-orm';
 import type { PageServerLoad, Actions } from './$types';
 import { requirePermission } from '$lib/server/rbac';
+import { ROLES } from '$lib/constants/roles';
 
 export const load: PageServerLoad = async (event) => {
     requirePermission(event.locals, 'users.manage');
@@ -52,7 +53,7 @@ export const actions: Actions = {
             return fail(400, { message: 'Role ID is required' });
         }
 
-        if (roleId === 'admin') {
+        if (roleId === ROLES.ADMIN) {
             return fail(400, { message: 'Administrator permissions are locked and cannot be modified' });
         }
 
@@ -81,7 +82,7 @@ export const actions: Actions = {
         const id = formData.get('id') as string;
 
         if (!id) return fail(400, { message: 'ID is required' });
-        if (id === 'admin') return fail(400, { message: 'Cannot delete admin role' });
+        if (id === ROLES.ADMIN) return fail(400, { message: 'Cannot delete admin role' });
 
         try {
             await db.delete(roles).where(eq(roles.id, id));

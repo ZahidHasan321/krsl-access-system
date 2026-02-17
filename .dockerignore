@@ -1,0 +1,13 @@
+node_modules
+.svelte-kit
+build
+.git
+.env
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+static/uploads
+.claude
+.vscode
+CODE_REVIEW.md

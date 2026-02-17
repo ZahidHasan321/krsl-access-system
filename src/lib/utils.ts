@@ -28,7 +28,7 @@ export const appToast = {
 };
 
 export type WithElementRef<T> = T & {
-	ref?: HTMLElement;
+	ref?: HTMLElement | null;
 };
 
 export type WithoutChildrenOrChild<T> = Omit<T, "children" | "child">;

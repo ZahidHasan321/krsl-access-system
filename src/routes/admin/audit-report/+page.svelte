@@ -559,7 +559,10 @@
 							<div class="p-4 flex flex-col gap-3">
 								<!-- Category selector -->
 								<div>
-									<label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">{i18n.t('category')}</label>
+									<span
+										class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block"
+										>{i18n.t('category')}</span
+									>
 									<div class="flex flex-wrap gap-1">
 										<button
 											class={clsx(
@@ -621,7 +624,7 @@
 								<div class="max-w-xs space-y-2.5">
 									<!-- Entry Time -->
 									<div class="space-y-1">
-										<label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{i18n.t('entryTime')}</label>
+										<span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{i18n.t('entryTime')}</span>
 										<div class="flex items-center gap-1.5">
 											<input type="time" bind:value={entryRangeStart} class="w-24 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-bold focus:border-primary-500 focus:outline-none" />
 											<span class="text-slate-300 text-[10px]">to</span>
@@ -634,7 +637,7 @@
 									</div>
 									<!-- Exit Time -->
 									<div class="space-y-1">
-										<label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{i18n.t('exitTime')}</label>
+										<span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{i18n.t('exitTime')}</span>
 										<div class="flex items-center gap-1.5">
 											<input type="time" bind:value={exitRangeStart} class="w-24 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-bold focus:border-primary-500 focus:outline-none" />
 											<span class="text-slate-300 text-[10px]">to</span>
@@ -683,12 +686,12 @@
 							<!-- Right Column: People Selection -->
 							<div class="p-4 space-y-2">
 								<div class="flex items-center justify-between gap-2">
-									<label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+									<span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
 										People
 										<span class="text-primary-600">{selectedPersonIds.size}</span>
 										<span class="text-slate-300">/</span>
 										{genCategoryFiltered.length}
-									</label>
+									</span>
 									<div class="flex items-center gap-1.5">
 										{#if presentCount > 0}
 											<button

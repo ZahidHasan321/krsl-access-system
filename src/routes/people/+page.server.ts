@@ -7,20 +7,50 @@ import type { PageServerLoad, Actions } from './$types';
 import { requirePermission } from '$lib/server/rbac';
 import { notifyChange } from '$lib/server/events';
 import { queueDeviceSync, queueDeviceDelete } from '$lib/server/device-sync';
-import { writeFileSync } from 'fs';
+import { writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
+import sharp from 'sharp';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 async function savePhoto(photo: FormDataEntryValue | null): Promise<string | null> {
     if (!photo || !(photo instanceof File) || photo.size === 0) return null;
 
-    const ext = photo.name.split('.').pop() || 'jpg';
-    const fileName = `${crypto.randomUUID()}.${ext}`;
-    const filePath = join(process.cwd(), 'static', 'uploads', 'people', fileName);
+    if (photo.size > MAX_FILE_SIZE) {
+        throw new Error('File size exceeds 5MB limit');
+    }
 
-    const buffer = Buffer.from(await photo.arrayBuffer());
-    writeFileSync(filePath, buffer);
+    const fileName = `${crypto.randomUUID()}.webp`;
+    const uploadDir = join(process.cwd(), 'static', 'uploads', 'people');
+    const filePath = join(uploadDir, fileName);
 
-    return `/uploads/people/${fileName}`;
+    if (!existsSync(uploadDir)) {
+        mkdirSync(uploadDir, { recursive: true });
+    }
+
+    try {
+        const buffer = Buffer.from(await photo.arrayBuffer());
+        
+        // Use sharp to validate and re-encode image
+        // This also strips EXIF/malicious metadata
+        const processedImage = sharp(buffer);
+        const metadata = await processedImage.metadata();
+
+        if (!metadata.format || !ALLOWED_MIME_TYPES.includes(`image/${metadata.format}`)) {
+            throw new Error('Invalid file type. Only JPEG, PNG and WebP are allowed.');
+        }
+
+        await processedImage
+            .webp({ quality: 80 })
+            .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
+            .toFile(filePath);
+
+        return `/uploads/people/${fileName}`;
+    } catch (e: any) {
+        console.error('Photo processing error:', e);
+        throw new Error(e.message || 'Failed to process photo');
+    }
 }
 
 import { CATEGORIES } from '$lib/constants/categories';
@@ -70,6 +100,17 @@ export const load: PageServerLoad = async (event) => {
     }
     const where = whereClauses.length > 0 ? and(...whereClauses) : undefined;
 
+    const [totalCountResult] = await db
+        .select({ value: sql<number>`count(*)` })
+        .from(people)
+        .innerJoin(personCategories, eq(people.categoryId, personCategories.id))
+        .where(where);
+
+    const totalCount = totalCountResult.value;
+    const totalPages = Math.ceil(totalCount / limit);
+    const validatedPage = Math.max(1, Math.min(page, totalPages || 1));
+    const validatedOffset = (validatedPage - 1) * limit;
+
     const list = await db
         .select({
             id: people.id,
@@ -94,16 +135,8 @@ export const load: PageServerLoad = async (event) => {
         .innerJoin(personCategories, eq(people.categoryId, personCategories.id))
         .where(where)
         .limit(limit)
-        .offset(offset)
+        .offset(validatedOffset)
         .orderBy(desc(people.createdAt));
-
-    const [totalCountResult] = await db
-        .select({ value: sql<number>`count(*)` })
-        .from(people)
-        .innerJoin(personCategories, eq(people.categoryId, personCategories.id))
-        .where(where);
-
-    const totalCount = totalCountResult.value;
 
     const [summaryStats] = await db
         .select({
@@ -132,10 +165,10 @@ export const load: PageServerLoad = async (event) => {
             trained
         },
         pagination: {
-            page,
+            page: validatedPage,
             limit,
             totalCount,
-            totalPages: Math.ceil(totalCount / limit)
+            totalPages
         }
     };
 };
@@ -212,6 +245,9 @@ export const actions: Actions = {
             if (e.message?.includes('UNIQUE constraint failed: people.code_no')) {
                 return fail(400, { message: 'Code Number already exists' });
             }
+            if (e.message?.includes('File size exceeds') || e.message?.includes('Invalid file type')) {
+                return fail(400, { message: e.message });
+            }
             return fail(500, { message: 'Failed to create person' });
         }
     },
@@ -247,6 +283,18 @@ export const actions: Actions = {
         try {
             const photoUrl = await savePhoto(photo);
             if (photoUrl) {
+                // Get old photo URL to delete it
+                const oldPerson = db.select({ photoUrl: people.photoUrl }).from(people).where(eq(people.id, id)).get();
+                if (oldPerson?.photoUrl) {
+                    const oldPhotoPath = join(process.cwd(), 'static', oldPerson.photoUrl);
+                    try {
+                        if (existsSync(oldPhotoPath)) {
+                            unlinkSync(oldPhotoPath);
+                        }
+                    } catch (err) {
+                        console.error('Failed to delete old photo file:', err);
+                    }
+                }
                 updates.photoUrl = photoUrl;
             }
 
@@ -267,6 +315,9 @@ export const actions: Actions = {
             if (e.message?.includes('UNIQUE constraint failed: people.code_no')) {
                 return fail(400, { message: 'Code Number already exists' });
             }
+            if (e.message?.includes('File size exceeds') || e.message?.includes('Invalid file type')) {
+                return fail(400, { message: e.message });
+            }
             return fail(500, { message: 'Failed to update person' });
         }
     },
@@ -279,8 +330,20 @@ export const actions: Actions = {
         if (!id) return fail(400, { message: 'ID required' });
 
         try {
-            // Look up biometricId before deletion so we can remove from devices
+            // Look up person to get biometricId and photoUrl before deletion
             const person = db.select().from(people).where(eq(people.id, id)).get();
+            
+            if (person?.photoUrl) {
+                const photoPath = join(process.cwd(), 'static', person.photoUrl);
+                try {
+                    if (existsSync(photoPath)) {
+                        unlinkSync(photoPath);
+                    }
+                } catch (err) {
+                    console.error('Failed to delete photo file:', err);
+                }
+            }
+
             if (person?.biometricId) {
                 queueDeviceDelete(person.biometricId);
             }

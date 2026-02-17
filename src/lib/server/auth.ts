@@ -93,7 +93,9 @@ export function setSessionTokenCookie(event: RequestEvent, token: string, expire
 	event.cookies.set(sessionCookieName, token, {
 		expires: expiresAt,
 		path: '/',
-		secure: !dev // Use secure cookies only in production (HTTPS)
+		secure: !dev, // Use secure cookies only in production (HTTPS)
+		httpOnly: true,
+		sameSite: 'lax'
 	});
 }
 

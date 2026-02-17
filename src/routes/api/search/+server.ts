@@ -3,6 +3,7 @@ import { people, vehicles, personCategories, attendanceLogs } from '$lib/server/
 import { like, or, eq, and, inArray, sql } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { requirePermission } from '$lib/server/rbac';
 
 /** Given a root category ID, return all descendant IDs (inclusive). */
 function getDescendantIds(categoryId: string, allCategories: { id: string; parentId: string | null }[]): string[] {
@@ -20,7 +21,8 @@ function getDescendantIds(categoryId: string, allCategories: { id: string; paren
     return ids;
 }
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, locals }) => {
+    requirePermission(locals, 'people.view');
     const query = url.searchParams.get('q');
     const categoryId = url.searchParams.get('category') || url.searchParams.get('categoryId');
 

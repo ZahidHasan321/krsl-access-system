@@ -31,6 +31,12 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
     let isRegisterOpen = $state(false);
     let debounceTimer: any;
 
+    $effect(() => {
+        return () => {
+            clearTimeout(debounceTimer);
+        };
+    });
+
     let isPreparingPrint = $state(false);
     let previousLimit = $state(20);
     let isPrintConfirmOpen = $state(false);

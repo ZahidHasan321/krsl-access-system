@@ -12,6 +12,7 @@
 	import { format } from 'date-fns';
 	import { Calendar, Eye, EyeOff, Loader2, Mail, Shield, Trash2, UserPlus, Users } from 'lucide-svelte';
 	import { appToast } from '$lib/utils';
+	import { ROLES } from '$lib/constants/roles';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -74,7 +75,7 @@
 										variant="outline"
 										class={clsx(
 											'text-[10px] font-bold tracking-widest uppercase',
-											u.roleId === 'admin'
+											u.roleId === ROLES.ADMIN
 												? 'border-rose-200 bg-rose-100 text-rose-700'
 												: 'border-blue-200 bg-blue-100 text-blue-700'
 										)}
@@ -110,7 +111,7 @@
 									name="roleId"
 									class="h-10 rounded-xl border-2 border-slate-100 px-4 text-sm font-bold transition-all focus:border-primary-500 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
 									onchange={(e) => e.currentTarget.form?.requestSubmit()}
-									disabled={u.roleId === 'admin'}
+									disabled={u.roleId === ROLES.ADMIN}
 								>
 									{#each data.roles as r (r.id)}
 										<option value={r.id} selected={u.roleId === r.id}>{r.name}</option>
@@ -118,7 +119,7 @@
 								</select>
 							</form>
 
-							{#if u.roleId !== 'admin'}
+							{#if u.roleId !== ROLES.ADMIN}
 								<form method="POST" action="?/deleteUser" use:enhance bind:this={deleteFormElement}>
 									<input type="hidden" name="id" value={u.id} />
 									<Button

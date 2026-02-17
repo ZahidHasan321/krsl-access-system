@@ -3,6 +3,7 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
+      TZ: Asia/Dhaka
       POSTGRES_DB: krcrm
       POSTGRES_USER: krcrm
       POSTGRES_PASSWORD: krcrm
@@ -21,6 +22,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      - TZ=Asia/Dhaka
       - NODE_ENV=production
       - PORT=3000
       - DATABASE_URL=postgresql://krcrm:krcrm@postgres:5432/krcrm

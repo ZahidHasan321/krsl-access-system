@@ -16,6 +16,7 @@ RUN pnpm build
 # ---- Production stage ----
 FROM node:24-slim AS production
 
+RUN apt-get update && apt-get install -y tzdata && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@10.28.0 --activate
 
 WORKDIR /app

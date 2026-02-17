@@ -27,11 +27,17 @@ export const load: PageServerLoad = async (event) => {
         createdAt: user.createdAt
     }).from(user);
 
+    const usersWithMasterFlag = allUsers.map(u => ({
+        ...u,
+        isMaster: isMasterUser(u.username)
+    }));
+
     const allRoles = await db.select().from(roles);
 
     return {
-        users: allUsers,
-        roles: allRoles
+        users: usersWithMasterFlag,
+        roles: allRoles,
+        isMaster: isCurrentUserMaster(event.locals)
     };
 };
 
@@ -101,8 +107,8 @@ export const actions: Actions = {
             if (targetUser && isMasterUser(targetUser.username)) {
                 return fail(400, { message: 'Cannot modify the master account' });
             }
-            if (targetUser?.roleId === ROLES.ADMIN && roleId !== ROLES.ADMIN) {
-                return fail(400, { message: 'Cannot demote an Administrator' });
+            if (targetUser?.roleId === ROLES.ADMIN && roleId !== ROLES.ADMIN && !isCurrentUserMaster(locals)) {
+                return fail(400, { message: 'Only the master account can demote an Administrator' });
             }
 
             await db.update(user).set({ 

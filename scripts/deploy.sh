@@ -26,7 +26,7 @@ echo "==> Running database migrations..."
 docker compose exec -T app npx drizzle-kit migrate
 
 echo "==> Seeding roles, permissions & default admin user..."
-docker compose exec -T app node --env-file=.env --import=tsx scripts/db-manage.ts seed
+docker compose exec -T app npx tsx scripts/db-manage.ts seed
 
 echo "==> Done. Current status:"
 docker compose ps

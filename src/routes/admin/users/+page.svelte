@@ -111,7 +111,7 @@
 									name="roleId"
 									class="h-10 rounded-xl border-2 border-slate-100 px-4 text-sm font-bold transition-all focus:border-primary-500 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
 									onchange={(e) => e.currentTarget.form?.requestSubmit()}
-									disabled={u.roleId === ROLES.ADMIN}
+									disabled={u.isMaster || (u.roleId === ROLES.ADMIN && !data.isMaster)}
 								>
 									{#each data.roles as r (r.id)}
 										<option value={r.id} selected={u.roleId === r.id}>{r.name}</option>
@@ -119,7 +119,7 @@
 								</select>
 							</form>
 
-							{#if u.roleId !== ROLES.ADMIN}
+							{#if !u.isMaster && (u.roleId !== ROLES.ADMIN || data.isMaster)}
 								<form method="POST" action="?/deleteUser" use:enhance bind:this={deleteFormElement}>
 									<input type="hidden" name="id" value={u.id} />
 									<Button

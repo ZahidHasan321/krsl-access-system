@@ -1,0 +1,7 @@
+{
+	"dialect": "sqlite",
+	"out": "./drizzle",
+	"dbCredentials": {
+		"url": "/app/data/local.db"
+	}
+}

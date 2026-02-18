@@ -26,6 +26,8 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - DATABASE_URL=postgresql://krcrm:krcrm@postgres:5432/krcrm
+      - PROTOCOL_HEADER=x-forwarded-proto
+      - HOST_HEADER=x-forwarded-host
     volumes:
       - upload-data:/app/static/uploads
       - ./.env:/app/.env:ro

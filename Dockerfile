@@ -34,7 +34,7 @@ RUN mkdir -p /app/static/uploads
 
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV ORIGIN=http://localhost:3000
+## ORIGIN is set via docker-compose.yml or .env (must match the real server URL)
 
 EXPOSE 3000
 

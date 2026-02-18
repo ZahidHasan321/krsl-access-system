@@ -3,6 +3,7 @@ import { db } from '$lib/server/db';
 import { devices, deviceCommands } from '$lib/server/db/schema';
 import { eq, and, asc } from 'drizzle-orm';
 import { formatCommand } from '$lib/zkteco';
+import { Buffer } from 'node:buffer';
 
 /** GET — Heartbeat + command dispatch */
 export const GET: RequestHandler = async ({ url }) => {
@@ -36,9 +37,17 @@ export const GET: RequestHandler = async ({ url }) => {
 		console.log(`[ZK:Command] Sending command to ${sn}: ${cmd.commandString}`);
 
 		return new Response(formatCommand(cmd.id, cmd.commandString), {
-			headers: { 'Content-Type': 'text/plain' }
+			headers: {
+				'Content-Type': 'text/plain',
+				'Content-Length': Buffer.byteLength(formatCommand(cmd.id, cmd.commandString)).toString()
+			}
 		});
 	}
 
-	return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+	return new Response('OK', {
+		headers: {
+			'Content-Type': 'text/plain',
+			'Content-Length': '2'
+		}
+	});
 };

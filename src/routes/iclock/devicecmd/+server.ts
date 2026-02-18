@@ -85,5 +85,10 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		}
 	}
 
-	return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+	return new Response('OK', {
+		headers: {
+			'Content-Type': 'text/plain',
+			'Content-Length': '2'
+		}
+	});
 };

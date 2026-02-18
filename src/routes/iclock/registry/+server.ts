@@ -3,6 +3,7 @@ import { db } from '$lib/server/db';
 import { devices } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { buildHandshakeResponse } from '$lib/zkteco';
+import { Buffer } from 'node:buffer';
 
 /** POST — Device Registry / Handshake */
 export const POST: RequestHandler = async ({ url, request }) => {
@@ -46,6 +47,9 @@ ${body.substring(0, 200)}...`);
 ${response.replace(/\n/g, ' | ')}`);
 
 	return new Response(response, {
-		headers: { 'Content-Type': 'text/plain' }
+		headers: {
+			'Content-Type': 'text/plain',
+			'Content-Length': Buffer.byteLength(response).toString()
+		}
 	});
 };

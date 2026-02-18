@@ -6,6 +6,7 @@ import { buildHandshakeResponse, parseAttLog, parseOperLog, toDateString, verify
 import { notifyChange, notifyCheckIn, notifyCheckOut, notifyEnrollment } from '$lib/server/events';
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { Buffer } from 'node:buffer';
 import sharp from 'sharp';
 
 /** Save photo and generate thumbnail. Returns { photoUrl, thumbUrl }. */
@@ -70,7 +71,10 @@ export const GET: RequestHandler = async ({ url }) => {
 	console.log(`[ZK:Handshake] Response to ${sn}:\n${response.replace(/\n/g, ' | ')}`);
 
 	return new Response(response, {
-		headers: { 'Content-Type': 'text/plain' }
+		headers: {
+			'Content-Type': 'text/plain',
+			'Content-Length': Buffer.byteLength(response).toString()
+		}
 	});
 };
 
@@ -112,7 +116,12 @@ export const POST: RequestHandler = async ({ url, request }) => {
 			console.error(`[ZK:Photo] Error saving photo:`, e);
 		}
 
-		return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+		return new Response('OK', {
+			headers: {
+				'Content-Type': 'text/plain',
+				'Content-Length': '2'
+			}
+		});
 	}
 
 	const body = await request.text();
@@ -176,7 +185,12 @@ export const POST: RequestHandler = async ({ url, request }) => {
 			}
 		}
 		notifyChange();
-		return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+		return new Response('OK', {
+			headers: {
+				'Content-Type': 'text/plain',
+				'Content-Length': '2'
+			}
+		});
 	}
 
 	// Handle BIODATA / FACE / FINGERTMP — device sends biometric template after enrollment
@@ -254,12 +268,22 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				notifyChange();
 			}
 		}
-		return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+		return new Response('OK', {
+			headers: {
+				'Content-Type': 'text/plain',
+				'Content-Length': '2'
+			}
+		});
 	}
 
 	// Only process ATTLOG beyond this point, acknowledge everything else
 	if (table !== 'ATTLOG') {
-		return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+		return new Response('OK', {
+			headers: {
+				'Content-Type': 'text/plain',
+				'Content-Length': '2'
+			}
+		});
 	}
 	const entries = parseAttLog(body);
 
@@ -375,5 +399,10 @@ export const POST: RequestHandler = async ({ url, request }) => {
 
 	notifyChange();
 
-	return new Response('OK', { headers: { 'Content-Type': 'text/plain' } });
+	return new Response('OK', {
+		headers: {
+			'Content-Type': 'text/plain',
+			'Content-Length': '2'
+		}
+	});
 };

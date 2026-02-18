@@ -71,5 +71,27 @@
 		"tailwind-merge": "^3.4.0",
 		"uuid": "^13.0.0",
 		"zod": "^4.3.5"
+	},
+	"pnpm": {
+		"peerDependencyRules": {
+			"ignore": [
+				"better-sqlite3",
+				"mysql2",
+				"bun-types",
+				"@types/better-sqlite3",
+				"@aws-sdk/client-rds-data",
+				"@cloudflare/workers-types",
+				"@libsql/client",
+				"@planetscale/database",
+				"@tidbcloud/serverless",
+				"@vercel/postgres",
+				"@xata.io/client",
+				"postgres",
+				"mysql2",
+				"sqlite3",
+				"sql.js",
+				"oracle-db"
+			]
+		}
 	}
 }

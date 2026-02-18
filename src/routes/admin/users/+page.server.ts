@@ -84,7 +84,7 @@ export const actions: Actions = {
                 roleId
             });
         } catch (e: any) {
-            // Check for unique constraint violation (code 'SQLITE_CONSTRAINT_UNIQUE' or similar message)
+            // Check for unique constraint violation (PostgreSQL duplicate key error)
             if (e.message?.includes('duplicate key value violates unique constraint')) {
                 return fail(400, { message: 'Username already exists' });
             }

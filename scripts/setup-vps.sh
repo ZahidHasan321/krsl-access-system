@@ -28,10 +28,6 @@ else
     echo "    rclone already installed."
 fi
 
-# --- sqlite3 (for safe database backups) ---
-echo "==> Installing sqlite3..."
-apt-get install -y sqlite3
-
 # --- Set script permissions ---
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 chmod +x "$SCRIPT_DIR/deploy.sh"
@@ -50,7 +46,7 @@ echo ""
 echo "Next steps:"
 echo ""
 echo "  1. Copy your .env file to the project root"
-echo "     (make sure DATABASE_URL=/app/data/local.db)"
+echo "     (make sure DATABASE_URL=postgres://...)"
 echo ""
 echo "  2. Configure rclone for Google Drive:"
 echo "     rclone config"

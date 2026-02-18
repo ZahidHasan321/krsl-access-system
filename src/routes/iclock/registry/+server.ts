@@ -46,12 +46,6 @@ ${body.substring(0, 200)}...`);
 ${response.replace(/\n/g, ' | ')}`);
 
 	return new Response(response, {
-		headers: { 
-			'Content-Type': 'text/plain',
-			'Content-Length': response.length.toString(),
-			'Connection': 'close',
-			'Server': 'ZK ADMS',
-			'X-Accel-Buffering': 'no'
-		}
+		headers: { 'Content-Type': 'text/plain' }
 	});
 };

@@ -99,8 +99,6 @@
                 >
                     {category.count}
                 </div>
-            {:else}
-                <span class="text-xs font-bold text-slate-400">0</span>
             {/if}
         </div>
     </button>

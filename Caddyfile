@@ -12,9 +12,6 @@
 			header_up Host {host}
 			header_up X-Real-IP {remote_host}
 			header_up X-Forwarded-For {remote_host}
-			header_down -X-Accel-Buffering
-			header_down X-Accel-Buffering no
-			flush_interval -1
 		}
 	}
 

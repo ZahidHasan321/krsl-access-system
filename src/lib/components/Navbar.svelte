@@ -275,7 +275,7 @@
                 {#if page.data.user}
                     <div class="hidden md:flex items-center gap-3 pl-2 sm:pl-4 border-l border-gray-100 ml-1">
                         <div class="text-right">
-                            <p class="text-xs font-bold text-gray-900 leading-none">{page.data.user.username}</p>
+                            <p class="text-xs font-bold text-gray-900 leading-none cursor-default" title="Username: {page.data.user.username}">{page.data.user.name || page.data.user.username}</p>
                             <p class="text-[10px] text-gray-400 font-medium uppercase tracking-wider mt-1">{page.data.user.roleName || 'User'}</p>
                         </div>
                         <form method="POST" action="/logout" use:enhance>

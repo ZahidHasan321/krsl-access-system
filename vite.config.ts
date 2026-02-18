@@ -10,7 +10,7 @@ export default defineConfig({
 		SvelteKitPWA({
 			registerType: 'autoUpdate',
 			injectRegister: false,
-			manifestFilename: 'manifest.json',
+			manifestFilename: 'app-manifest.json',
 			workbox: {
 				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}']
 			},

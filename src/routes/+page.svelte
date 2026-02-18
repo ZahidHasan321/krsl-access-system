@@ -76,12 +76,14 @@
 				<h1 class="text-3xl leading-tight font-black tracking-tight text-slate-900">
 					{i18n.t('dashboard')}
 				</h1>
-				<div
-					class="flex animate-pulse items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-emerald-600"
-				>
-					<div class="size-1.5 rounded-full bg-emerald-500"></div>
-					<span class="text-[10px] font-black tracking-widest uppercase">Live</span>
-				</div>
+				{#if data.anyDeviceOnline}
+					<div
+						class="flex animate-pulse items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-emerald-600"
+					>
+						<div class="size-1.5 rounded-full bg-emerald-500"></div>
+						<span class="text-[10px] font-black tracking-widest uppercase">Live</span>
+					</div>
+				{/if}
 			</div>
 			<div class="flex items-center gap-2 font-bold text-slate-500">
 				<Calendar size={16} />
@@ -131,16 +133,18 @@
 								{i18n.t('currentlyInside')}
 							</Card.Title>
 						</div>
-						<div
-							class="flex flex-col items-end rounded-xl border-2 border-primary-100 bg-primary-50 px-3 py-1.5"
-						>
-							<span class="text-xl leading-none font-black text-primary-700"
-								><CountUp value={data.currentlyInside?.totalPeople || 0} /></span
+						{#if data.currentlyInside?.totalPeople > 0}
+							<div
+								class="flex flex-col items-end rounded-xl border-2 border-primary-100 bg-primary-50 px-3 py-1.5"
 							>
-							<span class="text-[9px] font-black tracking-widest text-primary-500 uppercase"
-								>Total People</span
-							>
-						</div>
+								<span class="text-xl leading-none font-black text-primary-700"
+									><CountUp value={data.currentlyInside?.totalPeople || 0} /></span
+								>
+								<span class="text-[9px] font-black tracking-widest text-primary-500 uppercase"
+									>Total People</span
+								>
+							</div>
+						{/if}
 					</div>
 				</Card.Header>
 				<Card.Content class="p-4 pt-0">
@@ -259,7 +263,7 @@
 
 			<!-- Recent Activity -->
 			<Card.Root class="border-2 border-slate-200 bg-white shadow-sm">
-				<Card.Header class="px-4 py-3">
+				<Card.Header class="px-4 pt-3 pb-0">
 					<div class="flex items-center justify-between">
 						<Card.Title
 							class="flex items-center gap-2 text-xs font-black tracking-widest text-slate-600 uppercase"

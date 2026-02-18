@@ -24,6 +24,8 @@ export const rolePermissions = pgTable('role_permissions', {
 export const user = pgTable('user', {
     id: text('id').primaryKey(),
     username: text('username').notNull().unique(),
+    name: text('name'),
+    contact: text('contact'),
     passwordHash: text('password_hash').notNull(),
     roleId: text('role_id').notNull().references(() => roles.id),
     failedAttempts: integer('failed_attempts').notNull().default(0),

@@ -1,11 +1,12 @@
 import { redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { attendanceLogs, people, personCategories, vehicles } from '$lib/server/db/schema';
+import { attendanceLogs, people, personCategories, vehicles, devices } from '$lib/server/db/schema';
 import { count, eq, gte, lte, and, or, sql, desc } from 'drizzle-orm';
 import { format, subDays } from 'date-fns';
 import type { PageServerLoad } from './$types';
 import { requirePermission } from '$lib/server/rbac';
 import { CATEGORIES } from '$lib/constants/categories';
+import { isDeviceOnline } from '$lib/server/device-sync';
 
 export const load: PageServerLoad = async (event) => {
 	if (!event.locals.user) {
@@ -21,6 +22,10 @@ export const load: PageServerLoad = async (event) => {
 	todayStart.setHours(0, 0, 0, 0);
 	const todayEnd = new Date(now);
 	todayEnd.setHours(23, 59, 59, 999);
+
+	// Check device status
+	const allDevices = await db.select({ lastHeartbeat: devices.lastHeartbeat }).from(devices);
+	const anyDeviceOnline = allDevices.some(d => isDeviceOnline(d.lastHeartbeat));
 
 	// Currently inside people - grouped by their direct category
 	const insideByCategory = await db
@@ -206,7 +211,8 @@ export const load: PageServerLoad = async (event) => {
 				vehiclesOut: todayVehiclesOut.value
 			},
 			trend7Day,
-			recentLogs
+			recentLogs,
+			anyDeviceOnline
 		};
 	};
 

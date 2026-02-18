@@ -6,11 +6,19 @@
 		<meta name="theme-color" content="#020617" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-		<link rel="apple-touch-icon" href="/pwa-192x192.png" />
-		<link rel="manifest" href="/manifest.json" />
+		
+		<!-- Favicon and App Icons -->
+		<link rel="apple-touch-icon" sizes="180x180" href="%sveltekit.assets%/apple-touch-icon.png?v=7">
+		<link rel="icon" type="image/png" sizes="32x32" href="%sveltekit.assets%/favicon-32x32.png?v=7">
+		<link rel="icon" type="image/png" sizes="16x16" href="%sveltekit.assets%/favicon-16x16.png?v=7">
+		<link rel="shortcut icon" href="%sveltekit.assets%/favicon.ico?v=7" />
+		<link rel="manifest" href="%sveltekit.assets%/app-manifest.json" />
+
+		<!-- Fonts -->
 		<link rel="preconnect" href="https://fonts.googleapis.com">
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 		<link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@100..800&family=Dancing+Script:wght@400..700&family=Galada&family=Noto+Sans+Bengali:wght@100..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+		
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

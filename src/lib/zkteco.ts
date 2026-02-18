@@ -16,29 +16,26 @@ function parseDeviceTime(timeStr: string): Date {
 
 /** Device handshake response options */
 export function buildHandshakeResponse(sn: string): string {
-	const options = [
+	return [
 		`GET OPTION FROM: ${sn}`,
-		'RegistryCode=6',
-		'Stamp=1',
-		'OpStamp=1',
-		'PhotoStamp=1',
+		'Stamp=0',
+		'OpStamp=0',
+		'PhotoStamp=0',
 		'ErrorDelay=30',
-		'Delay=10',
+		'Delay=2',
 		'TransInterval=1',
-		'TransFlag=TransData\tAttLog\tOpLog\tAttPhoto\tEnrollUser\tEnrollFP\tFACE\tUserPic\tBioPhoto',
+		'TransFlag=TransData\tAttLog\tAttPhoto\tEnrollUser\tEnrollFP\tFACE\tUserPic\tBioPhoto\tChgUser',
 		'Realtime=1',
 		'Encrypt=0',
 		'BioPhotoFun=1',
 		'BioDataFun=1',
 		'VisilightFun=1',
-		'SupportAttendPhoto=1',
 		'PostBackTmpFlag=1',
-		'PushOptionsFlag=1',
+		'DuplicatePunchTimer=1',
 		'MultiBioDataSupport=0:1:0:0:0:0:0:0:1:1',
 		'MultiBioPhotoSupport=0:0:0:0:0:0:0:0:0:1',
-		'PushOptions=UserPicURLFunOn,MultiBioDataSupport,MultiBioPhotoSupport,RegistryCode'
-	];
-	return options.join('\r\n') + '\r\n';
+		'PushOptions=UserPicURLFunOn,MultiBioDataSupport,MultiBioPhotoSupport'
+	].join('\n') + '\n';
 }
 
 export interface AttLogEntry {
@@ -53,7 +50,7 @@ export interface AttLogEntry {
 export function parseAttLog(body: string): AttLogEntry[] {
 	const entries: AttLogEntry[] = [];
 
-	for (const line of body.split(/\r?\n/)) {
+	for (const line of body.split('\n')) {
 		const trimmed = line.trim();
 		if (!trimmed) continue;
 
@@ -75,23 +72,7 @@ export function parseAttLog(body: string): AttLogEntry[] {
 
 /** Format a command for heartbeat response */
 export function formatCommand(id: number | string, commandString: string): string {
-	return `C:${id}:${commandString}\r\n`;
-}
-
-/** Create a raw response formatted for ZKTeco devices to avoid SvelteKit charset injection */
-export function zkResponse(body: string): Response {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(body);
-    
-    return new Response(data, {
-        headers: {
-            'Content-Type': 'text/plain',
-            'Content-Length': data.length.toString(),
-            'Connection': 'close',
-            'Server': 'ZK ADMS',
-            'X-Accel-Buffering': 'no'
-        }
-    });
+	return `C:${id}:${commandString}`;
 }
 
 /** Format date as YYYY-MM-DD */

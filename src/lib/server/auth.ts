@@ -60,6 +60,7 @@ export async function validateSessionToken(token: string) {
 	const user = {
 		id: userBase.id,
 		username: userBase.username,
+		name: userBase.name,
 		roleId: role?.id ?? null,
 		roleName: role?.name ?? null,
 		permissions: Array.from(permissions)

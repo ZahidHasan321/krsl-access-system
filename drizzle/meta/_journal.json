@@ -8,6 +8,13 @@
       "when": 1771330201842,
       "tag": "0000_dusty_omega_sentinel",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1771342601587,
+      "tag": "0001_absurd_wind_dancer",
+      "breakpoints": true
     }
   ]
 }

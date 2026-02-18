@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { requirePermission } from '$lib/server/rbac';
-import { notifyChange } from '$lib/server/events';
+import { notifyChange, notifyCheckIn } from '$lib/server/events';
 import { queueDeviceSync, queueDeviceDelete } from '$lib/server/device-sync';
 import { writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
@@ -235,6 +235,12 @@ export const actions: Actions = {
                     status: 'on_premises',
                     purpose,
                     date: format(now, 'yyyy-MM-dd')
+                });
+                notifyCheckIn({
+                    personId: id,
+                    personName: name,
+                    verifyMethod: 'manual',
+                    photoUrl: photoUrl
                 });
             }
 

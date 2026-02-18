@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { requirePermission } from '$lib/server/rbac';
-import { notifyChange } from '$lib/server/events';
+import { notifyChange, notifyCheckIn, notifyCheckOut } from '$lib/server/events';
 
 import { CATEGORIES } from '$lib/constants/categories';
 
@@ -177,6 +177,12 @@ export const actions: Actions = {
             date: format(now, 'yyyy-MM-dd')
         });
 
+        notifyCheckIn({
+            personId,
+            personName: person.name,
+            verifyMethod: 'manual',
+            photoUrl: person.photoUrl
+        });
         notifyChange();
         return { success: true };
     },
@@ -196,6 +202,11 @@ export const actions: Actions = {
             return fail(400, { message: 'Active log not found' });
         }
 
+        // Fetch person for toast notification
+        const checkedOutPerson = await db.query.people.findFirst({
+            where: eq(people.id, log.personId)
+        });
+
         await db.update(attendanceLogs)
             .set({
                 exitTime: new Date(),
@@ -203,6 +214,14 @@ export const actions: Actions = {
             })
             .where(eq(attendanceLogs.id, logId));
 
+        if (checkedOutPerson) {
+            notifyCheckOut({
+                personId: checkedOutPerson.id,
+                personName: checkedOutPerson.name,
+                verifyMethod: 'manual',
+                photoUrl: checkedOutPerson.photoUrl
+            });
+        }
         notifyChange();
         return { success: true };
     }

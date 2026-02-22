@@ -37,6 +37,30 @@ services:
     networks:
       - web
 
+  device-service:
+    build: .
+    restart: unless-stopped
+    command: node --env-file=.env --import=tsx scripts/device-service.ts
+    env_file: .env
+    environment:
+      - TZ=Asia/Dhaka
+      - DATABASE_URL=postgresql://krcrm:krcrm@postgres:5432/krcrm
+      - DEVICE_SERVICE_PORT=8080
+      - SVELTE_INTERNAL_URL=http://app:3000
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+    ports:
+      - "8080:8080"
+    volumes:
+      - upload-data:/app/static/uploads
+      - ./.env:/app/.env:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      app:
+        condition: service_started
+    networks:
+      - web
+
   nginx:
     image: nginx:stable-alpine
     restart: unless-stopped

@@ -122,13 +122,7 @@ async function resetDatabase() {
 }
 
 async function seedDatabase() {
-    console.log('Seeding roles...');
-    const validRoleIds = ROLES.map(r => r.id);
-    await client.query(
-        `DELETE FROM roles WHERE id != ALL($1)`,
-        [validRoleIds]
-    );
-
+    console.log('Seeding base roles...');
     for (const r of ROLES) {
         await client.query(
             `INSERT INTO roles (id, name, description) VALUES ($1, $2, $3)
@@ -137,13 +131,7 @@ async function seedDatabase() {
         );
     }
 
-    console.log('Syncing permissions...');
-    const validPermIds = PERMISSIONS.map(p => p.id);
-    await client.query(
-        `DELETE FROM permissions WHERE id != ALL($1)`,
-        [validPermIds]
-    );
-
+    console.log('Syncing base permissions...');
     for (const p of PERMISSIONS) {
         await client.query(
             `INSERT INTO permissions (id, description) VALUES ($1, $2)
@@ -152,10 +140,10 @@ async function seedDatabase() {
         );
     }
 
-    console.log('Syncing role-permissions...');
-    await client.query('DELETE FROM role_permissions');
-
+    console.log('Syncing role-permissions for base roles...');
     for (const [roleId, permIds] of Object.entries(ROLE_PERMISSIONS)) {
+        // Only clear and re-sync permissions for the roles we manage in this script
+        await client.query('DELETE FROM role_permissions WHERE role_id = $1', [roleId]);
         for (const permId of permIds) {
             await client.query(
                 'INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)',

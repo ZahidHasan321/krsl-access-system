@@ -6,7 +6,7 @@
     import { Badge } from '$lib/components/ui/badge';
     import * as Table from '$lib/components/ui/table';
     import { Search, Calendar, Filter, Clock, Users, TrendingUp, X, RotateCcw, ChevronRight, ChevronLeft, Printer, Loader2, UserCheck, ArrowLeft } from 'lucide-svelte';
-    import logo from '$lib/assets/logo.png';
+    import logo from '$lib/assets/kr_logo.svg';
     import { clsx } from 'clsx';
     import { cn, getCategoryBadgeClass, statusBadgeClasses } from '$lib/utils';
     import type { PageData } from './$types';

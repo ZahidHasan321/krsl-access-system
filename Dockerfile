@@ -28,6 +28,7 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/drizzle.config.json ./drizzle.config.json
 COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/src ./src
 
 # Create directories for persistent data
 RUN mkdir -p /app/static/uploads

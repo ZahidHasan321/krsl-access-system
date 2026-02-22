@@ -16,7 +16,7 @@
     import { cn, appToast } from '$lib/utils';
     import type { PageData, ActionData } from './$types';
     import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
-    import logo from '$lib/assets/logo.png';
+    import logo from '$lib/assets/kr_logo.svg';
 
     let { data, form }: { data: PageData, form: ActionData } = $props();
 

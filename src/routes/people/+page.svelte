@@ -20,7 +20,7 @@
     import { sineInOut } from 'svelte/easing';
     import RegisterDialog from './RegisterDialog.svelte';
     import ChangeCategoryDialog from './ChangeCategoryDialog.svelte';
-    import logo from '$lib/assets/logo.png';
+    import logo from '$lib/assets/kr_logo.svg';
 
 import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '$lib/constants/categories';
 import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';

@@ -17,7 +17,7 @@
         personId: string;
         biometricId: string;
         personName: string;
-        onDone: (method: string | null) => void;
+        onDone: (method: string | null, photoUrl?: string | null) => void;
         onSkip: () => void;
     } = $props();
 
@@ -29,6 +29,7 @@
     let cardNo = $state('');
     let failureCode = $state('');
     let eventSource: EventSource | null = null;
+    let enrolledPhotoUrl = $state<string | null>(null);
 
     onMount(async () => {
         // Check device status
@@ -46,6 +47,7 @@
             try {
                 const data = JSON.parse(e.data);
                 if (data.personId === personId) {
+                    if (data.photoUrl) enrolledPhotoUrl = data.photoUrl;
                     step = 'success';
                 }
             } catch {}
@@ -266,7 +268,7 @@
                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2">Biometric ID: {biometricId}</p>
             </div>
 
-            <Button onclick={() => onDone(selectedMethod)} class="w-full h-12 font-black text-sm uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700">
+            <Button onclick={() => onDone(selectedMethod, enrolledPhotoUrl)} class="w-full h-12 font-black text-sm uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700">
                 Continue
             </Button>
         </div>

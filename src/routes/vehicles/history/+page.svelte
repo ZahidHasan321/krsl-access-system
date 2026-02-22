@@ -12,7 +12,7 @@
     import { page } from '$app/state';
     import { cn, getPageRange } from '$lib/utils';
     import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
-    import logo from '$lib/assets/logo.png';
+    import logo from '$lib/assets/kr_logo.svg';
 
     let { data }: { data: PageData } = $props();
 

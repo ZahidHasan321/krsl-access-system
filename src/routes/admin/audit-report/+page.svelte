@@ -17,7 +17,7 @@
 		CheckSquare,
 		Square
 	} from 'lucide-svelte';
-	import logo from '$lib/assets/logo.png';
+	import logo from '$lib/assets/kr_logo.svg';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { format } from 'date-fns';

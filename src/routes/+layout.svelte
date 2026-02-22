@@ -9,6 +9,7 @@
     import { goto, invalidateAll } from '$app/navigation';
     import { navigating } from '$app/stores';
     import ErrorBoundary from '$lib/components/ErrorBoundary.svelte';
+    import SecurityCheckDialog from '$lib/components/SecurityCheckDialog.svelte';
 
 	let { children } = $props();
 
@@ -16,6 +17,7 @@
     let eventSource: EventSource | null = null;
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
     let isNavigating = false;
+    let securityDialog = $state<any>(null);
 
     // Track navigation state to avoid invalidating during transitions
     const unsubNav = navigating.subscribe((nav) => {
@@ -53,6 +55,7 @@
                 const data = JSON.parse(e.data);
                 const method = data.verifyMethod ? ` (${data.verifyMethod})` : '';
                 appToast.checkIn(`${data.personName} checked in${method}`);
+                securityDialog?.handleCheckIn(data);
             } catch {}
         });
 
@@ -91,5 +94,6 @@
         </ErrorBoundary>
     </main>
 
+    <SecurityCheckDialog bind:this={securityDialog} />
     <Toaster position="top-right" richColors />
 </div>

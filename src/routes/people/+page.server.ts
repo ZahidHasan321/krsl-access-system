@@ -228,8 +228,9 @@ export const actions: Actions = {
             // Optional: Auto check-in if requested
             if (data.get('autoCheckIn') === 'true') {
                 const now = new Date();
+                const logId = crypto.randomUUID();
                 await db.insert(attendanceLogs).values({
-                    id: crypto.randomUUID(),
+                    id: logId,
                     personId: id,
                     entryTime: now,
                     status: 'on_premises',
@@ -240,7 +241,9 @@ export const actions: Actions = {
                     personId: id,
                     personName: name,
                     verifyMethod: 'manual',
-                    photoUrl: photoUrl
+                    photoUrl: photoUrl,
+                    logId: logId,
+                    categoryId: categoryId
                 });
             }
 

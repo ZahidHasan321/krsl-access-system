@@ -13,6 +13,8 @@ export interface CheckInData {
     personName: string;
     verifyMethod: string | null;
     photoUrl: string | null;
+    logId: string;
+    categoryId: string;
 }
 
 export function notifyCheckIn(data: CheckInData) {
@@ -26,6 +28,7 @@ export function notifyCheckOut(data: CheckInData) {
 export interface EnrollmentData {
     personId: string;
     method: string;
+    photoUrl?: string | null;
 }
 
 export function notifyEnrollment(data: EnrollmentData) {

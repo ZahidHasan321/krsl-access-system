@@ -166,10 +166,11 @@ export const actions: Actions = {
             return fail(400, { message: 'Person must exit before entering again' });
         }
 
+        const logId = crypto.randomUUID();
         // 3. Create log
         const now = new Date();
         await db.insert(attendanceLogs).values({
-            id: crypto.randomUUID(),
+            id: logId,
             personId,
             entryTime: now,
             status: 'on_premises',
@@ -181,7 +182,9 @@ export const actions: Actions = {
             personId,
             personName: person.name,
             verifyMethod: 'manual',
-            photoUrl: person.photoUrl
+            photoUrl: person.photoUrl,
+            logId,
+            categoryId: person.categoryId
         });
         notifyChange();
         return { success: true };
@@ -219,9 +222,27 @@ export const actions: Actions = {
                 personId: checkedOutPerson.id,
                 personName: checkedOutPerson.name,
                 verifyMethod: 'manual',
-                photoUrl: checkedOutPerson.photoUrl
+                photoUrl: checkedOutPerson.photoUrl,
+                logId,
+                categoryId: checkedOutPerson.categoryId
             });
         }
+        notifyChange();
+        return { success: true };
+    },
+
+    updatePurpose: async (event) => {
+        requirePermission(event.locals, 'people.create');
+        const data = await event.request.formData();
+        const logId = data.get('logId') as string;
+        const purpose = data.get('purpose') as string;
+
+        if (!logId) return fail(400, { message: 'Log ID required' });
+
+        await db.update(attendanceLogs)
+            .set({ purpose })
+            .where(eq(attendanceLogs.id, logId));
+        
         notifyChange();
         return { success: true };
     }

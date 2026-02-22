@@ -4,7 +4,7 @@
     import { Menu, X, LayoutDashboard, Users, UserCheck, Truck, Search, Loader2, ShieldCheck, History, LogOut, Settings2, Monitor, ClipboardList } from 'lucide-svelte';
     import { page } from '$app/state';
     import { clsx } from 'clsx';
-    import logo from '$lib/assets/logo.png';
+    import logo from '$lib/assets/kr_logo.svg';
     import { enhance } from '$app/forms';
 
     let isMobileMenuOpen = $state(false);
@@ -126,13 +126,13 @@
     <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
             <div class="flex items-center gap-4 xl:gap-6 min-w-0">
-                <a href="/" class="flex items-center gap-3 text-xl font-bold text-primary-950 tracking-tight shrink-0 hover:opacity-80 transition-opacity">
+                <a href="/" class="flex items-center gap-3 text-xl font-bold tracking-tight shrink-0 hover:opacity-80 transition-opacity">
                     <img src={logo} alt="Logo" class="h-8 w-auto" />
                     <span class={clsx(
                         "hidden sm:inline-block xl:inline-block text-2xl normal-case",
                         i18n.lang === 'en' ? "font-cursive" : "font-bn-stylized pt-1"
                     )}>
-                        {i18n.t('appName')}
+                        <span class="bg-gradient-to-br from-[#1C55A4] to-[#209FCF] bg-clip-text text-transparent">KR</span> Steel Ltd.
                     </span>
                 </a>
                 

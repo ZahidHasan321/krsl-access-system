@@ -6,7 +6,7 @@
     import * as Card from '$lib/components/ui/card';
     import { Label } from '$lib/components/ui/label';
     import { Shield, Loader2, ArrowRight, Eye, EyeOff } from 'lucide-svelte';
-    import logo from '$lib/assets/logo.png';
+    import logo from '$lib/assets/kr_logo.svg';
     import type { ActionData } from './$types';
 
     let { form }: { form: ActionData } = $props();

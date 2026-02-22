@@ -23,23 +23,23 @@ export default defineConfig({
 				scope: '/',
 				display: 'standalone',
 				orientation: 'portrait',
-				theme_color: '#020617',
+				theme_color: '#1C55A4',
 				background_color: '#ffffff',
 				icons: [
 					{
-						src: 'pwa-192x192.png',
+						src: 'kr_logo.svg',
 						sizes: '192x192',
-						type: 'image/png'
+						type: 'image/svg+xml'
 					},
 					{
-						src: 'pwa-512x512.png',
+						src: 'kr_logo.svg',
 						sizes: '512x512',
-						type: 'image/png'
+						type: 'image/svg+xml'
 					},
 					{
-						src: 'maskable-icon.png',
+						src: 'kr_logo.svg',
 						sizes: '512x512',
-						type: 'image/png',
+						type: 'image/svg+xml',
 						purpose: 'maskable'
 					}
 				]

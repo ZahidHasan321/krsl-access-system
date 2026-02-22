@@ -19,8 +19,8 @@
   /* ===========================================
      THEME HUE - Change this to change the entire theme!
      =========================================== */
-  --theme-hue: 220; /* Blue theme - change this value to switch themes */
-  --theme-saturation: 90%;
+  --theme-hue: 251; /* Brand Dark Blue - #1C55A4 */
+  --theme-saturation: 85%;
 
   /* ===========================================
      TYPOGRAPHY SCALE
@@ -76,13 +76,13 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.15 0.04 var(--theme-hue));
 
-  /* Primary - Main theme color */
-  --primary: oklch(0.45 0.15 var(--theme-hue));
+  /* Primary - Main theme color #1C55A4 */
+  --primary: oklch(0.44 0.16 251);
   --primary-foreground: oklch(0.98 0.005 var(--theme-hue));
 
-  /* Secondary */
-  --secondary: oklch(0.96 0.02 var(--theme-hue));
-  --secondary-foreground: oklch(0.25 0.05 var(--theme-hue));
+  /* Secondary - Accent brand blue #209FCF */
+  --secondary: oklch(0.65 0.16 236);
+  --secondary-foreground: oklch(1 0 0);
 
   /* Muted */
   --muted: oklch(0.96 0.015 var(--theme-hue));
@@ -125,9 +125,9 @@
   --card-foreground: oklch(0.98 0.005 var(--theme-hue));
   --popover: oklch(0.18 0.035 var(--theme-hue));
   --popover-foreground: oklch(0.98 0.005 var(--theme-hue));
-  --primary: oklch(0.65 0.15 var(--theme-hue));
+  --primary: oklch(0.65 0.16 251);
   --primary-foreground: oklch(0.12 0.03 var(--theme-hue));
-  --secondary: oklch(0.25 0.04 var(--theme-hue));
+  --secondary: oklch(0.35 0.12 236);
   --secondary-foreground: oklch(0.98 0.005 var(--theme-hue));
   --muted: oklch(0.25 0.04 var(--theme-hue));
   --muted-foreground: oklch(0.7 0.04 var(--theme-hue));
@@ -159,18 +159,18 @@
   --font-bn-stylized: "Galada", cursive;
   --font-cursive: "Dancing Script", cursive;
 
-  /* Primary color scale - uses theme hue for consistency */
-  --color-primary-50: oklch(0.97 0.02 220);
-  --color-primary-100: oklch(0.93 0.04 220);
-  --color-primary-200: oklch(0.87 0.08 220);
-  --color-primary-300: oklch(0.75 0.12 220);
-  --color-primary-400: oklch(0.62 0.15 220);
-  --color-primary-500: oklch(0.52 0.17 220);
-  --color-primary-600: oklch(0.45 0.17 220);
-  --color-primary-700: oklch(0.38 0.15 220);
-  --color-primary-800: oklch(0.30 0.12 220);
-  --color-primary-900: oklch(0.22 0.08 220);
-  --color-primary-950: oklch(0.15 0.06 220);
+  /* Primary color scale - uses theme hue for consistency (251) */
+  --color-primary-50: oklch(0.97 0.02 251);
+  --color-primary-100: oklch(0.93 0.04 251);
+  --color-primary-200: oklch(0.87 0.08 251);
+  --color-primary-300: oklch(0.75 0.12 251);
+  --color-primary-400: oklch(0.62 0.15 251);
+  --color-primary-500: oklch(0.52 0.17 251);
+  --color-primary-600: oklch(0.45 0.17 251);
+  --color-primary-700: oklch(0.38 0.15 251);
+  --color-primary-800: oklch(0.30 0.12 251);
+  --color-primary-900: oklch(0.22 0.08 251);
+  --color-primary-950: oklch(0.15 0.06 251);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

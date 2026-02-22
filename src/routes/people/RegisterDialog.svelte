@@ -278,7 +278,11 @@
                         personId={registeredPerson.id}
                         biometricId={registeredPerson.biometricId}
                         personName={registeredPerson.name}
-                        onDone={(method) => { enrolledMethod = method; showSummary = true; }}
+                        onDone={(method, photoUrl) => { 
+                            enrolledMethod = method; 
+                            if (photoUrl && registeredPerson) registeredPerson.photoUrl = photoUrl;
+                            showSummary = true; 
+                        }}
                         onSkip={() => { enrolledMethod = null; showSummary = true; }}
                     />
                 {/if}

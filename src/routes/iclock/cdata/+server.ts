@@ -328,9 +328,10 @@ export const POST: RequestHandler = async ({ url, request }) => {
 
 		if (!activeLog) {
 			// CHECK-IN: no active log → create new entry
+			const newLogId = crypto.randomUUID();
 			await db.insert(attendanceLogs)
 				.values({
-					id: crypto.randomUUID(),
+					id: newLogId,
 					personId: person.id,
 					entryTime: entry.timestamp,
 					verifyMethod: method,
@@ -343,7 +344,9 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				personId: person.id,
 				personName: person.name,
 				verifyMethod: method,
-				photoUrl: person.photoUrl
+				photoUrl: person.photoUrl,
+				logId: newLogId,
+				categoryId: person.categoryId
 			});
 		} else if (activeLog.date === punchDate) {
 			// CHECK-OUT: same day, second punch → mark as checked out
@@ -356,7 +359,9 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				personId: person.id,
 				personName: person.name,
 				verifyMethod: method,
-				photoUrl: person.photoUrl
+				photoUrl: person.photoUrl,
+				logId: activeLog.id,
+				categoryId: person.categoryId
 			});
 		} else {
 			// CLOSE + NEW: different day → close old, create new
@@ -369,12 +374,15 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				personId: person.id,
 				personName: person.name,
 				verifyMethod: method,
-				photoUrl: person.photoUrl
+				photoUrl: person.photoUrl,
+				logId: activeLog.id,
+				categoryId: person.categoryId
 			});
 
+			const newLogId = crypto.randomUUID();
 			await db.insert(attendanceLogs)
 				.values({
-					id: crypto.randomUUID(),
+					id: newLogId,
 					personId: person.id,
 					entryTime: entry.timestamp,
 					verifyMethod: method,
@@ -387,7 +395,9 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				personId: person.id,
 				personName: person.name,
 				verifyMethod: method,
-				photoUrl: person.photoUrl
+				photoUrl: person.photoUrl,
+				logId: newLogId,
+				categoryId: person.categoryId
 			});
 		}
 

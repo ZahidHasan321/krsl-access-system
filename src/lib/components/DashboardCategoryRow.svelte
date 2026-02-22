@@ -30,9 +30,9 @@
         type="button"
         class={clsx(
             'flex w-full items-center justify-between rounded-xl border px-4 py-3 transition-all text-left',
-            hasChildren ? 'cursor-pointer hover:bg-slate-200/50' : 'cursor-default',
+            hasChildren ? 'cursor-pointer hover:bg-slate-50' : 'cursor-default',
             level === 0
-                ? 'mb-2 border-slate-200 bg-slate-100/50'
+                ? 'mb-3 border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/50'
                 : 'mb-1 border-transparent'
         )}
         onclick={toggle}
@@ -70,7 +70,8 @@
                     <span
                         class={clsx(
                             'text-slate-900',
-                            level === 0 ? 'text-base font-black' : 'text-sm font-bold'
+                            level === 0 ? 'text-base font-bold uppercase' : 'text-sm font-bold',
+                            level === 0 && i18n.lang !== 'bn' && 'tracking-tighter'
                         )}>{i18n.t(category.slug as any) || category.name}</span
                     >
                     {#if hasChildren}
@@ -81,7 +82,7 @@
                     {/if}
                 </div>
                 {#if level === 0 && category.children.length > 0}
-                    <div class="text-[10px] font-black tracking-wider text-slate-500 uppercase">
+                    <div class="text-[10px] font-bold tracking-widest text-slate-500 uppercase">
                         {category.children.length} Sub-categories
                     </div>
                 {/if}
@@ -93,7 +94,7 @@
             {#if category.count > 0}
                 <div
                     class={cn(
-                        'flex h-8 min-w-8 items-center justify-center rounded-lg border-2 px-2 text-sm font-black shadow-sm',
+                        'flex h-8 min-w-8 items-center justify-center rounded-lg border-2 px-2 text-sm font-bold tracking-tighter shadow-sm',
                         getCategoryColorClass(category.color)
                     )}
                 >

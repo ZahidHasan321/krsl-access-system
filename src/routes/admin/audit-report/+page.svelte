@@ -475,7 +475,7 @@
 <div class="no-print pb-20">
 	<!-- Sticky Top Bar -->
 	<div class="sticky-filter-bar">
-		<div class="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4">
+		<div class="content-container flex flex-wrap items-center justify-between gap-4">
 			<!-- Left: Date + Search -->
 			<div class="flex items-center gap-3 flex-1 min-w-0">
 				<input
@@ -491,8 +491,8 @@
 					<Input
 						bind:value={searchQuery}
 						oninput={handleSearchInput}
-						placeholder={i18n.t('searchPlaceholder')}
-						class="h-12 w-full rounded-2xl border-2 border-slate-100 bg-white pr-12 pl-12 text-base font-bold shadow-sm focus-visible:border-primary-500 focus-visible:ring-0"
+						placeholder={i18n.t('searchHistoryPlaceholder')}
+						class="h-12 w-full rounded-2xl border-2 border-slate-300 bg-white pr-12 pl-12 text-base font-bold shadow-sm transition-all focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/30"
 					/>
 					{#if searchQuery}
 						<button
@@ -527,7 +527,7 @@
 	</div>
 
 	<!-- Main Content Area -->
-	<div class="mx-auto max-w-[1600px]">
+	<div class="content-container">
 		<main class="space-y-6">
 			<!-- Generation Panel (Collapsible) -->
 			<Card.Root class="border-2 border-slate-100 bg-white">
@@ -724,8 +724,8 @@
 									<input
 										type="text"
 										bind:value={genPeopleSearch}
-										placeholder="Search by name, code, company..."
-										class="w-full rounded-lg border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-7 text-xs font-bold placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:outline-none"
+										placeholder={i18n.t('searchPeoplePlaceholder')}
+										class="w-full rounded-lg border border-slate-300 bg-slate-50 py-1.5 pl-8 pr-7 text-xs font-bold transition-all placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/30"
 									/>
 									{#if genPeopleSearch}
 										<button

@@ -68,13 +68,13 @@
 	<title>{i18n.t('dashboard')} | {i18n.t('appName')}</title>
 </svelte:head>
 
-<div class="space-y-6">
+<div class="space-y-6 pb-10">
 	<!-- Header -->
-	<div class="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+	<div class="content-container flex flex-col justify-between gap-4 md:flex-row md:items-end">
 		<div class="space-y-1">
 			<div class="flex items-center gap-3">
-				<h1 class="text-3xl leading-tight font-black tracking-tight text-slate-900">
-					{i18n.t('dashboard')}
+				<h1 class="text-2xl sm:text-4xl leading-tight font-black tracking-tighter text-slate-900 uppercase">
+					<span class="electric-text">{i18n.t('dashboard')}</span>
 				</h1>
 				{#if data.anyDeviceOnline}
 					<div
@@ -85,7 +85,7 @@
 					</div>
 				{/if}
 			</div>
-			<div class="flex items-center gap-2 font-bold text-slate-500">
+			<div class="flex items-center gap-2 font-black text-slate-500">
 				<Calendar size={16} />
 				<span class="text-sm"
 					>{new Date().toLocaleDateString(i18n.lang === 'bn' ? 'bn-BD' : 'en-US', {
@@ -101,7 +101,7 @@
 			{#if data.user?.permissions.includes('people.create')}
 				<Button
 					variant="default"
-					class="h-10 gap-2 px-5 font-bold shadow-lg"
+					class="h-10 gap-2 px-5 font-black shadow-lg"
 					onclick={() => (isCheckInTypeSelectOpen = true)}
 				>
 					<PlayCircle size={18} />
@@ -109,7 +109,7 @@
 				</Button>
 				<Button
 					variant="outline"
-					class="h-10 gap-2 border-2 bg-white px-5 font-bold"
+					class="h-10 gap-2 border-2 bg-white px-5 font-black"
 					onclick={() => (isRegisterOpen = true)}
 				>
 					<PlusCircle size={18} />
@@ -119,15 +119,15 @@
 		</div>
 	</div>
 
-	<div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+	<div class="content-container grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
 		<!-- Left Column: Currently Inside -->
 		<div class="space-y-6 lg:col-span-2">
-			<Card.Root class="overflow-hidden border-2 border-slate-200 bg-white shadow-sm">
+			<Card.Root class="overflow-hidden border-2 border-slate-200 bg-white shadow-sm mesh-gradient">
 				<Card.Header class="px-4 py-3">
 					<div class="flex items-center justify-between">
 						<div class="space-y-1">
 							<Card.Title
-								class="flex items-center gap-2 text-lg font-black tracking-tight text-slate-900"
+								class="flex items-center gap-2 text-lg font-black tracking-tighter text-slate-900 uppercase"
 							>
 								<Users size={20} class="text-primary-600" />
 								{i18n.t('currentlyInside')}
@@ -137,7 +137,7 @@
 							<div
 								class="flex flex-col items-end rounded-xl border-2 border-primary-100 bg-primary-50 px-3 py-1.5"
 							>
-								<span class="text-xl leading-none font-black text-primary-700"
+								<span class="text-xl leading-none font-black tracking-tighter text-primary-700"
 									><CountUp value={data.currentlyInside?.totalPeople || 0} /></span
 								>
 								<span class="text-[9px] font-black tracking-widest text-primary-500 uppercase"
@@ -166,23 +166,23 @@
 						<div class="grid grid-cols-1 gap-3 md:grid-cols-3">
 							<!-- Total Vehicles -->
 							<div
-								class="flex items-center justify-between rounded-xl border-2 border-amber-100 bg-amber-50 p-3 shadow-sm"
+								class="flex items-center justify-between rounded-xl border-2 border-amber-100 bg-white p-3 shadow-sm ring-1 ring-amber-100/50"
 							>
 								<div class="flex items-center gap-3">
 									<div
-										class="flex size-10 shrink-0 items-center justify-center rounded-lg border border-amber-200 bg-amber-100 text-amber-700"
+										class="flex size-10 shrink-0 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-amber-700"
 									>
 										<Truck size={20} />
 									</div>
 									<div>
-										<h3 class="text-sm font-black text-slate-900">{i18n.t('vehicles')}</h3>
+										<h3 class="text-sm font-black tracking-tighter text-slate-900 uppercase">{i18n.t('vehicles')}</h3>
 										<p class="text-[9px] font-black tracking-widest text-amber-600 uppercase">
 											On Premises
 										</p>
 									</div>
 								</div>
 								<div class="text-right">
-									<span class="block text-xl leading-none font-black text-amber-700"
+									<span class="block text-xl leading-none font-black tracking-tighter text-amber-700"
 										><CountUp value={data.currentlyInside?.vehicleStats?.total || 0} /></span
 									>
 								</div>
@@ -190,23 +190,23 @@
 
 							<!-- Transport Vehicles -->
 							<div
-								class="flex items-center justify-between rounded-xl border-2 border-blue-100 bg-blue-50 p-3 shadow-sm"
+								class="flex items-center justify-between rounded-xl border-2 border-blue-100 bg-white p-3 shadow-sm ring-1 ring-blue-100/50"
 							>
 								<div class="flex items-center gap-3">
 									<div
-										class="flex size-9 shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-blue-100 text-blue-700"
+										class="flex size-9 shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-700"
 									>
 										<Truck size={16} />
 									</div>
 									<div>
-										<h3 class="text-xs font-black text-slate-800">{i18n.t('transportVehicle')}</h3>
+										<h3 class="text-xs font-black tracking-tighter text-slate-800 uppercase">{i18n.t('transportVehicle')}</h3>
 										<p class="text-[8px] font-black tracking-widest text-blue-600 uppercase">
 											Logistics
 										</p>
 									</div>
 								</div>
 								<div class="text-right">
-									<span class="block text-lg leading-none font-black text-blue-700"
+									<span class="block text-lg leading-none font-black tracking-tighter text-blue-700"
 										><CountUp value={data.currentlyInside?.vehicleStats?.transport || 0} /></span
 									>
 								</div>
@@ -214,23 +214,23 @@
 
 							<!-- Regular Vehicles -->
 							<div
-								class="flex items-center justify-between rounded-xl border-2 border-indigo-100 bg-indigo-50 p-3 shadow-sm"
+								class="flex items-center justify-between rounded-xl border-2 border-indigo-100 bg-white p-3 shadow-sm ring-1 ring-indigo-100/50"
 							>
 								<div class="flex items-center gap-3">
 									<div
-										class="flex size-9 shrink-0 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-100 text-indigo-700"
+										class="flex size-9 shrink-0 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700"
 									>
 										<Truck size={16} />
 									</div>
 									<div>
-										<h3 class="text-xs font-black text-slate-800">{i18n.t('regularVehicle')}</h3>
+										<h3 class="text-xs font-black tracking-tighter text-slate-800 uppercase">{i18n.t('regularVehicle')}</h3>
 										<p class="text-[8px] font-black tracking-widest text-indigo-600 uppercase">
 											Personal
 										</p>
 									</div>
 								</div>
 								<div class="text-right">
-									<span class="block text-lg leading-none font-black text-indigo-700"
+									<span class="block text-lg leading-none font-black tracking-tighter text-indigo-700"
 										><CountUp value={data.currentlyInside?.vehicleStats?.regular || 0} /></span
 									>
 								</div>
@@ -250,19 +250,19 @@
 						<ArrowRight size={14} />
 						<span class="text-[9px] font-black tracking-widest uppercase">Today's Entries</span>
 					</div>
-					<span class="text-xl font-black text-slate-900"><CountUp value={data.todayActivity?.entries || 0} /></span>
+					<span class="text-xl font-black text-slate-900 tracking-tighter"><CountUp value={data.todayActivity?.entries || 0} /></span>
 				</div>
 				<div class="rounded-xl border-2 border-rose-100 bg-white p-3 shadow-sm">
 					<div class="mb-1.5 flex items-center gap-2 text-rose-700">
 						<LogOut size={14} />
 						<span class="text-[9px] font-black tracking-widest uppercase">Today's Exits</span>
 					</div>
-					<span class="text-xl font-black text-slate-900"><CountUp value={data.todayActivity?.exits || 0} /></span>
+					<span class="text-xl font-black text-slate-900 tracking-tighter"><CountUp value={data.todayActivity?.exits || 0} /></span>
 				</div>
 			</div>
 
 			<!-- Recent Activity -->
-			<Card.Root class="border-2 border-slate-200 bg-white shadow-sm">
+			<Card.Root class="border-2 border-slate-200 bg-white shadow-sm scan-line-hover">
 				<Card.Header class="px-4 pt-3 pb-0">
 					<div class="flex items-center justify-between">
 						<Card.Title
@@ -274,7 +274,7 @@
 						<Button
 							variant="ghost"
 							size="sm"
-							class="h-7 text-[10px] font-black text-primary-600 hover:bg-primary-50"
+							class="h-7 text-[10px] font-black text-primary-600 hover:bg-primary-50 uppercase tracking-tighter"
 							href="/attendance"
 						>
 							View all
@@ -285,7 +285,7 @@
 					<div class="divide-y-2 divide-slate-50">
 						{#each data.recentLogs as log (log.id)}
 							<button
-								class="group flex w-full items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-slate-50"
+								class="group flex w-full items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-slate-50 cursor-pointer"
 								onclick={() => goto(`/people/${log.personId}`)}
 							>
 								<div class="flex min-w-0 items-center gap-3">
@@ -301,7 +301,7 @@
 										{/if}
 									</div>
 									<div class="min-w-0">
-										<p class="truncate text-xs font-bold text-slate-900">{log.personName}</p>
+										<p class="truncate text-xs font-black text-slate-900">{log.personName}</p>
 										<div class="flex items-center gap-1.5">
 											<p
 												class="truncate text-[9px] font-black tracking-wider text-slate-500 uppercase"
@@ -333,14 +333,14 @@
 								</div>
 							</button>
 						{:else}
-							<div class="p-6 text-center text-slate-500 text-sm font-bold">No activity today</div>
+							<div class="p-6 text-center text-slate-500 text-sm font-black">No activity today</div>
 						{/each}
 					</div>
 				</Card.Content>
 			</Card.Root>
 
 			<!-- 7-Day Trend -->
-			<Card.Root class="border-2 border-slate-200 bg-white shadow-sm">
+			<Card.Root class="border-2 border-slate-200 bg-white shadow-sm scan-line-hover">
 				<Card.Header class="px-4 py-3">
 					<div class="flex items-center justify-between">
 						<Card.Title
@@ -349,7 +349,7 @@
 							<TrendingUp size={14} />
 							{i18n.t('trend7Day')}
 						</Card.Title>
-						<span class="text-[10px] font-black text-slate-500">{trendTotal} total</span>
+						<span class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">{trendTotal} total</span>
 					</div>
 				</Card.Header>
 				<Card.Content class="p-4 pt-0">
@@ -370,7 +370,7 @@
 									<!-- Bar -->
 									<div
 										class={clsx(
-											'w-full max-w-[20px] rounded-t-sm transition-all duration-500',
+											'w-full max-w-[20px] rounded-t-sm transition-all duration-500 cursor-pointer',
 											isToday ? 'bg-primary-600' : 'bg-slate-200 group-hover:bg-primary-400'
 										)}
 										style="height: {Math.max(pct, 5)}%"
@@ -400,13 +400,13 @@
 	<Dialog.Content class="sm:max-w-112.5">
 		<Dialog.Header>
 			<Dialog.Title class="text-2xl font-black">Choose Entry Type</Dialog.Title>
-			<Dialog.Description class="text-xs font-bold tracking-widest text-slate-500 uppercase">
+			<Dialog.Description class="text-xs font-black tracking-widest text-slate-500 uppercase">
 				Select the type of entry to record
 			</Dialog.Description>
 		</Dialog.Header>
 		<div class="grid grid-cols-2 gap-4 py-4">
 			<button
-				class="group flex flex-col items-center justify-center rounded-3xl border-2 border-slate-100 p-6 transition-all hover:border-primary-500 hover:bg-primary-50"
+				class="group flex flex-col items-center justify-center rounded-3xl border-2 border-slate-100 p-6 transition-all hover:border-primary-500 hover:bg-primary-50 cursor-pointer"
 				onclick={openPersonCheckIn}
 			>
 				<div
@@ -414,11 +414,11 @@
 				>
 					<Users size={32} />
 				</div>
-				<span class="font-black text-slate-900">{i18n.t('personLabel')}</span>
+				<span class="font-black text-slate-900 tracking-tighter uppercase">{i18n.t('personLabel')}</span>
 			</button>
 
 			<button
-				class="group flex flex-col items-center justify-center rounded-3xl border-2 border-slate-100 p-6 transition-all hover:border-amber-500 hover:bg-amber-50"
+				class="group flex flex-col items-center justify-center rounded-3xl border-2 border-slate-100 p-6 transition-all hover:border-amber-500 hover:bg-amber-50 cursor-pointer"
 				onclick={openVehicleCheckIn}
 			>
 				<div
@@ -426,7 +426,7 @@
 				>
 					<Truck size={32} />
 				</div>
-				<span class="font-black text-slate-900">{i18n.t('vehicles')}</span>
+				<span class="font-black text-slate-900 tracking-tighter uppercase">{i18n.t('vehicles')}</span>
 			</button>
 		</div>
 	</Dialog.Content>

@@ -19,14 +19,50 @@
   /* ===========================================
      THEME HUE - Change this to change the entire theme!
      =========================================== */
-  --theme-hue: 251; /* Brand Dark Blue - #1C55A4 */
+  --theme-hue: 220; /* Slate colors */
   --theme-saturation: 85%;
+
+  /* ===========================================
+     BRAND COLORS (HEX)
+     =========================================== */
+  --color-brand-blue-dark: #1C55A4;
+  --color-brand-blue-light: #209FCF;
+  --color-brand-bg: #f1f5f9; /* Slate-100 */
+  --color-brand-text: #0f172a; /* Deep Slate */
+  --color-brand-muted: #334155; /* Slate-700 */
+  --color-brand-split-start: #e2e8f0; /* Slate-200 */
+  --color-brand-orange: #f0b23b;
+  --color-brand-green: #10b981;
+
+  /* ===========================================
+     BRAND TYPOGRAPHY TOKENS
+     =========================================== */
+  --font-weight-brand: 900;
+  --brand-tracking: 0.1em;
+  
+  /* Logo Sizes */
+  --brand-logo-size: 1.5rem;   /* 24px - back to standard */
+  --brand-sub-size: 0.75rem;   /* 12px - back to standard */
+  
+  /* Unified Component Text Sizes (Fixed layout shift) */
+  --nav-text: 0.875rem;        /* 14px */
+  --btn-text: 1rem;            /* 16px */
+
+  /* ===========================================
+     LARGE SCREEN SCALING (3xl / 4K)
+     =========================================== */
+  @media (min-width: 1920px) {
+    --brand-logo-size: 2rem;     /* 32px */
+    --brand-sub-size: 1rem;      /* 16px */
+    --nav-text: 1.125rem;        /* 18px */
+    --btn-text: 1.25rem;         /* 20px */
+  }
 
   /* ===========================================
      TYPOGRAPHY SCALE
      =========================================== */
-  --text-micro: 0.5625rem;   /* 9px */
-  --text-tiny: 0.625rem;     /* 10px */
+  --text-micro: 0.625rem;    /* 10px */
+  --text-tiny: 0.6875rem;    /* 11px */
   --text-xs: 0.75rem;        /* 12px */
   --text-sm: 0.875rem;       /* 14px */
   --text-base: 1rem;         /* 16px */
@@ -69,24 +105,24 @@
   /* ===========================================
      GENERATED THEME COLORS (from hue)
      =========================================== */
-  --background: oklch(0.99 0.005 var(--theme-hue));
-  --foreground: oklch(0.15 0.04 var(--theme-hue));
+  --background: var(--color-brand-bg);
+  --foreground: var(--color-brand-text);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0.04 var(--theme-hue));
+  --card-foreground: var(--color-brand-text);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0.04 var(--theme-hue));
+  --popover-foreground: var(--color-brand-text);
 
   /* Primary - Main theme color #1C55A4 */
-  --primary: oklch(0.44 0.16 251);
-  --primary-foreground: oklch(0.98 0.005 var(--theme-hue));
+  --primary: var(--color-brand-blue-dark);
+  --primary-foreground: #ffffff;
 
   /* Secondary - Accent brand blue #209FCF */
-  --secondary: oklch(0.65 0.16 236);
+  --secondary: var(--color-brand-blue-light);
   --secondary-foreground: oklch(1 0 0);
 
   /* Muted */
-  --muted: oklch(0.96 0.015 var(--theme-hue));
-  --muted-foreground: oklch(0.55 0.03 var(--theme-hue));
+  --muted: #f8fafc;
+  --muted-foreground: var(--color-brand-muted);
 
   /* Accent */
   --accent: oklch(0.95 0.03 var(--theme-hue));
@@ -153,11 +189,13 @@
 }
 
 @theme inline {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-header: "Plus Jakarta Sans", sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-header: "Inter", sans-serif;
   --font-bn: "Anek Bangla", sans-serif;
   --font-bn-stylized: "Galada", cursive;
   --font-cursive: "Dancing Script", cursive;
+
+  --breakpoint-3xl: 1920px;
 
   /* Primary color scale - uses theme hue for consistency (251) */
   --color-primary-50: oklch(0.97 0.02 251);
@@ -214,9 +252,58 @@
     @apply border-border outline-ring/50;
   }
 
-  body {
-    @apply bg-background text-foreground font-sans;
+  button, a {
+    cursor: pointer;
   }
+
+  html {
+    background: linear-gradient(
+      to bottom,
+      var(--color-brand-split-start),
+      var(--color-brand-text)
+    );
+    min-height: 100vh;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-size: 16px;
+    line-height: 1.6; /* Fixed consistent line-height */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  @media (min-width: 1920px) {
+    body {
+      font-size: 18px;
+    }
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-black tracking-tighter uppercase text-foreground antialiased;
+    text-shadow: 0 0 1px rgba(0,0,0,0.01);
+  }
+
+  /* Fix for Bangla font legibility and clipping */
+  [lang="bn"], .font-bn, .font-bn-stylized {
+    font-family: var(--font-bn);
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    line-height: 1.6 !important; /* Matches unified line-height */
+    font-weight: 700 !important; /* Cap at 700 as 900 is often illegible for complex Bangla glyphs */
+  }
+
+  /* Specific fix for inputs to prevent oversized/overbold placeholders */
+  input::placeholder {
+    font-weight: 500 !important;
+    font-size: 0.9em !important;
+    opacity: 0.7;
+  }
+}
+
+.uppercase-none {
+  text-transform: none !important;
 }
 
 /* ===========================================
@@ -234,7 +321,7 @@
 /* Filter Bar sticky behavior */
 .sticky-filter-bar {
   position: sticky;
-  top: 0;
+  top: 4rem; /* Sit below the 4rem (h-16) navbar */
   z-index: 30;
   background-color: rgb(248 250 252 / 0.95);
   backdrop-filter: blur(4px);
@@ -370,6 +457,139 @@
    UTILITY CLASSES
    =========================================== */
 
+@layer components {
+  .container {
+    @apply w-full mx-auto px-4 sm:px-6 lg:px-8 3xl:px-12;
+    max-width: 1600px;
+  }
+
+  /* Specific override for 4K/very large screens if desired, but 1600px is a good upper bound for readability */
+  @media (min-width: 1920px) {
+    .container {
+      max-width: 1720px;
+    }
+  }
+
+  .content-container {
+    @apply mx-auto w-full;
+    max-width: 1600px;
+  }
+
+  /* Brand & Navigation Classes */
+.brand-logo-text {
+  font-size: var(--brand-logo-size);
+  font-weight: var(--font-weight-brand);
+  text-transform: uppercase;
+  letter-spacing: -0.025em; /* Tighter for display */
+}
+
+.brand-sub-text {
+  font-size: var(--brand-sub-size);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: var(--brand-tracking);
+}
+
+.nav-link-text {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: var(--brand-tracking);
+  font-size: var(--nav-text);
+}
+[lang="bn"] .nav-link-text {
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.btn-brand-text {
+  font-weight: var(--font-weight-brand);
+  text-transform: uppercase;
+  letter-spacing: var(--brand-tracking);
+  font-size: var(--btn-text);
+}
+[lang="bn"] .btn-brand-text {
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+/* The Brand Gradient (Electric Text) */
+.electric-text {
+  background: linear-gradient(to right, #1C55A4, #209FCF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  padding-right: 0.2em;
+  margin-right: -0.2em;
+}
+
+/* Blueprint Grid Background */
+.blueprint-grid {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-brand-bg);
+  background-image:
+    linear-gradient(rgba(203, 213, 225, 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(203, 213, 225, 0.3) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.blueprint-grid::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, transparent 0%, var(--color-brand-bg) 95%);
+}
+
+/* Mesh Gradient Effect */
+.mesh-gradient {
+  background: radial-gradient(at 0% 0%, rgba(28, 85, 164, 0.08) 0, transparent 50%),
+              radial-gradient(at 100% 0%, rgba(32, 159, 207, 0.05) 0, transparent 50%);
+}
+
+/* Hero Image Overlay */
+.hero-overlay {
+  position: relative;
+}
+
+.hero-overlay::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(to top, white/20, transparent);
+  pointer-events: none;
+}
+
+/* Rhythmic Scan Line on Hover */
+.scan-line-hover {
+  position: relative;
+  overflow: hidden;
+}
+
+.scan-line-hover::before {
+  content: "";
+  position: absolute;
+  top: -100%;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(32, 159, 207, 0.1),
+    transparent
+  );
+  transition: top 0.6s ease-in-out;
+  pointer-events: none;
+}
+
+.scan-line-hover:hover::before {
+  top: 100%;
+}
+
 /* Text sizes using CSS variables */
 .text-micro { font-size: var(--text-micro); }
 .text-tiny { font-size: var(--text-tiny); }
@@ -377,7 +597,7 @@
 /* Consistent label styling */
 .label-style {
   font-size: var(--text-tiny);
-  font-weight: 700;
+  font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: oklch(0.55 0.03 var(--theme-hue));
@@ -397,4 +617,5 @@
   padding-right: var(--space-6);
   border-radius: var(--radius-xl);
   font-weight: 800;
+}
 }

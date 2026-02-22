@@ -14,19 +14,26 @@
     let showPassword = $state(false);
 </script>
 
-<div class="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12 sm:px-6 lg:px-8">
+<div class="min-h-screen flex items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8">
         <div class="text-center">
-            <img src={logo} alt="Logo" class="mx-auto h-20 w-auto" />
-            <h2 class="mt-6 text-4xl font-extrabold text-slate-900 tracking-tight">
-                {i18n.t('appName')}
+            <div class="size-24 rounded-full bg-white mx-auto flex items-center justify-center overflow-hidden border-2 border-slate-100 shadow-xl shadow-slate-200/50 hover:rotate-[360deg] transition-transform duration-700">
+                <img src={logo} alt="Logo" class="size-full object-contain scale-150" />
+            </div>
+            <h2 class="mt-6 text-2xl font-black text-slate-900 tracking-tighter uppercase">
+                <span class="electric-text">{i18n.t('appName')}</span>
             </h2>
-            <p class="mt-2 text-sm text-slate-500 font-medium">
-                Authorized Personnel Only
-            </p>
+            <div class="mt-2 flex flex-col items-center gap-1">
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">
+                    Access Management System
+                </p>
+                <p class="text-xs text-slate-500 font-black uppercase tracking-widest">
+                    Authorized Personnel Only
+                </p>
+            </div>
         </div>
 
-        <Card.Root class="p-2 shadow-2xl shadow-slate-200/50 border-0 overflow-hidden">
+        <Card.Root class="p-2 shadow-2xl shadow-slate-200/50 border-0 overflow-hidden mesh-gradient">
             <Card.Content class="p-8">
                 <form method="post" action="?/login" use:enhance={() => {
                     isLoading = true;
@@ -46,7 +53,7 @@
 
                     <div class="space-y-6">
                         <div class="space-y-2">
-                            <Label for="username" class="font-bold uppercase text-[10px] tracking-widest text-slate-500 ml-1">Username</Label>
+                            <Label for="username" class="font-black uppercase text-[10px] tracking-widest text-slate-500 ml-1">Username</Label>
                             <Input
                                 id="username"
                                 name="username"
@@ -59,7 +66,7 @@
                         </div>
                         
                         <div class="space-y-2">
-                            <Label for="password" class="font-bold uppercase text-[10px] tracking-widest text-slate-500 ml-1">Password</Label>
+                            <Label for="password" class="font-black uppercase text-[10px] tracking-widest text-slate-500 ml-1">Password</Label>
                             <div class="relative">
                                 <Input
                                     id="password"
@@ -90,13 +97,13 @@
                     <div class="flex items-center">
                         <label class="flex items-center gap-3 text-sm text-slate-600 cursor-pointer group">
                             <input type="checkbox" name="rememberMe" class="w-5 h-5 rounded-md border-slate-300 text-primary-600 focus:ring-primary-500 transition-all cursor-pointer" />
-                            <span class="group-hover:text-slate-900 transition-colors font-semibold">Keep me signed in</span>
+                            <span class="group-hover:text-slate-900 transition-colors font-black">Keep me signed in</span>
                         </label>
                     </div>
 
                     <Button 
                         type="submit" 
-                        class="w-full h-14 text-lg font-bold transition-all rounded-xl shadow-lg flex items-center justify-center gap-3"
+                        class="w-full h-14 text-lg font-black transition-all rounded-xl shadow-lg flex items-center justify-center gap-3"
                         disabled={isLoading}
                     >
                         {#if isLoading}
@@ -111,7 +118,7 @@
             </Card.Content>
         </Card.Root>
 
-        <div class="flex items-center justify-center gap-2 text-slate-400 text-[11px] uppercase tracking-[0.3em] font-bold">
+        <div class="flex items-center justify-center gap-2 text-slate-400 text-[11px] uppercase tracking-[0.3em] font-black">
             <Shield size={12} class="opacity-50" />
             Secure Enterprise Gateway
         </div>

@@ -9,6 +9,7 @@
 
     let isMobileMenuOpen = $state(false);
     let isMobileSearchOpen = $state(false);
+    let isProfileOpen = $state(false);
     let searchQuery = $state('');
     let searchResults = $state<any[]>([]);
     let isSearching = $state(false);
@@ -16,6 +17,17 @@
     let debounceTimer: ReturnType<typeof setTimeout>;
 
     let searchInput: HTMLInputElement | undefined = $state();
+
+    let isScrolled = $state(false);
+
+    $effect(() => {
+        const handleScroll = () => {
+            isScrolled = window.scrollY > 20;
+        };
+        window.addEventListener('scroll', handleScroll);
+        handleScroll(); // Initial check
+        return () => window.removeEventListener('scroll', handleScroll);
+    });
 
     $effect(() => {
         if (isMobileSearchOpen && searchInput) {
@@ -122,28 +134,47 @@
     });
 </script>
 
-<nav class="bg-white border-b z-40">
-    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+<nav class={clsx(
+    "sticky top-0 z-40 transition-all duration-300 no-print",
+    isScrolled 
+        ? "bg-white/90 backdrop-blur-md border-b border-slate-200/60 shadow-sm py-0" 
+        : "bg-transparent border-b border-transparent py-2"
+)}>
+    <div class="container">
         <div class="flex justify-between h-16">
-            <div class="flex items-center gap-4 xl:gap-6 min-w-0">
-                <a href="/" class="flex items-center gap-3 text-xl font-bold tracking-tight shrink-0 hover:opacity-80 transition-opacity">
-                    <img src={logo} alt="Logo" class="h-8 w-auto" />
-                    <span class={clsx(
-                        "hidden sm:inline-block xl:inline-block text-2xl normal-case",
-                        i18n.lang === 'en' ? "font-cursive" : "font-bn-stylized pt-1"
+            <div class="flex items-center gap-3 xl:gap-6 min-w-0">
+                <a href="/" class="flex items-center gap-3 text-xl font-bold tracking-tight shrink-0 transition-all group">
+                    <div class={clsx(
+                        "size-10 rounded-full bg-white flex items-center justify-center overflow-hidden border transition-all duration-500 group-hover:rotate-[360deg] group-hover:shadow-md group-hover:shadow-primary/10",
+                        isScrolled ? "border-slate-100" : "border-white/20 shadow-lg shadow-black/5"
                     )}>
-                        <span class="bg-gradient-to-br from-[#1C55A4] to-[#209FCF] bg-clip-text text-transparent">KR</span> Steel Ltd.
-                    </span>
+                        <img src={logo} alt="Logo" class="size-full object-contain scale-150" />
+                    </div>
+                    <div class="hidden sm:flex flex-col leading-none">
+                        <span class="brand-logo-text transition-colors duration-300 group-hover:text-primary">
+                            <span class="electric-text">KR</span> Steel Ltd.
+                        </span>
+                        <span class={clsx(
+                            "brand-sub-text mt-0.5 transition-colors duration-300 hidden xl:block",
+                            isScrolled ? "text-slate-500 group-hover:text-slate-900" : "text-slate-600 group-hover:text-slate-900"
+                        )}>
+                            Access Management System
+                        </span>
+                    </div>
                 </a>
                 
-                <div class="hidden lg:flex items-center gap-0.5">
+                <div class="hidden xl:flex items-center gap-0.5">
                     {#each filteredNavLinks as link}
                         {#if link.href}
                             <a 
                                 href={link.href}
                                 class={clsx(
-                                    'px-2.5 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap',
-                                    isActive(link.href) ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:text-primary-600 hover:bg-gray-50'
+                                    'px-3 py-2 rounded-full nav-link-text transition-all flex items-center gap-1.5 whitespace-nowrap',
+                                    isActive(link.href) 
+                                        ? 'bg-primary text-white shadow-[0_5px_15px_rgba(28,85,164,0.2)]' 
+                                        : isScrolled 
+                                            ? 'text-slate-600 hover:text-primary hover:bg-slate-50' 
+                                            : 'text-slate-700 hover:text-primary hover:bg-white/50'
                                 )}
                             >
                                 <link.icon size={16} />
@@ -153,24 +184,28 @@
                             {@const isSubActive = link.sub?.some(s => isActive(s.href))}
                             <div class="relative group">
                                 <button class={clsx(
-                                    "px-2.5 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap",
-                                    isSubActive ? 'text-primary-700 font-bold bg-primary-50' : 'text-gray-600 hover:text-primary-600 hover:bg-gray-50'
+                                    "px-3 py-2 rounded-full nav-link-text transition-all flex items-center gap-1.5 whitespace-nowrap",
+                                    isSubActive 
+                                        ? 'bg-primary text-white shadow-[0_5px_15px_rgba(28,85,164,0.2)]' 
+                                        : isScrolled 
+                                            ? 'text-slate-600 hover:text-primary hover:bg-slate-50' 
+                                            : 'text-slate-700 hover:text-primary hover:bg-white/50'
                                 )}>
                                     <link.icon size={16} />
                                     {i18n.t(link.label as any)}
                                     <svg class="w-4 h-4 opacity-50" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                                 </button>
-                                <div class="absolute left-0 mt-0 w-52 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                                    <div class="py-1">
+                                <div class="absolute left-0 mt-1 w-64 bg-white/95 backdrop-blur-lg border border-slate-200 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
+                                    <div class="py-2">
                                         {#each link.sub || [] as sub}
                                             <a 
                                                 href={sub.href}
                                                 class={clsx(
-                                                    'flex items-center gap-2 px-4 py-2.5 text-sm transition-colors',
-                                                    isActive(sub.href) ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-gray-700 hover:bg-gray-50 hover:text-primary-600'
+                                                    'flex items-center gap-2 px-5 py-3 nav-link-text transition-colors',
+                                                    isActive(sub.href) ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-50 hover:text-primary'
                                                 )}
                                             >
-                                                <sub.icon size={14} class="opacity-70" />
+                                                <sub.icon size={16} class="opacity-70" />
                                                 {i18n.t(sub.label as any)}
                                             </a>
                                         {/each}
@@ -208,7 +243,7 @@
                                 bind:this={searchInput}
                                 type="text" 
                                 placeholder={i18n.t('searchPlaceholder')} 
-                                class="pl-9 pr-4 py-2 2xl:py-1.5 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white w-full transition-all"
+                                class="pl-9 pr-4 py-2 2xl:py-1.5 bg-gray-50 border border-slate-300 rounded-full text-sm focus:outline-none focus:ring-4 focus:ring-primary-500/30 focus:border-primary-500 focus:bg-white w-full transition-all"
                                 value={searchQuery}
                                 oninput={handleSearch}
                                 onblur={closeSearch}
@@ -273,25 +308,45 @@
                 <LangSwitch />
                 
                 {#if page.data.user}
-                    <div class="hidden md:flex items-center gap-3 pl-2 sm:pl-4 border-l border-gray-100 ml-1">
-                        <div class="text-right">
-                            <p class="text-xs font-bold text-gray-900 leading-none cursor-default" title="Username: {page.data.user.username}">{page.data.user.name || page.data.user.username}</p>
-                            <p class="text-[10px] text-gray-400 font-medium uppercase tracking-wider mt-1">{page.data.user.roleName || 'User'}</p>
-                        </div>
-                        <form method="POST" action="/logout" use:enhance>
-                            <button 
-                                type="submit" 
-                                class="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
-                                title={i18n.t('logout')}
+                    <div class="relative pl-2 sm:pl-4 border-l border-gray-100 ml-1">
+                        <button 
+                            class="flex items-center gap-2 group hover:bg-slate-50 p-1 rounded-full transition-all duration-200 cursor-pointer"
+                            onclick={() => isProfileOpen = !isProfileOpen}
+                            onblur={() => setTimeout(() => isProfileOpen = false, 200)}
+                        >
+                            <div class="size-9 rounded-full bg-gradient-to-br from-[#1C55A4] to-[#209FCF] flex items-center justify-center text-white font-bold text-sm shadow-md group-hover:scale-105 transition-transform cursor-pointer">
+                                {page.data.user.name?.[0]?.toUpperCase() || page.data.user.username?.[0]?.toUpperCase()}
+                            </div>
+                        </button>
+
+                        {#if isProfileOpen}
+                            <div 
+                                class="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
                             >
-                                <LogOut size={18} />
-                            </button>
-                        </form>
+                                <div class="p-4 border-b border-slate-50 bg-slate-50/50">
+                                    <p class="text-sm font-bold text-slate-900 leading-none truncate">{page.data.user.name || page.data.user.username}</p>
+                                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1.5">{page.data.user.roleName || 'User'}</p>
+                                </div>
+                                <div class="p-2">
+                                    <form method="POST" action="/logout" use:enhance>
+                                        <button 
+                                            type="submit" 
+                                            class="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors group cursor-pointer"
+                                        >
+                                            <div class="size-8 rounded-lg bg-rose-100 flex items-center justify-center group-hover:scale-110 transition-transform cursor-pointer">
+                                                <LogOut size={16} />
+                                            </div>
+                                            {i18n.t('logout')}
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        {/if}
                     </div>
                 {/if}
 
                 <button 
-                    class="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-md"
+                    class="xl:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-md"
                     onclick={() => isMobileMenuOpen = !isMobileMenuOpen}
                 >
                     {#if isMobileMenuOpen}
@@ -305,7 +360,7 @@
     </div>
 
     {#if isMobileMenuOpen}
-        <div class="lg:hidden bg-white border-b absolute w-full shadow-xl max-h-[calc(100vh-4rem)] overflow-y-auto">
+        <div class="xl:hidden bg-white border-b absolute w-full shadow-xl max-h-[calc(100vh-4rem)] overflow-y-auto">
             <div class="px-4 pt-2 pb-6 space-y-1">
                 {#each filteredNavLinks as link}
                     {#if link.href}

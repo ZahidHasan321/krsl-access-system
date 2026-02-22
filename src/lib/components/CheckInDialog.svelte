@@ -151,8 +151,8 @@
                     <div class="relative">
                         <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                         <Input
-                            placeholder={i18n.t('searchPlaceholder')}
-                            class="pl-10 h-12 border-2 text-lg font-medium"
+                            placeholder={i18n.t('searchPeoplePlaceholder')}
+                            class="pl-10 h-12 border-2 border-slate-300 rounded-2xl focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/30 shadow-sm font-bold text-base w-full transition-all"
                             bind:value={searchQuery}
                             autofocus
                         />

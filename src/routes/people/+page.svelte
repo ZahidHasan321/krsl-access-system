@@ -304,7 +304,7 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
 <div class="pb-20 no-print">
     <!-- Sticky Top Bar for Search -->
     <div class="sticky-filter-bar">
-        <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-4">
+        <div class="content-container flex flex-wrap items-center justify-between gap-4">
             <!-- Search Section - Left -->
             <div class="flex-1 max-w-md relative group">
                 <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors">
@@ -313,8 +313,8 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
                 <Input 
                     bind:value={searchQuery}
                     oninput={handleSearchInput}
-                    placeholder={i18n.t('searchPlaceholder')}
-                    class="h-12 pl-12 pr-12 bg-white border-2 border-slate-100 rounded-2xl focus-visible:border-primary-500 focus-visible:ring-0 shadow-sm font-bold text-base w-full"
+                    placeholder={i18n.t('searchPeoplePlaceholder')}
+                    class="h-12 pl-12 pr-12 bg-white border-2 border-slate-300 rounded-2xl focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/30 shadow-sm font-bold text-base w-full transition-all"
                 />
                 {#if searchQuery}
                     <button 
@@ -359,7 +359,7 @@ import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex flex-col md:flex-row gap-8 items-start">
+    <div class="content-container flex flex-col md:flex-row gap-8 items-start">
         
         <!-- Sidebar - Sticky -->
         <aside class="w-full md:w-64 shrink-0 md:sticky md:top-36 space-y-6 max-h-[calc(100vh-10rem)] overflow-y-auto pr-2 custom-scrollbar pb-10 print:hidden">

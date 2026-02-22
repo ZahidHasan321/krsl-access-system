@@ -113,7 +113,10 @@ const translations = {
         trend7Day: '7-Day Trend',
 
         // Search & Empty States
-        searchPlaceholder: 'Search name, code, company...',
+        searchPlaceholder: 'Search people or vehicles...',
+        searchPeoplePlaceholder: 'Search name, ID, company...',
+        searchVehiclesPlaceholder: 'Search vehicle no, driver, mobile...',
+        searchHistoryPlaceholder: 'Search history (vehicle, driver, vendor)...',
         all: 'All',
         month: 'Month',
         daysPresent: 'Days Present',
@@ -260,7 +263,10 @@ const translations = {
         trend7Day: 'গত ৭ দিনের চিত্র',
 
         // Search & Empty States
-        searchPlaceholder: 'নাম, আইডি বা কোম্পানি খুঁজুন...', 
+        searchPlaceholder: 'ব্যক্তি বা যানবাহন খুঁজুন...', 
+        searchPeoplePlaceholder: 'নাম, আইডি বা কোম্পানি খুঁজুন...',
+        searchVehiclesPlaceholder: 'গাড়ি নম্বর, চালক বা মোবাইল খুঁজুন...',
+        searchHistoryPlaceholder: 'ইতিহাস খুঁজুন (গাড়ি, চালক, ভেন্ডর)...',
         all: 'সব',
         month: 'মাস',
         daysPresent: 'উপস্থিতি',
@@ -302,6 +308,14 @@ type TranslationKey = keyof typeof translations['en'];
 
 // Initialize with default; hydrate from localStorage on client
 let currentLang = $state<Lang>('en');
+
+if (browser) {
+    $effect.root(() => {
+        $effect(() => {
+            document.documentElement.lang = currentLang;
+        });
+    });
+}
 
 // Call this once in root +layout.svelte inside onMount
 export function initI18n() {

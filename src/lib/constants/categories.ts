@@ -1,4 +1,4 @@
-import { Users, Truck, Briefcase, Store, Layers, HardHat, UserCheck, User } from 'lucide-svelte';
+import { Users, Truck, Briefcase, Store, Layers, HardHat, UserCheck, User, Wrench, ShoppingCart, UserCircle } from 'lucide-svelte';
 
 export interface Category {
     id: string;
@@ -46,7 +46,7 @@ export const CATEGORIES: Category[] = [
         id: 'employee',
         name: 'Employee',
         slug: 'employee',
-        icon: Briefcase,
+        icon: UserCircle,
         color: 'emerald',
         parentId: null
     },
@@ -62,7 +62,7 @@ export const CATEGORIES: Category[] = [
         id: 'rolling',
         name: 'Rolling',
         slug: 'rolling',
-        icon: Layers,
+        icon: ShoppingCart,
         color: 'indigo',
         parentId: 'customer'
     },
@@ -70,7 +70,7 @@ export const CATEGORIES: Category[] = [
         id: 'outfitting',
         name: 'Outfitting',
         slug: 'outfitting',
-        icon: HardHat,
+        icon: Wrench,
         color: 'cyan',
         parentId: 'customer'
     },
@@ -78,7 +78,7 @@ export const CATEGORIES: Category[] = [
         id: 'management',
         name: 'Management',
         slug: 'management',
-        icon: UserCheck,
+        icon: Briefcase,
         color: 'teal',
         parentId: 'employee'
     },
@@ -86,7 +86,7 @@ export const CATEGORIES: Category[] = [
         id: 'frontliner',
         name: 'Frontliner',
         slug: 'frontliner',
-        icon: User,
+        icon: HardHat,
         color: 'green',
         parentId: 'employee'
     }

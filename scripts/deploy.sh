@@ -6,6 +6,30 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
 
+DOMAIN="ap.krsteelbd.com"
+EMAIL="admin@krsteelbd.com" # Replace with your actual email if needed
+
+echo "==> Checking for SSL certificates..."
+if [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
+    echo "    Certificates not found for $DOMAIN. Attempting to generate..."
+    # Ensure certbot is installed
+    if ! command -v certbot &> /dev/null; then
+        echo "    Installing certbot..."
+        sudo apt update && sudo apt install -y certbot
+    fi
+    
+    # Stop nginx if it's running to free up port 80 for standalone certbot
+    docker compose stop nginx || true
+    
+    sudo certbot certonly --standalone -d "$DOMAIN" --non-interactive --agree-tos --email "$EMAIL"
+    
+    if [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
+        echo "    ERROR: Failed to generate SSL certificates."
+        exit 1
+    fi
+    echo "    Certificates generated successfully."
+fi
+
 echo "==> Pulling latest changes..."
 git pull origin main
 

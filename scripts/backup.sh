@@ -47,13 +47,15 @@ echo "    Database dump: $(du -h "$DB_BACKUP" | cut -f1)"
 
 # --- 2. Uploaded images (people photos, etc.) ---
 echo "==> Backing up uploads..."
-UPLOAD_VOLUME_PATH=$(docker volume inspect kr-steel-crm_upload-data --format '{{ .Mountpoint }}' 2>/dev/null || true)
-if [ -n "$UPLOAD_VOLUME_PATH" ] && [ -d "$UPLOAD_VOLUME_PATH" ]; then
-    mkdir -p "$BACKUP_DIR/uploads"
-    cp -a "$UPLOAD_VOLUME_PATH/." "$BACKUP_DIR/uploads/"
-    echo "    Uploads: $(du -sh "$BACKUP_DIR/uploads" | cut -f1)"
+mkdir -p "$BACKUP_DIR/uploads"
+
+# Detect the actual container name for the app to use docker cp
+APP_CONTAINER=$(docker compose ps -q app)
+if [ -n "$APP_CONTAINER" ]; then
+    docker cp "$APP_CONTAINER:/app/static/uploads/." "$BACKUP_DIR/uploads/"
+    echo "    Uploads copied via docker cp: $(du -sh "$BACKUP_DIR/uploads" | cut -f1)"
 else
-    echo "    No uploads volume found, skipping."
+    echo "    App container not found, skipping uploads backup."
 fi
 
 # --- 3. Drizzle migrations (for disaster recovery) ---

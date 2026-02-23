@@ -28,10 +28,19 @@ else
     echo "    rclone already installed."
 fi
 
+# --- Certbot (for SSL) ---
+echo "==> Installing certbot..."
+if ! command -v certbot &> /dev/null; then
+    apt-get update && apt-get install -y certbot
+else
+    echo "    Certbot already installed."
+fi
+
 # --- Set script permissions ---
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 chmod +x "$SCRIPT_DIR/deploy.sh"
 chmod +x "$SCRIPT_DIR/backup.sh"
+chmod +x "$SCRIPT_DIR/setup-rclone.sh"
 
 # --- Setup daily backup cron job ---
 echo "==> Setting up daily backup cron (2 AM)..."
@@ -45,21 +54,16 @@ echo "============================================"
 echo ""
 echo "Next steps:"
 echo ""
-echo "  1. Copy your .env file to the project root"
-echo "     (make sure DATABASE_URL=postgres://...)"
+echo "  1. Create a .env file from .env.example:"
+echo "     cp .env.example .env"
+echo "     - Set your MASTER_USERNAME and MASTER_PASSWORD"
 echo ""
-echo "  2. Configure rclone for Google Drive:"
-echo "     rclone config"
-echo "     - Name the remote: gdrive"
-echo "     - Type: Google Drive"
-echo "     - Use --no-browser flag for headless setup"
+echo "  2. Configure DNS for your subdomain:"
+echo "     ap.krsteelbd.com -> YOUR_VPS_IP"
 echo ""
-echo "  3. Create the backup folder on Drive:"
-echo "     rclone mkdir gdrive:kr-steel-crm-backups"
+echo "  3. Configure rclone for Google Drive:"
+echo "     ./scripts/setup-rclone.sh"
 echo ""
-echo "  4. Start the app:"
+echo "  4. Start the app (SSL will be handled automatically):"
 echo "     ./scripts/deploy.sh"
-echo ""
-echo "  5. (Optional) Configure nginx.conf"
-echo "     for HTTPS (e.g., using Certbot)"
 echo ""

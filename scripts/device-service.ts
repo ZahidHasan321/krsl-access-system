@@ -122,8 +122,15 @@ const server = http.createServer(async (req, res) => {
 		const url = new URL(req.url || '', `http://${req.headers.host}`);
 		const pathname = url.pathname;
 		const sn = url.searchParams.get('SN');
+		const remoteIp = req.socket.remoteAddress;
 
-		console.log(`[Device] ${req.method} ${pathname}${url.search}`);
+		console.log(`[Device] ${req.method} ${pathname}${url.search} from ${remoteIp}`);
+
+		// Health Check / Browser Test
+		if (pathname === '/' || pathname === '/status' || pathname === '/iclock/status') {
+			res.writeHead(200, { 'Content-Type': 'text/plain' });
+			return res.end('Device Service is Running OK');
+		}
 
 		// ZKTeco Handshake / Data Push
 		if (pathname === '/iclock/cdata') {

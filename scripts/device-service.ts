@@ -38,9 +38,17 @@ const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'dev-secret';
 
 if (!DATABASE_URL) throw new Error('DATABASE_URL is not set');
 
+console.log(`[Database] Connecting to: ${DATABASE_URL.replace(/:[^:@]+@/, ':****@')}`);
+
 // Initialize DB
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
 const db = drizzle(pool, { schema });
+
+// Startup check
+pool.query('SELECT NOW()', (err) => {
+	if (err) console.error('[Database] Connection failed:', err.message);
+	else console.log('[Database] Connection successful');
+});
 
 /** Notify SvelteKit of an event via internal API */
 async function notifySvelte(type: string, data: any = {}) {

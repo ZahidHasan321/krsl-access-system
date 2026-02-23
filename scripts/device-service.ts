@@ -127,12 +127,12 @@ async function savePersonPhoto(pin: string, imageBuffer: Buffer): Promise<{ phot
 
 const server = http.createServer(async (req, res) => {
 	try {
-		const url = new URL(req.url || '', `http://${req.headers.host}`);
-		const pathname = url.pathname;
+		const url = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+		const pathname = url.pathname.toLowerCase(); // Force lowercase for matching
 		const sn = url.searchParams.get('SN');
 		const remoteIp = req.socket.remoteAddress;
 
-		console.log(`[Device] ${req.method} ${pathname}${url.search} from ${remoteIp}`);
+		console.log(`[Device] ${req.method} ${url.pathname}${url.search} from ${remoteIp}`);
 
 		// Health Check / Browser Test
 		if (pathname === '/' || pathname === '/status' || pathname === '/iclock/status') {

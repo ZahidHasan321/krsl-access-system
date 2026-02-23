@@ -15,7 +15,15 @@ if [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
     # Ensure certbot is installed
     if ! command -v certbot &> /dev/null; then
         echo "    Installing certbot..."
-        sudo apt update && sudo apt install -y certbot
+        if command -v apt &> /dev/null; then
+            sudo apt update && sudo apt install -y certbot
+        elif command -v dnf &> /dev/null; then
+            sudo dnf install -y epel-release
+            sudo dnf install -y certbot
+        else
+            echo "    ERROR: Supported package manager (apt/dnf) not found."
+            exit 1
+        fi
     fi
     
     # Stop nginx if it's running to free up port 80 for standalone certbot

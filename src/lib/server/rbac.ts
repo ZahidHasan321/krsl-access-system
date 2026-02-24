@@ -5,12 +5,12 @@ import { error } from '@sveltejs/kit';
  * Throws a 403 Forbidden error if they don't.
  */
 export function requirePermission(locals: App.Locals, permission: string) {
-    if (!locals.user) {
-        error(401, 'Unauthorized');
-    }
-    if (!locals.user.permissions.includes(permission)) {
-        error(403, 'Forbidden');
-    }
+	if (!locals.user) {
+		error(401, 'Unauthorized');
+	}
+	if (!locals.user.permissions.includes(permission)) {
+		error(403, 'Forbidden');
+	}
 }
 
 /**
@@ -18,5 +18,5 @@ export function requirePermission(locals: App.Locals, permission: string) {
  * Returns true if they do, false otherwise.
  */
 export function hasPermission(locals: App.Locals, permission: string): boolean {
-    return !!locals.user?.permissions.includes(permission);
+	return !!locals.user?.permissions.includes(permission);
 }

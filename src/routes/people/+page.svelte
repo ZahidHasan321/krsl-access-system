@@ -1,890 +1,1152 @@
 <script lang="ts">
-    import { i18n } from '$lib/i18n.svelte';
-    import * as Card from '$lib/components/ui/card';
-    import { Button } from '$lib/components/ui/button';
-    import { Input } from '$lib/components/ui/input';
-    import { Badge } from '$lib/components/ui/badge';
-    import { Label } from '$lib/components/ui/label';
-    import { Checkbox } from '$lib/components/ui/checkbox';
-    import * as Table from '$lib/components/ui/table';
-    import * as Dialog from '$lib/components/ui/dialog';
-    import { Search, Users, PlusCircle, Edit2, Trash2, CheckCircle2, XCircle, Save, Eye, RotateCcw, ChevronRight, X, ChevronLeft, Printer, Loader2, Calendar, Fingerprint, ScanFace, CreditCard } from 'lucide-svelte';
-    import { format } from 'date-fns';
-    import { clsx } from 'clsx';
-    import { cn, getCategoryBadgeClass, statusBadgeClasses, getPageRange } from '$lib/utils';
-    import type { PageData } from './$types';
-    import { goto } from '$app/navigation';
-    import { page } from '$app/state';
-    import { enhance } from '$app/forms';
-    import { slide } from 'svelte/transition';
-    import { sineInOut } from 'svelte/easing';
-    import RegisterDialog from './RegisterDialog.svelte';
-    import ChangeCategoryDialog from './ChangeCategoryDialog.svelte';
-    import logo from '$lib/assets/kr_logo.svg';
+	import { i18n } from '$lib/i18n.svelte';
+	import * as Card from '$lib/components/ui/card';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Label } from '$lib/components/ui/label';
+	import { Checkbox } from '$lib/components/ui/checkbox';
+	import * as Table from '$lib/components/ui/table';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import {
+		Search,
+		Users,
+		PlusCircle,
+		Edit2,
+		Trash2,
+		CheckCircle2,
+		XCircle,
+		Save,
+		Eye,
+		RotateCcw,
+		ChevronRight,
+		X,
+		ChevronLeft,
+		Printer,
+		Loader2,
+		Calendar,
+		Fingerprint,
+		ScanFace,
+		CreditCard,
+		Filter
+	} from 'lucide-svelte';
+	import { format } from 'date-fns';
+	import { clsx } from 'clsx';
+	import { cn, getCategoryBadgeClass, statusBadgeClasses, getPageRange } from '$lib/utils';
+	import type { PageData } from './$types';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { enhance } from '$app/forms';
+	import { slide } from 'svelte/transition';
+	import { sineInOut } from 'svelte/easing';
+	import RegisterDialog from './RegisterDialog.svelte';
+	import ChangeCategoryDialog from './ChangeCategoryDialog.svelte';
+	import Pagination from '$lib/components/ui/Pagination.svelte';
+	import logo from '$lib/assets/kr_logo.svg';
+	import {
+		CATEGORIES,
+		ROOT_CATEGORIES,
+		getSubCategories,
+		getCategoryById
+	} from '$lib/constants/categories';
+	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
 
-import { CATEGORIES, ROOT_CATEGORIES, getSubCategories, getCategoryById } from '$lib/constants/categories';
-import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
+	let { data }: { data: PageData } = $props();
 
-    let { data }: { data: PageData } = $props();
+	let searchQuery = $state('');
+	let isRegisterOpen = $state(false);
+	let debounceTimer: any;
 
-    let searchQuery = $state('');
-    let isRegisterOpen = $state(false);
-    let debounceTimer: any;
+	$effect(() => {
+		return () => {
+			clearTimeout(debounceTimer);
+		};
+	});
 
-    $effect(() => {
-        return () => {
-            clearTimeout(debounceTimer);
-        };
-    });
+	let isPreparingPrint = $state(false);
+	let previousLimit = $state(20);
+	let isPrintConfirmOpen = $state(false);
 
-    let isPreparingPrint = $state(false);
-    let previousLimit = $state(20);
-    let isPrintConfirmOpen = $state(false);
+	$effect(() => {
+		searchQuery = data.filters.query;
+	});
 
-    $effect(() => {
-        searchQuery = data.filters.query;
-    });
+	$effect(() => {
+		if (page.url.searchParams.has('print')) {
+			isPreparingPrint = true;
+			const timer = setTimeout(() => {
+				window.print();
+				isPreparingPrint = false;
+				window.close();
+			}, 1500);
+			return () => clearTimeout(timer);
+		}
+	});
 
-    $effect(() => {
-        if (page.url.searchParams.has('print')) {
-            isPreparingPrint = true;
-            const timer = setTimeout(() => {
-                window.print();
-                isPreparingPrint = false;
-                const url = new URL(page.url);
-                url.searchParams.delete('print');
-                url.searchParams.set('limit', previousLimit.toString());
-                goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
-            }, 1500);
-            return () => clearTimeout(timer);
-        }
-    });
+	function handleSearchInput() {
+		clearTimeout(debounceTimer);
+		debounceTimer = setTimeout(handleSearch, 400);
+	}
 
-    function handleSearchInput() {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(handleSearch, 400);
-    }
+	// Edit dialog state
+	let isEditOpen = $state(false);
+	let editPerson = $state<any>(null);
+	let editName = $state('');
+	let editCodeNo = $state('');
+	let editCompany = $state('');
+	let editContactNo = $state('');
+	let editDesignation = $state('');
+	let editBiometricId = $state('');
+	let editIsTrained = $state(false);
+	let editNotes = $state('');
 
-    // Edit dialog state
-    let isEditOpen = $state(false);
-    let editPerson = $state<any>(null);
-    let editName = $state('');
-    let editCodeNo = $state('');
-    let editCompany = $state('');
-    let editContactNo = $state('');
-    let editDesignation = $state('');
-    let editBiometricId = $state('');
-    let editIsTrained = $state(false);
-    let editNotes = $state('');
+	// Change Category state
+	let isChangeCategoryOpen = $state(false);
+	let changeCategoryPerson = $state<any>(null);
 
-    // Change Category state
-    let isChangeCategoryOpen = $state(false);
-    let changeCategoryPerson = $state<any>(null);
+	// Delete confirmation state
+	let confirmDeleteOpen = $state(false);
+	let personToDelete = $state<any>(null);
+	let deleteFormElement = $state<HTMLFormElement | null>(null);
 
-    // Delete confirmation state
-    let confirmDeleteOpen = $state(false);
-    let personToDelete = $state<any>(null);
-    let deleteFormElement = $state<HTMLFormElement | null>(null);
+	function triggerDelete(person: any, form: HTMLFormElement, e: Event) {
+		e.stopPropagation();
+		personToDelete = person;
+		deleteFormElement = form;
+		confirmDeleteOpen = true;
+	}
 
-    function triggerDelete(person: any, form: HTMLFormElement, e: Event) {
-        e.stopPropagation();
-        personToDelete = person;
-        deleteFormElement = form;
-        confirmDeleteOpen = true;
-    }
+	// Category filter logic
+	const selectedCategoryId = $derived(page.url.searchParams.get('category') || '');
 
-    // Category filter logic
-    const selectedCategoryId = $derived(page.url.searchParams.get('category') || '');
+	const isRootCategory = $derived(ROOT_CATEGORIES.some((c) => c.id === selectedCategoryId));
 
-    const isRootCategory = $derived(
-        ROOT_CATEGORIES.some(c => c.id === selectedCategoryId)
-    );
+	const availableSubCategories = $derived(() => {
+		if (!selectedCategoryId) return [];
+		if (isRootCategory) return getSubCategories(selectedCategoryId);
+		const selected = getCategoryById(selectedCategoryId);
+		if (!selected) return [];
+		const children = getSubCategories(selectedCategoryId);
+		if (children.length > 0) return children;
+		const parentId = selected.parentId;
+		if (parentId) return getSubCategories(parentId);
+		return [];
+	});
 
-    const availableSubCategories = $derived(() => {
-        if (!selectedCategoryId) return [];
-        if (isRootCategory) return getSubCategories(selectedCategoryId);
-        const selected = getCategoryById(selectedCategoryId);
-        if (!selected) return [];
-        const children = getSubCategories(selectedCategoryId);
-        if (children.length > 0) return children;
-        const parentId = selected.parentId;
-        if (parentId) return getSubCategories(parentId);
-        return [];
-    });
+	const activeRootCategoryId = $derived(() => {
+		if (!selectedCategoryId) return '';
+		if (isRootCategory) return selectedCategoryId;
+		let current = getCategoryById(selectedCategoryId);
+		if (!current) return '';
+		while (current?.parentId) {
+			const parentId = current.parentId;
+			const parent = getCategoryById(parentId);
+			if (!parent) break;
+			if (ROOT_CATEGORIES.some((r) => r.id === parent.id)) return parent.id;
+			current = parent;
+		}
+		return current?.id || '';
+	});
 
-    const activeRootCategoryId = $derived(() => {
-        if (!selectedCategoryId) return '';
-        if (isRootCategory) return selectedCategoryId;
-        let current = getCategoryById(selectedCategoryId);
-        if (!current) return '';
-        while (current?.parentId) {
-            const parentId = current.parentId;
-            const parent = getCategoryById(parentId);
-            if (!parent) break;
-            if (ROOT_CATEGORIES.some(r => r.id === parent.id)) return parent.id;
-            current = parent;
-        }
-        return current?.id || '';
-    });
+	const activeParentCategory = $derived(() => {
+		if (!selectedCategoryId || isRootCategory) return null;
+		const selected = getCategoryById(selectedCategoryId);
+		if (!selected?.parentId) return null;
+		return getCategoryById(selected.parentId);
+	});
 
-    const activeParentCategory = $derived(() => {
-        if (!selectedCategoryId || isRootCategory) return null;
-        const selected = getCategoryById(selectedCategoryId);
-        if (!selected?.parentId) return null;
-        return getCategoryById(selected.parentId);
-    });
+	const activeRootCategoryName = $derived(() => {
+		const rootId = activeRootCategoryId();
+		if (!rootId) return '';
+		const cat = ROOT_CATEGORIES.find((c) => c.id === rootId);
+		return cat ? i18n.t(cat.slug as any) || cat.name : '';
+	});
 
-    const activeRootCategoryName = $derived(() => {
-        const rootId = activeRootCategoryId();
-        if (!rootId) return '';
-        const cat = ROOT_CATEGORIES.find(c => c.id === rootId);
-        return cat ? (i18n.t(cat.slug as any) || cat.name) : '';
-    });
+	const selectedTrained = $derived(page.url.searchParams.get('trained') || '');
 
-    const selectedTrained = $derived(page.url.searchParams.get('trained') || '');
+	const hasActiveFilters = $derived(!!searchQuery || !!selectedCategoryId || !!selectedTrained);
 
-    const hasActiveFilters = $derived(
-        !!searchQuery || !!selectedCategoryId || !!selectedTrained
-    );
+	function parseEnrolledMethods(raw: string | null): string[] {
+		if (!raw) return [];
+		try {
+			const parsed = JSON.parse(raw);
+			return Array.isArray(parsed) ? parsed : [];
+		} catch {
+			return [];
+		}
+	}
 
-    function parseEnrolledMethods(raw: string | null): string[] {
-        if (!raw) return [];
-        try {
-            const parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : [];
-        } catch {
-            return [];
-        }
-    }
+	function setFilter(key: string, value: string) {
+		const url = new URL(page.url);
+		if (value) url.searchParams.set(key, value);
+		else url.searchParams.delete(key);
+		url.searchParams.set('page', '1');
+		goto(url.toString(), { keepFocus: true, noScroll: true });
+	}
 
-    function setFilter(key: string, value: string) {
-        const url = new URL(page.url);
-        if (value) url.searchParams.set(key, value);
-        else url.searchParams.delete(key);
-        url.searchParams.set('page', '1');
-        goto(url.toString(), { keepFocus: true, noScroll: true });
-    }
+	function handleSearch() {
+		const url = new URL(page.url);
+		if (searchQuery) url.searchParams.set('q', searchQuery);
+		else url.searchParams.delete('q');
+		url.searchParams.set('page', '1');
+		goto(url.toString(), { keepFocus: true, noScroll: true });
+	}
 
-    function handleSearch() {
-        const url = new URL(page.url);
-        if (searchQuery) url.searchParams.set('q', searchQuery);
-        else url.searchParams.delete('q');
-        url.searchParams.set('page', '1');
-        goto(url.toString(), { keepFocus: true, noScroll: true });
-    }
+	function changeCategory(catId: string | null) {
+		const url = new URL(page.url);
+		if (catId) url.searchParams.set('category', catId);
+		else url.searchParams.delete('category');
+		url.searchParams.set('page', '1');
+		goto(url.toString(), { keepFocus: true, noScroll: true });
+	}
 
-    function changeCategory(catId: string | null) {
-        const url = new URL(page.url);
-        if (catId) url.searchParams.set('category', catId);
-        else url.searchParams.delete('category');
-        url.searchParams.set('page', '1');
-        goto(url.toString(), { keepFocus: true, noScroll: true });
-    }
+	function clearFilters() {
+		searchQuery = '';
+		const url = new URL(page.url);
+		url.searchParams.delete('q');
+		url.searchParams.delete('category');
+		url.searchParams.delete('trained');
+		url.searchParams.set('page', '1');
+		goto(url.toString(), { keepFocus: true, noScroll: true });
+	}
 
-    function clearFilters() {
-        searchQuery = '';
-        const url = new URL(page.url);
-        url.searchParams.delete('q');
-        url.searchParams.delete('category');
-        url.searchParams.delete('trained');
-        url.searchParams.set('page', '1');
-        goto(url.toString(), { keepFocus: true, noScroll: true });
-    }
+	function openEdit(person: any, e: Event) {
+		e.stopPropagation();
+		editPerson = person;
+		editName = person.name;
+		editCodeNo = person.codeNo || '';
+		editCompany = person.company || '';
+		editContactNo = person.contactNo || '';
+		editBiometricId = person.biometricId || '';
+		editDesignation = person.designation || '';
+		editIsTrained = person.isTrained;
+		editNotes = person.notes || '';
+		isEditOpen = true;
+	}
 
-    function openEdit(person: any, e: Event) {
-        e.stopPropagation();
-        editPerson = person;
-        editName = person.name;
-        editCodeNo = person.codeNo || '';
-        editCompany = person.company || '';
-        editContactNo = person.contactNo || '';
-        editBiometricId = person.biometricId || '';
-        editDesignation = person.designation || '';
-        editIsTrained = person.isTrained;
-        editNotes = person.notes || '';
-        isEditOpen = true;
-    }
+	function openChangeCategory(person: any, e: Event) {
+		e.stopPropagation();
+		changeCategoryPerson = person;
+		isChangeCategoryOpen = true;
+	}
 
-    function openChangeCategory(person: any, e: Event) {
-        e.stopPropagation();
-        changeCategoryPerson = person;
-        isChangeCategoryOpen = true;
-    }
+	function confirmPrint() {
+		if (data.pagination.totalCount > 2000) {
+			isPrintConfirmOpen = true;
+		} else {
+			printPeople();
+		}
+	}
 
-    function goToPage(p: number) {
-        const url = new URL(page.url);
-        url.searchParams.set('page', p.toString());
-        goto(url.toString(), { keepFocus: true, noScroll: true });
-    }
+	function printPeople() {
+		const url = new URL(page.url);
+		url.searchParams.set('limit', '5000');
+		url.searchParams.set('page', '1');
+		url.searchParams.set('print', '1');
+		window.open(url.toString(), '_blank');
+	}
 
-    function confirmPrint() {
-        if (data.pagination.totalCount > 2000) {
-            isPrintConfirmOpen = true;
-        } else {
-            printPeople();
-        }
-    }
-
-    function printPeople() {
-        previousLimit = data.pagination.limit;
-        const url = new URL(page.url);
-        url.searchParams.set('limit', '5000');
-        url.searchParams.set('page', '1');
-        url.searchParams.set('print', '1');
-        goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
-    }
+	let showMobileFilters = $state(false);
 </script>
 
 <svelte:head>
-    <title>{i18n.t('people')} | {i18n.t('appName')}</title>
+	<title>{i18n.t('people')} | {i18n.t('appName')}</title>
 </svelte:head>
 
 <div class="print-only hidden">
-    <div class="print-header" style="display: flex !important; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 2px solid #333; margin-bottom: 1rem;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <img src={logo} alt="Logo" style="height: 48px; width: auto;" />
-            <div>
-                <div style="font-size: 24px; font-weight: 800; margin: 0;">{i18n.t('appName')}</div>
-                <p style="font-size: 14px; font-weight: 600; color: #333; margin: 4px 0 0 0;">
-                    People Report
-                </p>
-            </div>
-        </div>
-        <div style="text-align: right;">
-            <p style="font-size: 14px; font-weight: 600; margin: 0;">Generated: {new Date().toLocaleDateString()}</p>
-        </div>
-    </div>
+	<div
+		class="print-header"
+		style="display: flex !important; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 2px solid #333; margin-bottom: 1rem;"
+	>
+		<div style="display: flex; align-items: center; gap: 12px;">
+			<img src={logo} alt="Logo" style="height: 48px; width: auto;" />
+			<div>
+				<div style="font-size: 24px; font-weight: 800; margin: 0;">{i18n.t('appName')}</div>
+				<p style="font-size: 14px; font-weight: 600; color: #333; margin: 4px 0 0 0;">
+					People Report
+				</p>
+			</div>
+		</div>
+		<div style="text-align: right;">
+			<p style="font-size: 14px; font-weight: 600; margin: 0;">
+				Generated: {new Date().toLocaleDateString()}
+			</p>
+		</div>
+	</div>
 
-    <div style="margin-bottom: 1rem; padding: 0.75rem; background: #f5f5f5; border-radius: 4px;">
-        <p style="font-size: 14px; font-weight: 600; margin: 0;">
-            Total People: <strong>{data.pagination.totalCount}</strong>
-        </p>
-    </div>
+	<div style="margin-bottom: 1rem; padding: 0.75rem; background: #f5f5f5; border-radius: 4px;">
+		<p style="font-size: 14px; font-weight: 600; margin: 0;">
+			Total People: <strong>{data.pagination.totalCount}</strong>
+		</p>
+	</div>
 
-    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-        <thead>
-            <tr style="background: #f0f0f0;">
-                <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">#</th>
-                <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Name</th>
-                <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Identity No.</th>
-                <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Category</th>
-                <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Company</th>
-                <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Trained</th>
-                <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {#each data.people as person, index (person.id)}
-                <tr>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{index + 1}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">{person.name}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{person.codeNo || '-'}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{person.category.name}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{person.company || '-'}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{person.isTrained ? 'YES' : 'NO'}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">{person.status === 'on_premises' ? 'Inside' : 'Checked Out'}</td>
-                </tr>
-            {/each}
-        </tbody>
-    </table>
+	<table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+		<thead>
+			<tr style="background: #f0f0f0;">
+				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">#</th>
+				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
+					>Name</th
+				>
+				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
+					>Identity No.</th
+				>
+				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
+					>Category</th
+				>
+				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
+					>Company</th
+				>
+				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
+					>Trained</th
+				>
+				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
+					>Status</th
+				>
+			</tr>
+		</thead>
+		<tbody>
+			{#each data.people as person, index (person.id)}
+				<tr>
+					<td style="border: 1px solid #ddd; padding: 8px;">{index + 1}</td>
+					<td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">{person.name}</td>
+					<td style="border: 1px solid #ddd; padding: 8px;">{person.codeNo || '-'}</td>
+					<td style="border: 1px solid #ddd; padding: 8px;">{person.category.name}</td>
+					<td style="border: 1px solid #ddd; padding: 8px;">{person.company || '-'}</td>
+					<td style="border: 1px solid #ddd; padding: 8px;">{person.isTrained ? 'YES' : 'NO'}</td>
+					<td style="border: 1px solid #ddd; padding: 8px;"
+						>{person.status === 'on_premises' ? 'Inside' : 'Checked Out'}</td
+					>
+				</tr>
+			{/each}
+		</tbody>
+	</table>
 
-    <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ddd; font-size: 10px; color: #666; text-align: center;">
-        Generated by {i18n.t('appName')}
-    </div>
+	<div
+		style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ddd; font-size: 10px; color: #666; text-align: center;"
+	>
+		Generated by {i18n.t('appName')}
+	</div>
 </div>
 
 {#if isPreparingPrint}
-    <div class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center">
-        <Loader2 class="animate-spin text-primary-600 mb-4" size={48} />
-        <h2 class="text-xl font-black text-slate-900">Preparing Print Report...</h2>
-        <p class="text-slate-500 font-bold mt-2">Fetching {data.pagination.totalCount} records</p>
-    </div>
+	<div class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white">
+		<Loader2 class="mb-4 animate-spin text-primary-600" size={48} />
+		<h2 class="text-xl font-black text-slate-900">Preparing Print Report...</h2>
+		<p class="mt-2 font-bold text-slate-500">Fetching {data.pagination.totalCount} records</p>
+	</div>
 {/if}
 
-<div class="pb-20 no-print">
-    <!-- Sticky Top Bar for Search -->
-    <div class="sticky-filter-bar">
-        <div class="content-container flex flex-wrap items-center justify-between gap-4">
-            <!-- Search Section - Left -->
-            <div class="flex-1 max-w-md relative group">
-                <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors">
-                    <Search size={20} />
-                </div>
-                <Input 
-                    bind:value={searchQuery}
-                    oninput={handleSearchInput}
-                    placeholder={i18n.t('searchPeoplePlaceholder')}
-                    class="h-12 pl-12 pr-12 bg-white border-2 border-slate-300 rounded-2xl focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/30 shadow-sm font-bold text-base w-full transition-all"
-                />
-                {#if searchQuery}
-                    <button 
-                        class="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors cursor-pointer"
-                        onclick={() => { searchQuery = ''; handleSearch(); }}
-                    >
-                        <X size={16} />
-                    </button>
-                {/if}
-            </div>
+<div class="no-print pb-20">
+	<!-- Sticky Top Bar for Search -->
+	<div class="sticky-filter-bar px-4 md:px-0">
+		<div class="content-container">
+			<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+				<!-- Search Section - Left -->
+				<div class="flex flex-1 items-center gap-3">
+					<div class="group relative flex-1 lg:max-w-md">
+						<div
+							class="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500"
+						>
+							<Search size={18} />
+						</div>
+						<Input
+							bind:value={searchQuery}
+							oninput={handleSearchInput}
+							placeholder={i18n.t('searchPeoplePlaceholder')}
+							class="h-11 w-full rounded-2xl border-2 border-slate-300 bg-white pr-10 pl-11 text-sm font-bold shadow-sm transition-all focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/30 lg:h-12 lg:text-base"
+						/>
+						{#if searchQuery}
+							<button
+								class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100"
+								onclick={() => {
+									searchQuery = '';
+									handleSearch();
+								}}
+							>
+								<X size={14} />
+							</button>
+						{/if}
+					</div>
 
-            <!-- Actions - Right -->
-            <div class="flex items-center gap-3">
-                <Button
-                    variant="outline"
-                    class="h-12 px-6 rounded-2xl font-black gap-2 border-2 border-slate-200 hover:border-primary-300 hover:bg-primary-50 transition-all cursor-pointer"
-                    onclick={confirmPrint}
-                >
-                    <Printer size={18} />
-                    <span>Print Report</span>
-                </Button>
+					<!-- Mobile Info Badge -->
+					<div class="flex items-center gap-2 rounded-2xl bg-slate-100 px-3 py-2 lg:hidden">
+						<span class="text-[9px] font-black tracking-widest text-slate-400 uppercase"
+							>Registry</span
+						>
+						<span class="text-xs font-black text-primary-700">{data.pagination.totalCount}</span>
+					</div>
+				</div>
 
-                {#if hasActiveFilters}
-                    <Button 
-                        variant="ghost" 
-                        class="h-12 px-6 rounded-2xl font-black text-rose-500 hover:bg-rose-50 hover:text-rose-600 gap-2 border-2 border-transparent hover:border-rose-100 transition-all cursor-pointer" 
-                        onclick={clearFilters}
-                    >
-                        <RotateCcw size={18} />
-                        Reset
-                    </Button>
-                {/if}
+				<!-- Actions - Right -->
+				<div
+					class="flex items-center justify-between gap-2 overflow-x-auto pb-1 lg:justify-end lg:overflow-visible lg:pb-0"
+				>
+					<div class="flex items-center gap-2 lg:hidden">
+						<Button
+							variant="outline"
+							size="sm"
+							class={cn(
+								'h-10 rounded-xl border-2 font-black transition-all',
+								showMobileFilters
+									? 'border-primary-500 bg-primary-50 text-primary-600'
+									: 'border-slate-200'
+							)}
+							onclick={() => (showMobileFilters = !showMobileFilters)}
+						>
+							<Filter size={16} class="mr-1.5" />
+							Filters
+						</Button>
+					</div>
 
-                {#if data.user?.permissions.includes('people.create')}
-                    <Button class="h-12 px-8 rounded-2xl font-black gap-2 shadow-lg" onclick={() => isRegisterOpen = true}>
-                        <PlusCircle size={20} />
-                        <span class="hidden sm:inline">{i18n.t('register')}</span>
-                    </Button>
-                {/if}
-            </div>
-        </div>
-    </div>
+					<div class="flex items-center gap-2">
+						<Button
+							variant="outline"
+							class="h-10 shrink-0 cursor-pointer gap-2 rounded-xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 lg:h-12 lg:rounded-2xl lg:px-6"
+							onclick={confirmPrint}
+						>
+							<Printer size={18} />
+							<span class="hidden sm:inline">Print Report</span>
+						</Button>
 
-    <!-- Main Content Area -->
-    <div class="content-container flex flex-col md:flex-row gap-8 items-start">
-        
-        <!-- Sidebar - Sticky -->
-        <aside class="w-full md:w-64 shrink-0 md:sticky md:top-36 space-y-6 max-h-[calc(100vh-10rem)] overflow-y-auto pr-2 custom-scrollbar pb-10 print:hidden">
-            <!-- Category Filter -->
-            <div class="space-y-3">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{i18n.t('category')}</p>
-                <div class="flex flex-col gap-1">
-                    <Button
-                        variant={!selectedCategoryId ? "secondary" : "ghost"}
-                        class={cn(
-                            "justify-start font-bold h-10 px-3 transition-all cursor-pointer",
-                            !selectedCategoryId ? "bg-primary-600 text-white hover:bg-primary-700 shadow-md" : "text-slate-600"
-                        )}
-                        onclick={() => changeCategory(null)}
-                    >
-                        <div class="flex items-center gap-2">
-                            {#if !selectedCategoryId}
-                                <div class="size-1.5 rounded-full bg-white animate-pulse"></div>
-                            {/if}
-                            {i18n.t('all')}
-                        </div>
-                    </Button>
-                    {#each ROOT_CATEGORIES as cat}
-                        {@const isCatActive = activeRootCategoryId() === cat.id}
-                        <div>
-                            <Button
-                                variant={isCatActive ? "secondary" : "ghost"}
-                                class={cn(
-                                    "justify-start font-bold h-10 w-full px-3 transition-all cursor-pointer",
-                                    isCatActive ? "bg-primary-50 text-primary-700 border-l-4 border-primary-600 rounded-l-none" : "text-slate-600"
-                                )}
-                                onclick={() => changeCategory(cat.id)}
-                            >
-                                <div class="flex items-center gap-2">
-                                    {#if isCatActive}
-                                        <div class="size-1.5 rounded-full bg-primary-600"></div>
-                                    {/if}
-                                    {i18n.t(cat.slug as any) || cat.name}
-                                </div>
-                            </Button>
+						{#if hasActiveFilters}
+							<Button
+								variant="ghost"
+								class="h-10 shrink-0 cursor-pointer gap-2 rounded-xl border-2 border-transparent px-4 font-black text-rose-500 transition-all hover:border-rose-100 hover:bg-rose-50 hover:text-rose-600 lg:h-12 lg:rounded-2xl lg:px-6"
+								onclick={clearFilters}
+							>
+								<RotateCcw size={18} />
+								<span class="hidden sm:inline">Reset</span>
+							</Button>
+						{/if}
 
-                            {#if isCatActive && availableSubCategories().length > 0}
-                                <div 
-                                    class="ml-3 mt-1 mb-2 pl-3 border-l-2 border-primary-100"
-                                    transition:slide={{ duration: 250, easing: sineInOut }}
-                                >
-                                    <div class="flex flex-wrap gap-1.5 py-1">
-                                        <button
-                                            class={clsx(
-                                                "px-3 py-1 text-[11px] font-bold rounded-full transition-all border cursor-pointer",
-                                                activeRootCategoryId() === selectedCategoryId
-                                                    ? "bg-primary-600 text-white border-primary-600 shadow-sm"
-                                                    : "bg-white text-slate-600 border-slate-200 hover:border-primary-300"
-                                            )}
-                                            onclick={() => changeCategory(activeRootCategoryId())}
-                                        >
-                                            All
-                                        </button>
+						{#if data.user?.permissions.includes('people.create')}
+							<Button
+								class="h-10 shrink-0 gap-2 rounded-xl px-5 font-black shadow-lg lg:h-12 lg:rounded-2xl lg:px-8"
+								onclick={() => (isRegisterOpen = true)}
+							>
+								<PlusCircle size={18} />
+								<span class="hidden sm:inline">{i18n.t('register')}</span>
+							</Button>
+						{/if}
+					</div>
+				</div>
+			</div>
 
-                                        {#if activeParentCategory() && activeParentCategory()?.id !== activeRootCategoryId()}
-                                            <button
-                                                class="px-2.5 py-1 text-[11px] font-bold rounded-full transition-all bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
-                                                onclick={() => changeCategory(activeParentCategory()?.id || null)}
-                                            >
-                                                <span class="opacity-50 mr-1">↑</span>
-                                                {activeParentCategory()?.name}
-                                            </button>
-                                        {/if}
+			<!-- Mobile Horizontal Category Scroll -->
+			{#if showMobileFilters}
+				<div class="mt-4 lg:hidden" transition:slide>
+					<div class="custom-scrollbar flex gap-2 overflow-x-auto pb-2">
+						<button
+							class={cn(
+								'shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+								selectedCategoryId === ''
+									? 'bg-primary-600 text-white shadow-md'
+									: 'bg-slate-100 text-slate-600'
+							)}
+							onclick={() => changeCategory(null)}
+						>
+							{i18n.t('all')}
+						</button>
+						{#each ROOT_CATEGORIES as cat}
+							<button
+								class={cn(
+									'shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+									activeRootCategoryId() === cat.id
+										? 'bg-primary-600 text-white shadow-md'
+										: 'bg-slate-100 text-slate-600'
+								)}
+								onclick={() => changeCategory(cat.id)}
+							>
+								{i18n.t(cat.slug as any) || cat.name}
+							</button>
+						{/each}
+					</div>
 
-                                        {#each availableSubCategories() as subCat}
-                                            <button
-                                                class={clsx(
-                                                    "px-3 py-1 text-[11px] font-bold rounded-full transition-all border cursor-pointer",
-                                                    selectedCategoryId === subCat.id
-                                                        ? "bg-primary-600 text-white border-primary-600 shadow-sm"
-                                                        : "bg-white text-slate-600 border-slate-200 hover:border-primary-300"
-                                                )}
-                                                onclick={() => changeCategory(subCat.id)}
-                                            >
-                                                {i18n.t(subCat.slug as any) || subCat.name}
-                                            </button>
-                                        {/each}
-                                    </div>
-                                </div>
-                            {/if}
-                        </div>
-                    {/each}
-                </div>
-            </div>
+					{#if activeRootCategoryId() && availableSubCategories().length > 0}
+						<div class="mt-2 flex gap-2 overflow-x-auto pb-2 pl-2">
+							<div class="size-2 shrink-0 self-center rounded-full bg-primary-200"></div>
+							{#each availableSubCategories() as subCat}
+								<button
+									class={cn(
+										'shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+										selectedCategoryId === subCat.id
+											? 'border-primary-600 bg-primary-50 text-primary-700'
+											: 'border-slate-100 bg-white text-slate-500'
+									)}
+									onclick={() => changeCategory(subCat.id)}
+								>
+									{i18n.t(subCat.slug as any) || subCat.name}
+								</button>
+							{/each}
+						</div>
+					{/if}
 
-            <!-- Training Status Filter -->
-            <div class="space-y-3">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{i18n.t('trainingStatus')}</p>
-                <div class="flex flex-col gap-1">
-                    {#each [{ label: i18n.t('all'), value: '' }, { label: i18n.t('trained'), value: 'yes' }, { label: i18n.t('untrained'), value: 'no' }] as opt}
-                        <Button
-                            variant={selectedTrained === opt.value ? "secondary" : "ghost"}
-                            class={cn(
-                                "justify-start font-bold h-10 px-3 transition-all cursor-pointer",
-                                selectedTrained === opt.value
-                                    ? "bg-primary-600 text-white hover:bg-primary-700 shadow-md"
-                                    : "text-slate-600"
-                            )}
-                            onclick={() => setFilter('trained', opt.value)}
-                        >
-                            <div class="flex items-center gap-2">
-                                {#if selectedTrained === opt.value}
-                                    <div class="size-1.5 rounded-full bg-white animate-pulse"></div>
-                                {/if}
-                                {opt.label}
-                            </div>
-                        </Button>
-                    {/each}
-                </div>
-            </div>
+					<div class="mt-2 flex gap-2 overflow-x-auto border-t border-slate-100 pt-2 pb-2">
+						<span class="self-center px-2 text-[9px] font-black text-slate-400 uppercase"
+							>Safety</span
+						>
+						{#each [{ label: 'All', value: '' }, { label: 'Trained', value: 'yes' }, { label: 'Untrained', value: 'no' }] as opt}
+							<button
+								class={cn(
+									'shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+									selectedTrained === opt.value
+										? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+										: 'border-slate-100 bg-white text-slate-500'
+								)}
+								onclick={() => setFilter('trained', opt.value)}
+							>
+								{opt.label}
+							</button>
+						{/each}
+					</div>
+				</div>
+			{/if}
+		</div>
+	</div>
 
-            <!-- Summary Stats -->
-            <div class="p-4 rounded-xl bg-white border-2 border-slate-100 shadow-sm space-y-3">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Summary</p>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <p class="text-2xl font-black text-slate-900">{data.summary.total}</p>
-                        <p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('total')}</p>
-                    </div>
-                    <div>
-                        <p class="text-2xl font-black text-emerald-600">{data.summary.inside}</p>
-                        <p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('inside')}</p>
-                    </div>
-                    <div>
-                        <p class="text-2xl font-black text-primary-600">{data.summary.trained}</p>
-                        <p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('trained')}</p>
-                    </div>
-                    <div>
-                        <p class="text-2xl font-black text-rose-500">{data.summary.untrained}</p>
-                        <p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('untrained')}</p>
-                    </div>
-                </div>
-            </div>
-        </aside>
+	<!-- Main Content Area -->
+	<div class="content-container flex flex-col gap-8 px-4 md:px-0 lg:flex-row">
+		<!-- Sidebar - Desktop Only -->
+		<aside
+			class="custom-scrollbar hidden max-h-[calc(100vh-10rem)] w-full shrink-0 space-y-6 overflow-y-auto pr-2 pb-10 lg:block lg:w-64 print:hidden"
+		>
+			<!-- Category Filter -->
+			<div class="space-y-3">
+				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+					{i18n.t('category')}
+				</p>
+				<div class="flex flex-col gap-1">
+					<Button
+						variant={!selectedCategoryId ? 'secondary' : 'ghost'}
+						class={cn(
+							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+							!selectedCategoryId
+								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+								: 'text-slate-600'
+						)}
+						onclick={() => changeCategory(null)}
+					>
+						<div class="flex items-center gap-2">
+							{#if !selectedCategoryId}
+								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+							{/if}
+							{i18n.t('all')}
+						</div>
+					</Button>
+					{#each ROOT_CATEGORIES as cat}
+						{@const isCatActive = activeRootCategoryId() === cat.id}
+						<div>
+							<Button
+								variant={isCatActive ? 'secondary' : 'ghost'}
+								class={cn(
+									'h-10 w-full cursor-pointer justify-start px-3 font-bold transition-all',
+									isCatActive
+										? 'rounded-l-none border-l-4 border-primary-600 bg-primary-50 text-primary-700'
+										: 'text-slate-600'
+								)}
+								onclick={() => changeCategory(cat.id)}
+							>
+								<div class="flex items-center gap-2">
+									{#if isCatActive}
+										<div class="size-1.5 rounded-full bg-primary-600"></div>
+									{/if}
+									{i18n.t(cat.slug as any) || cat.name}
+								</div>
+							</Button>
 
-        <!-- Main Scrolling Content Area -->
-        <main class="flex-1 min-w-0 space-y-6">
-            <!-- List Section -->
-            <div class="space-y-4">
-                <!-- Mobile Card View -->
-                <div class="lg:hidden space-y-3">
-                    {#each data.people as person (person.id)}
-                        <Card.Root class="cursor-pointer hover:shadow-lg transition-shadow bg-white" onclick={() => goto(`/people/${person.id}`)}>
-                            <Card.Content class="p-4">
-                                <div class="flex items-start justify-between gap-3 mb-3">
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-center gap-2 flex-wrap mb-1">
-                                            <h3 class="font-black text-slate-900">{person.name}</h3>
-                                            {#if person.status === 'on_premises'}
-                                                <Badge class={cn("text-[10px] font-bold uppercase animate-pulse shrink-0", statusBadgeClasses.on_premises)}>
-                                                    {i18n.t('inside')}
-                                                </Badge>
-                                            {/if}
-                                        </div>
-                                        <button
-                                            class="hover:opacity-70 transition-opacity"
-                                            onclick={(e) => openChangeCategory(person, e)}
-                                        >
-                                            <Badge variant="outline" class={cn("font-bold text-[10px] uppercase tracking-wider", getCategoryBadgeClass(person.category.slug))}>
-                                                {person.category.name}
-                                            </Badge>
-                                        </button>
-                                    </div>
-                                    <div class="flex items-center gap-1 shrink-0">
-                                        {#if data.user?.permissions.includes('people.edit')}
-                                            <Button variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-primary-600 hover:bg-primary-50" onclick={(e: MouseEvent) => openEdit(person, e)}>
-                                                <Edit2 size={15} />
-                                            </Button>
-                                        {/if}
-                                        {#if data.user?.permissions.includes('people.delete')}
-                                            <form method="POST" action="?/delete" use:enhance={() => {
-                                                return async ({ result, update }) => {
-                                                    if (result.type === 'success') await update();
-                                                };
-                                            }}>
-                                                <input type="hidden" name="id" value={person.id} />
-                                                <Button type="button" variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50" onclick={(e: MouseEvent) => triggerDelete(person, (e.currentTarget as HTMLButtonElement).form as HTMLFormElement, e)}>
-                                                    <Trash2 size={15} />
-                                                </Button>
-                                            </form>
-                                        {/if}
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2 mt-3 text-xs">
-                                    <div>
-                                        <p class="text-slate-400 font-bold uppercase text-[10px]">{i18n.t('codeNo')}</p>
-                                        <p class="font-bold text-slate-600">{person.codeNo || '-'}</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-slate-400 font-bold uppercase text-[10px]">{i18n.t('company')}</p>
-                                        <p class="font-bold text-slate-600">{person.company || '-'}</p>
-                                    </div>
-                                    <div class="col-span-2 flex items-center gap-4 pt-1 border-t border-slate-100 mt-1">
-                                        {#if person.isTrained}
-                                            <div class="flex items-center gap-1.5 text-emerald-600 font-bold">
-                                                <CheckCircle2 size={14} />
-                                                <span>{i18n.t('isTrained')}</span>
-                                            </div>
-                                        {:else}
-                                            <div class="flex items-center gap-1.5 text-rose-500 font-bold">
-                                                <XCircle size={14} />
-                                                <span>Not Trained</span>
-                                            </div>
-                                        {/if}
-                                        {#if parseEnrolledMethods(person.enrolledMethods).length > 0}
-                                            <div class="flex items-center gap-1.5 ml-auto">
-                                                {#if parseEnrolledMethods(person.enrolledMethods).includes('finger')}
-                                                    <Fingerprint size={14} class="text-sky-500" />
-                                                {/if}
-                                                {#if parseEnrolledMethods(person.enrolledMethods).includes('face')}
-                                                    <ScanFace size={14} class="text-violet-500" />
-                                                {/if}
-                                                {#if parseEnrolledMethods(person.enrolledMethods).includes('card')}
-                                                    <CreditCard size={14} class="text-amber-500" />
-                                                {/if}
-                                            </div>
-                                        {/if}
-                                    </div>
-                                </div>
-                            </Card.Content>
-                        </Card.Root>
-                    {:else}
-                        <div class="py-20 text-center space-y-4">
-                            <div class="size-20 bg-white rounded-full flex items-center justify-center mx-auto text-slate-300 border-2 border-slate-100 shadow-sm">
-                                <Users size={40} />
-                            </div>
-                            <p class="text-slate-500 font-bold">{i18n.t('noResults')}</p>
-                        </div>
-                    {/each}
-                </div>
+							{#if isCatActive && availableSubCategories().length > 0}
+								<div
+									class="mt-1 mb-2 ml-3 border-l-2 border-primary-100 pl-3"
+									transition:slide={{ duration: 250, easing: sineInOut }}
+								>
+									<div class="flex flex-wrap gap-1.5 py-1">
+										<button
+											class={clsx(
+												'cursor-pointer rounded-full border px-3 py-1 text-[11px] font-bold transition-all',
+												activeRootCategoryId() === selectedCategoryId
+													? 'border-primary-600 bg-primary-600 text-white shadow-sm'
+													: 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'
+											)}
+											onclick={() => changeCategory(activeRootCategoryId())}
+										>
+											All
+										</button>
 
-                <!-- Desktop Table View -->
-                <div class="hidden lg:block">
-                    <Card.Root class="border-2 shadow-sm rounded-3xl overflow-hidden bg-white">
-                        <Table.Root>
-                            <Table.Header>
-                                <Table.Row class="bg-slate-50 hover:bg-transparent">
-                                    <Table.Head class="font-black text-slate-900">{i18n.t('name')}</Table.Head>
-                                    <Table.Head class="font-black text-slate-900">{i18n.t('category')}</Table.Head>
-                                    <Table.Head class="font-black text-slate-900">{i18n.t('codeNo')}</Table.Head>
-                                    <Table.Head class="font-black text-slate-900">{i18n.t('company')}</Table.Head>
-                                    <Table.Head class="font-black text-slate-900">{i18n.t('isTrained')}</Table.Head>
-                                    <Table.Head class="font-black text-slate-900">{i18n.t('status')}</Table.Head>
-                                    <Table.Head class="text-right font-black text-slate-900 print:hidden">{i18n.t('actions')}</Table.Head>
-                                </Table.Row>
-                                                            </Table.Header>
-                                                        <Table.Body>
-                                                            {#each data.people as person (person.id)}
-                                                                <Table.Row class="cursor-pointer group" onclick={() => goto(`/people/${person.id}`)}>                                        <Table.Cell class="py-4">
-                                            <div class="font-bold text-slate-900 group-hover:text-primary-600 transition-colors">{person.name}</div>
-                                            <div class="flex items-center gap-2">
-                                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
-                                                    {person.designation || 'N/A'}
-                                                </span>
-                                                {#if parseEnrolledMethods(person.enrolledMethods).length > 0}
-                                                    <div class="flex items-center gap-1">
-                                                        {#if parseEnrolledMethods(person.enrolledMethods).includes('finger')}
-                                                            <Fingerprint size={12} class="text-sky-500" />
-                                                        {/if}
-                                                        {#if parseEnrolledMethods(person.enrolledMethods).includes('face')}
-                                                            <ScanFace size={12} class="text-violet-500" />
-                                                        {/if}
-                                                        {#if parseEnrolledMethods(person.enrolledMethods).includes('card')}
-                                                            <CreditCard size={12} class="text-amber-500" />
-                                                        {/if}
-                                                    </div>
-                                                {/if}
-                                            </div>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <button
-                                                class="hover:opacity-70 transition-opacity"
-                                                onclick={(e) => openChangeCategory(person, e)}
-                                            >
-                                                <Badge variant="outline" class={cn("font-bold text-[10px] uppercase tracking-wider", getCategoryBadgeClass(person.category.slug))}>
-                                                    {person.category.name}
-                                                </Badge>
-                                            </button>
-                                        </Table.Cell>
-                                        <Table.Cell class="font-medium text-slate-500">{person.codeNo || '-'}</Table.Cell>
-                                        <Table.Cell class="font-medium text-slate-500">{person.company || '-'}</Table.Cell>
-                                        <Table.Cell>
-                                            {#if person.isTrained}
-                                                <div class="flex items-center gap-1.5 text-emerald-600 font-bold text-xs">
-                                                    <CheckCircle2 size={14} />
-                                                    <span>YES</span>
-                                                </div>
-                                            {:else}
-                                                <div class="flex items-center gap-1.5 text-rose-500 font-bold text-xs">
-                                                    <XCircle size={14} />
-                                                    <span>NO</span>
-                                                </div>
-                                            {/if}
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            {#if person.status === 'on_premises'}
-                                                <Badge class={cn("text-[10px] font-bold uppercase animate-pulse", statusBadgeClasses.on_premises)}>
-                                                    {i18n.t('inside')}
-                                                </Badge>
-                                            {:else}
-                                                <Badge class={cn("text-[10px] font-bold uppercase", statusBadgeClasses.checked_out)}>
-                                                    {i18n.t('checkedOut')}
-                                                </Badge>
-                                            {/if}
-                                        </Table.Cell>
-                                        <Table.Cell class="text-right print:hidden">
-                                            <div class="flex items-center justify-end gap-1">
-                                                <Button variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-primary-600 hover:bg-primary-50" onclick={(e: MouseEvent) => { e.stopPropagation(); goto(`/people/${person.id}`); }}>
-                                                    <Eye size={15} />
-                                                </Button>
-                                                {#if data.user?.permissions.includes('people.edit')}
-                                                    <Button variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-primary-600 hover:bg-primary-50" onclick={(e: MouseEvent) => openEdit(person, e)}>
-                                                        <Edit2 size={15} />
-                                                    </Button>
-                                                {/if}
-                                                {#if data.user?.permissions.includes('people.delete')}
-                                                    <form method="POST" action="?/delete" use:enhance={() => {
-                                                        return async ({ result, update }) => {
-                                                            if (result.type === 'success') await update();
-                                                        };
-                                                    }}>
-                                                        <input type="hidden" name="id" value={person.id} />
-                                                        <Button type="button" variant="ghost" size="icon" class="size-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50" onclick={(e: MouseEvent) => triggerDelete(person, (e.currentTarget as HTMLButtonElement).form as HTMLFormElement, e)}>
-                                                            <Trash2 size={15} />
-                                                        </Button>
-                                                    </form>
-                                                {/if}
-                                            </div>
-                                        </Table.Cell>
-                                    </Table.Row>
-                                {:else}
-                                    <Table.Row>
-                                        <Table.Cell colspan={8} class="h-64 text-center text-slate-400 font-bold">{i18n.t('noResults')}</Table.Cell>
-                                    </Table.Row>
-                                {/each}
-                            </Table.Body>
-                        </Table.Root>
-                    </Card.Root>
-                </div>
+										{#if activeParentCategory() && activeParentCategory()?.id !== activeRootCategoryId()}
+											<button
+												class="cursor-pointer rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600 transition-all hover:bg-slate-200"
+												onclick={() => changeCategory(activeParentCategory()?.id || null)}
+											>
+												<span class="mr-1 opacity-50">↑</span>
+												{activeParentCategory()?.name}
+											</button>
+										{/if}
 
-                <!-- Pagination (Improved UI) -->
-                {#if data.pagination.totalPages > 1}
-                    <div class="flex flex-col lg:flex-row items-center justify-between gap-6 py-8 px-4 border-t border-slate-200 mt-6 print:hidden">
-                        <!-- Left: Info -->
-                        <div class="text-sm font-bold text-slate-400 order-2 lg:order-1">
-                            Showing <span class="text-slate-900">{(data.pagination.page - 1) * data.pagination.limit + 1}</span> 
-                            to <span class="text-slate-900">{Math.min(data.pagination.page * data.pagination.limit, data.pagination.totalCount)}</span> 
-                            of <span class="text-slate-900">{data.pagination.totalCount}</span> results
-                        </div>
+										{#each availableSubCategories() as subCat}
+											<button
+												class={clsx(
+													'cursor-pointer rounded-full border px-3 py-1 text-[11px] font-bold transition-all',
+													selectedCategoryId === subCat.id
+														? 'border-primary-600 bg-primary-600 text-white shadow-sm'
+														: 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'
+												)}
+												onclick={() => changeCategory(subCat.id)}
+											>
+												{i18n.t(subCat.slug as any) || subCat.name}
+											</button>
+										{/each}
+									</div>
+								</div>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			</div>
 
-                        <!-- Center: Page Numbers -->
-                        <div class="flex items-center gap-1 order-1 lg:order-2">
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                class="h-10 px-3 rounded-xl font-bold gap-1 cursor-pointer"
-                                disabled={data.pagination.page === 1}
-                                onclick={() => goToPage(data.pagination.page - 1)}
-                            >
-                                <ChevronLeft size={16} />
-                                <span class="hidden sm:inline">Prev</span>
-                            </Button>
+			<!-- Training Status Filter -->
+			<div class="space-y-3">
+				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+					{i18n.t('trainingStatus')}
+				</p>
+				<div class="flex flex-col gap-1">
+					{#each [{ label: i18n.t('all'), value: '' }, { label: i18n.t('trained'), value: 'yes' }, { label: i18n.t('untrained'), value: 'no' }] as opt}
+						<Button
+							variant={selectedTrained === opt.value ? 'secondary' : 'ghost'}
+							class={cn(
+								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+								selectedTrained === opt.value
+									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+									: 'text-slate-600'
+							)}
+							onclick={() => setFilter('trained', opt.value)}
+						>
+							<div class="flex items-center gap-2">
+								{#if selectedTrained === opt.value}
+									<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+								{/if}
+								{opt.label}
+							</div>
+						</Button>
+					{/each}
+				</div>
+			</div>
 
-                            <div class="flex items-center gap-1 mx-2">
-                                {#each getPageRange(data.pagination.page, data.pagination.totalPages) as p}
-                                    {#if p === '...'}
-                                        <span class="px-2 text-slate-300">...</span>
-                                    {:else}
-                                        <Button 
-                                            variant={data.pagination.page === p ? "default" : "ghost"}
-                                            size="sm"
-                                            class={cn(
-                                                "h-10 w-10 rounded-xl font-black text-xs cursor-pointer transition-all",
-                                                data.pagination.page === p ? "shadow-md scale-110" : "text-slate-500 hover:bg-slate-100"
-                                            )}
-                                            onclick={() => goToPage(p as number)}
-                                        >
-                                            {p}
-                                        </Button>
-                                    {/if}
-                                {/each}
-                            </div>
+			<!-- Summary Stats -->
+			<div class="space-y-3 rounded-xl border-2 border-slate-100 bg-white p-4 shadow-sm">
+				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Summary</p>
+				<div class="grid grid-cols-2 gap-3">
+					<div>
+						<p class="text-2xl font-black text-slate-900">{data.summary.total}</p>
+						<p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('total')}</p>
+					</div>
+					<div>
+						<p class="text-2xl font-black text-emerald-600">{data.summary.inside}</p>
+						<p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('inside')}</p>
+					</div>
+					<div>
+						<p class="text-2xl font-black text-primary-600">{data.summary.trained}</p>
+						<p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('trained')}</p>
+					</div>
+					<div>
+						<p class="text-2xl font-black text-rose-500">{data.summary.untrained}</p>
+						<p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('untrained')}</p>
+					</div>
+				</div>
+			</div>
+		</aside>
 
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                class="h-10 px-3 rounded-xl font-bold gap-1 cursor-pointer"
-                                disabled={data.pagination.page === data.pagination.totalPages}
-                                onclick={() => goToPage(data.pagination.page + 1)}
-                            >
-                                <span class="hidden sm:inline">Next</span>
-                                <ChevronRight size={16} />
-                            </Button>
-                        </div>
+		<!-- Main Scrolling Content Area -->
+		<main class="min-w-0 flex-1 space-y-6">
+			<!-- List Section -->
+			<div class="space-y-4">
+				<!-- Mobile Card View -->
+				<div class="space-y-3 lg:hidden">
+					{#each data.people as person (person.id)}
+						<Card.Root
+							class="cursor-pointer bg-white transition-shadow hover:shadow-lg"
+							onclick={() => goto(`/people/${person.id}`)}
+						>
+							<Card.Content class="p-4 sm:p-5">
+								<div class="mb-4 flex items-start justify-between gap-3">
+									<div class="min-w-0 flex-1">
+										<div class="mb-1.5 flex flex-wrap items-center gap-2">
+											<h3 class="text-base leading-tight font-black text-slate-900 sm:text-lg">
+												{person.name}
+											</h3>
+											{#if person.status === 'on_premises'}
+												<Badge
+													class={cn(
+														'shrink-0 animate-pulse text-[9px] font-bold capitalize',
+														statusBadgeClasses.on_premises
+													)}
+												>
+													{i18n.t('inside')}
+												</Badge>
+											{/if}
+										</div>
+										<button
+											class="transition-opacity hover:opacity-70"
+											onclick={(e) => openChangeCategory(person, e)}
+										>
+											<Badge
+												variant="outline"
+												class={cn(
+													'text-[9px] font-bold tracking-wider capitalize',
+													getCategoryBadgeClass(person.category.slug)
+												)}
+											>
+												{person.category.name}
+											</Badge>
+										</button>
+									</div>
+									<div
+										class="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 p-1"
+									>
+										{#if data.user?.permissions.includes('people.edit')}
+											<Button
+												variant="ghost"
+												size="icon"
+												class="size-9 text-slate-400 shadow-sm transition-all hover:bg-white hover:text-primary-600"
+												onclick={(e: MouseEvent) => openEdit(person, e)}
+											>
+												<Edit2 size={16} />
+											</Button>
+										{/if}
+										{#if data.user?.permissions.includes('people.delete')}
+											<form
+												method="POST"
+												action="?/delete"
+												use:enhance={() => {
+													return async ({ result, update }) => {
+														if (result.type === 'success') await update();
+													};
+												}}
+											>
+												<input type="hidden" name="id" value={person.id} />
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon"
+													class="size-9 text-slate-400 shadow-sm transition-all hover:bg-white hover:text-rose-600"
+													onclick={(e: MouseEvent) =>
+														triggerDelete(
+															person,
+															(e.currentTarget as HTMLButtonElement).form as HTMLFormElement,
+															e
+														)}
+												>
+													<Trash2 size={16} />
+												</Button>
+											</form>
+										{/if}
+									</div>
+								</div>
+								<div class="grid grid-cols-2 gap-4 text-xs">
+									<div class="space-y-1">
+										<p class="text-[10px] font-bold tracking-widest text-slate-400 capitalize">
+											{i18n.t('codeNo')}
+										</p>
+										<p class="font-black text-slate-700">{person.codeNo || '-'}</p>
+									</div>
+									<div class="space-y-1">
+										<p class="text-[10px] font-bold tracking-widest text-slate-400 capitalize">
+											{i18n.t('company')}
+										</p>
+										<p class="truncate font-bold text-slate-600">{person.company || '-'}</p>
+									</div>
+									<div
+										class="col-span-2 mt-1 flex items-center justify-between gap-4 border-t border-slate-50 pt-3"
+									>
+										{#if person.isTrained}
+											<div class="flex items-center gap-1.5 font-black text-emerald-600">
+												<CheckCircle2 size={14} />
+												<span class="text-[10px] uppercase">Safety Trained</span>
+											</div>
+										{:else}
+											<div class="flex items-center gap-1.5 font-black text-rose-500">
+												<XCircle size={14} />
+												<span class="text-[10px] uppercase">Not Trained</span>
+											</div>
+										{/if}
+										{#if parseEnrolledMethods(person.enrolledMethods).length > 0}
+											<div class="flex items-center gap-2">
+												{#if parseEnrolledMethods(person.enrolledMethods).includes('finger')}
+													<div
+														class="flex size-7 items-center justify-center rounded-lg border border-sky-100 bg-sky-50 text-sky-600"
+													>
+														<Fingerprint size={14} />
+													</div>
+												{/if}
+												{#if parseEnrolledMethods(person.enrolledMethods).includes('face')}
+													<div
+														class="flex size-7 items-center justify-center rounded-lg border border-violet-100 bg-violet-50 text-violet-600"
+													>
+														<ScanFace size={14} />
+													</div>
+												{/if}
+												{#if parseEnrolledMethods(person.enrolledMethods).includes('card')}
+													<div
+														class="flex size-7 items-center justify-center rounded-lg border border-amber-100 bg-amber-50 text-amber-600"
+													>
+														<CreditCard size={14} />
+													</div>
+												{/if}
+											</div>
+										{/if}
+									</div>
+								</div>
+							</Card.Content>
+						</Card.Root>
+					{:else}
+						<div class="py-20 text-center space-y-4">
+							<div
+								class="size-20 bg-white rounded-full flex items-center justify-center mx-auto text-slate-300 border-2 border-slate-100 shadow-sm"
+							>
+								<Users size={40} />
+							</div>
+							<p class="text-slate-500 font-bold">{i18n.t('noResults')}</p>
+						</div>
+					{/each}
+				</div>
 
-                        <!-- Right: Row Count -->
-                        <div class="flex items-center gap-3 order-3 print:hidden">
-                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Per Page</span>
-                            <select 
-                                class="bg-white border-2 border-slate-100 rounded-xl text-xs font-black px-3 py-2 focus:outline-none focus:border-primary-500 transition-colors cursor-pointer shadow-sm hover:border-slate-200"
-                                value={data.pagination.limit}
-                                onchange={(e) => {
-                                    const url = new URL(page.url);
-                                    url.searchParams.set('limit', (e.currentTarget as HTMLSelectElement).value);
-                                    url.searchParams.set('page', '1');
-                                    goto(url.toString(), { keepFocus: true, noScroll: true });
-                                }}
-                            >
-                                {#each [10, 20, 50, 100] as limit}
-                                    <option value={limit}>{limit}</option>
-                                {/each}
-                            </select>
-                        </div>
-                    </div>
-                {/if}
-            </div>
-        </main>
-    </div>
+				<!-- Desktop Table View -->
+				<div class="hidden lg:block">
+					<Card.Root class="overflow-hidden rounded-3xl border-2 bg-white shadow-sm">
+						<Table.Root>
+							<Table.Header>
+								<Table.Row class="bg-slate-50 hover:bg-transparent">
+									<Table.Head class="font-black text-slate-900">{i18n.t('name')}</Table.Head>
+									<Table.Head class="font-black text-slate-900">{i18n.t('category')}</Table.Head>
+									<Table.Head class="font-black text-slate-900">{i18n.t('codeNo')}</Table.Head>
+									<Table.Head class="font-black text-slate-900">{i18n.t('company')}</Table.Head>
+									<Table.Head class="font-black text-slate-900">{i18n.t('isTrained')}</Table.Head>
+									<Table.Head class="font-black text-slate-900">{i18n.t('status')}</Table.Head>
+									<Table.Head class="text-right font-black text-slate-900 print:hidden"
+										>{i18n.t('actions')}</Table.Head
+									>
+								</Table.Row>
+							</Table.Header>
+							<Table.Body>
+								{#each data.people as person (person.id)}
+									<Table.Row
+										class="group cursor-pointer"
+										onclick={() => goto(`/people/${person.id}`)}
+									>
+										<Table.Cell class="py-4">
+											<div
+												class="font-bold text-slate-900 transition-colors group-hover:text-primary-600"
+											>
+												{person.name}
+											</div>
+											<div class="flex items-center gap-2">
+												<span class="text-[10px] font-bold tracking-tight text-slate-400 uppercase">
+													{person.designation || 'N/A'}
+												</span>
+												{#if parseEnrolledMethods(person.enrolledMethods).length > 0}
+													<div class="flex items-center gap-1">
+														{#if parseEnrolledMethods(person.enrolledMethods).includes('finger')}
+															<Fingerprint size={12} class="text-sky-500" />
+														{/if}
+														{#if parseEnrolledMethods(person.enrolledMethods).includes('face')}
+															<ScanFace size={12} class="text-violet-500" />
+														{/if}
+														{#if parseEnrolledMethods(person.enrolledMethods).includes('card')}
+															<CreditCard size={12} class="text-amber-500" />
+														{/if}
+													</div>
+												{/if}
+											</div>
+										</Table.Cell>
+										<Table.Cell>
+											<button
+												class="transition-opacity hover:opacity-70"
+												onclick={(e) => openChangeCategory(person, e)}
+											>
+												<Badge
+													variant="outline"
+													class={cn(
+														'text-[10px] font-bold tracking-wider capitalize',
+														getCategoryBadgeClass(person.category.slug)
+													)}
+												>
+													{person.category.name}
+												</Badge>
+											</button>
+										</Table.Cell>
+										<Table.Cell class="font-medium text-slate-500"
+											>{person.codeNo || '-'}</Table.Cell
+										>
+										<Table.Cell class="font-medium text-slate-500"
+											>{person.company || '-'}</Table.Cell
+										>
+										<Table.Cell>
+											{#if person.isTrained}
+												<div class="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
+													<CheckCircle2 size={14} />
+													<span>YES</span>
+												</div>
+											{:else}
+												<div class="flex items-center gap-1.5 text-xs font-bold text-rose-500">
+													<XCircle size={14} />
+													<span>NO</span>
+												</div>
+											{/if}
+										</Table.Cell>
+										<Table.Cell>
+											{#if person.status === 'on_premises'}
+												<Badge
+													class={cn(
+														'animate-pulse text-[10px] font-bold uppercase',
+														statusBadgeClasses.on_premises
+													)}
+												>
+													{i18n.t('inside')}
+												</Badge>
+											{:else}
+												<Badge
+													class={cn(
+														'text-[10px] font-bold uppercase',
+														statusBadgeClasses.checked_out
+													)}
+												>
+													{i18n.t('checkedOut')}
+												</Badge>
+											{/if}
+										</Table.Cell>
+										<Table.Cell class="text-right print:hidden">
+											<div class="flex items-center justify-end gap-1">
+												<Button
+													variant="ghost"
+													size="icon"
+													class="size-8 text-slate-400 hover:bg-primary-50 hover:text-primary-600"
+													onclick={(e: MouseEvent) => {
+														e.stopPropagation();
+														goto(`/people/${person.id}`);
+													}}
+												>
+													<Eye size={15} />
+												</Button>
+												{#if data.user?.permissions.includes('people.edit')}
+													<Button
+														variant="ghost"
+														size="icon"
+														class="size-8 text-slate-400 hover:bg-primary-50 hover:text-primary-600"
+														onclick={(e: MouseEvent) => openEdit(person, e)}
+													>
+														<Edit2 size={15} />
+													</Button>
+												{/if}
+												{#if data.user?.permissions.includes('people.delete')}
+													<form
+														method="POST"
+														action="?/delete"
+														use:enhance={() => {
+															return async ({ result, update }) => {
+																if (result.type === 'success') await update();
+															};
+														}}
+													>
+														<input type="hidden" name="id" value={person.id} />
+														<Button
+															type="button"
+															variant="ghost"
+															size="icon"
+															class="size-8 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+															onclick={(e: MouseEvent) =>
+																triggerDelete(
+																	person,
+																	(e.currentTarget as HTMLButtonElement).form as HTMLFormElement,
+																	e
+																)}
+														>
+															<Trash2 size={15} />
+														</Button>
+													</form>
+												{/if}
+											</div>
+										</Table.Cell>
+									</Table.Row>
+								{:else}
+									<Table.Row>
+										<Table.Cell colspan={8} class="h-64 text-center text-slate-400 font-bold"
+											>{i18n.t('noResults')}</Table.Cell
+										>
+									</Table.Row>
+								{/each}
+							</Table.Body>
+						</Table.Root>
+					</Card.Root>
+				</div>
+
+				<!-- Pagination -->
+				<Pagination {...data.pagination} />
+			</div>
+		</main>
+	</div>
 </div>
 
 <RegisterDialog bind:open={isRegisterOpen} />
 
 <ConfirmModal
-    bind:open={isPrintConfirmOpen}
-    title="Large Report Warning"
-    message="This directory contains {data.pagination.totalCount} records. Printing more than 2,000 records may slow down your browser or take a long time to load. Are you sure you want to proceed?"
-    confirmText="Print Anyway"
-    cancelText="Cancel"
-    variant="warning"
-    onconfirm={printPeople}
+	bind:open={isPrintConfirmOpen}
+	title="Large Report Warning"
+	message="This directory contains {data.pagination
+		.totalCount} records. Printing more than 2,000 records may slow down your browser or take a long time to load. Are you sure you want to proceed?"
+	confirmText="Print Anyway"
+	cancelText="Cancel"
+	variant="warning"
+	onconfirm={printPeople}
 />
 
 <ConfirmModal
-    bind:open={confirmDeleteOpen}
-    title="Delete Person"
-    message="Are you sure you want to delete '{personToDelete?.name}'? All history and records for this person will be permanently removed. This action cannot be undone."
-    confirmText="Delete"
-    variant="danger"
-    onconfirm={() => deleteFormElement?.requestSubmit()}
+	bind:open={confirmDeleteOpen}
+	title="Delete Person"
+	message="Are you sure you want to delete '{personToDelete?.name}'? All history and records for this person will be permanently removed. This action cannot be undone."
+	confirmText="Delete"
+	variant="danger"
+	onconfirm={() => deleteFormElement?.requestSubmit()}
 />
 
 <!-- Edit Dialog -->
 {#if editPerson}
-<Dialog.Root bind:open={isEditOpen}>
-    <Dialog.Content class="sm:max-w-[600px] p-0 overflow-hidden max-h-[90vh] flex flex-col">
-        <div class="p-6 border-b bg-slate-50 shrink-0">
-            <Dialog.Title class="text-xl font-black">{i18n.t('edit')}: {editPerson.name}</Dialog.Title>
-            <Dialog.Description class="font-bold text-xs uppercase tracking-widest text-slate-500">
-                Update person details
-            </Dialog.Description>
-        </div>
+	<Dialog.Root bind:open={isEditOpen}>
+		<Dialog.Content class="flex max-h-[90vh] flex-col overflow-hidden p-0 sm:max-w-[600px]">
+			<div class="shrink-0 border-b bg-slate-50 p-6">
+				<Dialog.Title class="text-xl font-black">{i18n.t('edit')}: {editPerson.name}</Dialog.Title>
+				<Dialog.Description class="text-xs font-bold tracking-widest text-slate-500 uppercase">
+					Update person details
+				</Dialog.Description>
+			</div>
 
-        <div class="p-6 overflow-y-auto flex-1">
-            <form
-                method="POST"
-                action="?/update"
-                class="space-y-6"
-                enctype="multipart/form-data"
-                use:enhance={() => {
-                    return async ({ result, update }) => {
-                        if (result.type === 'success') {
-                            isEditOpen = false;
-                            await update();
-                        }
-                    };
-                }}
-            >
-                <input type="hidden" name="id" value={editPerson.id} />
-                <input type="hidden" name="isTrained" value={editIsTrained ? 'true' : 'false'} />
+			<div class="flex-1 overflow-y-auto p-6">
+				<form
+					method="POST"
+					action="?/update"
+					class="space-y-6"
+					enctype="multipart/form-data"
+					use:enhance={() => {
+						return async ({ result, update }) => {
+							if (result.type === 'success') {
+								isEditOpen = false;
+								await update();
+							}
+						};
+					}}
+				>
+					<input type="hidden" name="id" value={editPerson.id} />
+					<input type="hidden" name="isTrained" value={editIsTrained ? 'true' : 'false'} />
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="space-y-2">
-                        <Label for="edit-name" class="font-bold uppercase text-[10px] tracking-widest text-slate-500">{i18n.t('name')}</Label>
-                        <Input id="edit-name" name="name" bind:value={editName} required class="h-11 border-2" />
-                    </div>
-                    <div class="space-y-2">
-                        <Label for="edit-codeNo" class="font-bold uppercase text-[10px] tracking-widest text-slate-500">{i18n.t('codeNo')}</Label>
-                        <Input id="edit-codeNo" name="codeNo" bind:value={editCodeNo} class="h-11 border-2" />
-                    </div>
-                    <div class="space-y-2">
-                        <Label for="edit-company" class="font-bold uppercase text-[10px] tracking-widest text-slate-500">{i18n.t('company')}</Label>
-                        <Input id="edit-company" name="company" bind:value={editCompany} class="h-11 border-2" />
-                    </div>
-                    <div class="space-y-2">
-                        <Label for="edit-contactNo" class="font-bold uppercase text-[10px] tracking-widest text-slate-500">{i18n.t('phone')}</Label>
-                        <Input id="edit-contactNo" name="contactNo" bind:value={editContactNo} class="h-11 border-2" />
-                    </div>
-                    <div class="space-y-2">
-                        <Label for="edit-designation" class="font-bold uppercase text-[10px] tracking-widest text-slate-500">{i18n.t('designation')}</Label>
-                        <Input id="edit-designation" name="designation" bind:value={editDesignation} class="h-11 border-2" />
-                    </div>
-                    <div class="space-y-2">
-                        <Label for="edit-biometricId" class="font-bold uppercase text-[10px] tracking-widest text-slate-500">Biometric ID</Label>
-                        <Input id="edit-biometricId" name="biometricId" bind:value={editBiometricId} readonly class="h-11 border-2 bg-slate-50 text-slate-500 cursor-not-allowed" placeholder="Device user PIN" />
-                    </div>
-                </div>
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+						<div class="space-y-2">
+							<Label
+								for="edit-name"
+								class="text-[10px] font-bold tracking-widest text-slate-500 uppercase"
+								>{i18n.t('name')}</Label
+							>
+							<Input
+								id="edit-name"
+								name="name"
+								bind:value={editName}
+								required
+								class="h-11 border-2"
+							/>
+						</div>
+						<div class="space-y-2">
+							<Label
+								for="edit-codeNo"
+								class="text-[10px] font-bold tracking-widest text-slate-500 uppercase"
+								>{i18n.t('codeNo')}</Label
+							>
+							<Input id="edit-codeNo" name="codeNo" bind:value={editCodeNo} class="h-11 border-2" />
+						</div>
+						<div class="space-y-2">
+							<Label
+								for="edit-company"
+								class="text-[10px] font-bold tracking-widest text-slate-500 uppercase"
+								>{i18n.t('company')}</Label
+							>
+							<Input
+								id="edit-company"
+								name="company"
+								bind:value={editCompany}
+								class="h-11 border-2"
+							/>
+						</div>
+						<div class="space-y-2">
+							<Label
+								for="edit-contactNo"
+								class="text-[10px] font-bold tracking-widest text-slate-500 uppercase"
+								>{i18n.t('phone')}</Label
+							>
+							<Input
+								id="edit-contactNo"
+								name="contactNo"
+								bind:value={editContactNo}
+								class="h-11 border-2"
+							/>
+						</div>
+						<div class="space-y-2">
+							<Label
+								for="edit-designation"
+								class="text-[10px] font-bold tracking-widest text-slate-500 uppercase"
+								>{i18n.t('designation')}</Label
+							>
+							<Input
+								id="edit-designation"
+								name="designation"
+								bind:value={editDesignation}
+								class="h-11 border-2"
+							/>
+						</div>
+						<div class="space-y-2">
+							<Label
+								for="edit-biometricId"
+								class="text-[10px] font-bold tracking-widest text-slate-500 uppercase"
+								>Biometric ID</Label
+							>
+							<Input
+								id="edit-biometricId"
+								name="biometricId"
+								bind:value={editBiometricId}
+								readonly
+								class="h-11 cursor-not-allowed border-2 bg-slate-50 text-slate-500"
+								placeholder="Device user PIN"
+							/>
+						</div>
+					</div>
 
-                <div class="space-y-2">
-                    <Label for="edit-notes" class="font-bold uppercase text-[10px] tracking-widest text-slate-500">{i18n.t('notes')}</Label>
-                    <Input id="edit-notes" name="notes" bind:value={editNotes} class="h-11 border-2" />
-                </div>
+					<div class="space-y-2">
+						<Label
+							for="edit-notes"
+							class="text-[10px] font-bold tracking-widest text-slate-500 uppercase"
+							>{i18n.t('notes')}</Label
+						>
+						<Input id="edit-notes" name="notes" bind:value={editNotes} class="h-11 border-2" />
+					</div>
 
-                <div class="flex items-center space-x-3 p-4 bg-slate-50 rounded-2xl border-2 border-slate-100">
-                    <Checkbox id="edit-isTrained" checked={editIsTrained} onCheckedChange={(v: boolean | "indeterminate") => editIsTrained = !!v} />
-                    <Label for="edit-isTrained" class="text-sm font-black text-slate-700">{i18n.t('isTrained')}</Label>
-                </div>
+					<div
+						class="flex items-center space-x-3 rounded-2xl border-2 border-slate-100 bg-slate-50 p-4"
+					>
+						<Checkbox
+							id="edit-isTrained"
+							checked={editIsTrained}
+							onCheckedChange={(v: boolean | 'indeterminate') => (editIsTrained = !!v)}
+						/>
+						<Label for="edit-isTrained" class="text-sm font-black text-slate-700"
+							>{i18n.t('isTrained')}</Label
+						>
+					</div>
 
-                <Button type="submit" class="w-full h-14 text-base font-black gap-2 shadow-lg">
-                    <Save size={20} />
-                    {i18n.t('save')}
-                </Button>
-            </form>
-        </div>
-    </Dialog.Content>
-</Dialog.Root>
+					<Button type="submit" class="h-14 w-full gap-2 text-base font-black shadow-lg">
+						<Save size={20} />
+						{i18n.t('save')}
+					</Button>
+				</form>
+			</div>
+		</Dialog.Content>
+	</Dialog.Root>
 {/if}
 
 {#if changeCategoryPerson}
-<ChangeCategoryDialog
-    bind:open={isChangeCategoryOpen}
-    person={changeCategoryPerson}
-/>
+	<ChangeCategoryDialog bind:open={isChangeCategoryOpen} person={changeCategoryPerson} />
 {/if}

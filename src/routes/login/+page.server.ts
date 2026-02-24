@@ -20,7 +20,8 @@ export const actions: Actions = {
 		const password = formData.get('password');
 		const rememberMe = formData.get('rememberMe') === 'on';
 
-		const username = typeof rawUsername === 'string' ? rawUsername.trim().toLowerCase() : rawUsername;
+		const username =
+			typeof rawUsername === 'string' ? rawUsername.trim().toLowerCase() : rawUsername;
 
 		if (!validateUsername(username)) {
 			return fail(400, {
@@ -28,7 +29,9 @@ export const actions: Actions = {
 			});
 		}
 		if (!validatePassword(password)) {
-			return fail(400, { message: 'Password must be at least 8 characters with both letters and numbers' });
+			return fail(400, {
+				message: 'Password must be at least 8 characters with both letters and numbers'
+			});
 		}
 
 		const results = await db.select().from(table.user).where(eq(table.user.username, username));
@@ -40,9 +43,11 @@ export const actions: Actions = {
 
 		// Check for account lockout
 		if (existingUser.lockoutUntil && existingUser.lockoutUntil > new Date()) {
-			const minutesLeft = Math.ceil((existingUser.lockoutUntil.getTime() - Date.now()) / (1000 * 60));
-			return fail(403, { 
-				message: `Account locked due to too many failed attempts. Try again in ${minutesLeft} minutes.` 
+			const minutesLeft = Math.ceil(
+				(existingUser.lockoutUntil.getTime() - Date.now()) / (1000 * 60)
+			);
+			return fail(403, {
+				message: `Account locked due to too many failed attempts. Try again in ${minutesLeft} minutes.`
 			});
 		}
 
@@ -69,17 +74,22 @@ export const actions: Actions = {
 			await db.update(table.user).set(updates).where(eq(table.user.id, existingUser.id));
 
 			if (newAttempts >= MAX_ATTEMPTS) {
-				return fail(403, { message: 'Account locked for 15 minutes due to too many failed attempts.' });
+				return fail(403, {
+					message: 'Account locked for 15 minutes due to too many failed attempts.'
+				});
 			}
 
 			return fail(400, { message: 'Incorrect username or password' });
 		}
 
 		// Reset failed attempts on successful login
-		await db.update(table.user).set({
-			failedAttempts: 0,
-			lockoutUntil: null
-		}).where(eq(table.user.id, existingUser.id));
+		await db
+			.update(table.user)
+			.set({
+				failedAttempts: 0,
+				lockoutUntil: null
+			})
+			.where(eq(table.user.id, existingUser.id));
 
 		const sessionToken = auth.generateSessionToken();
 		const duration = rememberMe ? 1000 * 60 * 60 * 24 * 30 : 1000 * 60 * 60 * 24 * 7; // 30 days vs 7 days
@@ -91,11 +101,7 @@ export const actions: Actions = {
 };
 
 function validateUsername(username: unknown): username is string {
-	return (
-		typeof username === 'string' &&
-		username.length >= 3 &&
-		username.length <= 31
-	);
+	return typeof username === 'string' && username.length >= 3 && username.length <= 31;
 }
 
 function validatePassword(password: unknown): password is string {

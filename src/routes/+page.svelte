@@ -73,7 +73,9 @@
 	<div class="content-container flex flex-col justify-between gap-4 md:flex-row md:items-end">
 		<div class="space-y-1">
 			<div class="flex items-center gap-3">
-				<h1 class="text-2xl sm:text-4xl leading-tight font-black tracking-tighter text-slate-900 uppercase">
+				<h1
+					class="text-2xl leading-tight font-black tracking-tighter text-slate-900 capitalize sm:text-4xl"
+				>
 					<span class="electric-text">{i18n.t('dashboard')}</span>
 				</h1>
 				{#if data.anyDeviceOnline}
@@ -81,7 +83,7 @@
 						class="flex animate-pulse items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-emerald-600"
 					>
 						<div class="size-1.5 rounded-full bg-emerald-500"></div>
-						<span class="text-[10px] font-black tracking-widest uppercase">Live</span>
+						<span class="text-[10px] font-black tracking-widest capitalize">Live</span>
 					</div>
 				{/if}
 			</div>
@@ -122,12 +124,12 @@
 	<div class="content-container grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
 		<!-- Left Column: Currently Inside -->
 		<div class="space-y-6 lg:col-span-2">
-			<Card.Root class="overflow-hidden border-2 border-slate-200 bg-white shadow-sm mesh-gradient">
+			<Card.Root class="mesh-gradient overflow-hidden border-2 border-slate-200 bg-white shadow-sm">
 				<Card.Header class="px-4 py-3">
 					<div class="flex items-center justify-between">
 						<div class="space-y-1">
 							<Card.Title
-								class="flex items-center gap-2 text-lg font-black tracking-tighter text-slate-900 uppercase"
+								class="flex items-center gap-2 text-lg font-black tracking-tighter text-slate-900 capitalize"
 							>
 								<Users size={20} class="text-primary-600" />
 								{i18n.t('currentlyInside')}
@@ -140,7 +142,7 @@
 								<span class="text-xl leading-none font-black tracking-tighter text-primary-700"
 									><CountUp value={data.currentlyInside?.totalPeople || 0} /></span
 								>
-								<span class="text-[9px] font-black tracking-widest text-primary-500 uppercase"
+								<span class="text-[9px] font-black tracking-widest text-primary-500 capitalize"
 									>Total People</span
 								>
 							</div>
@@ -175,14 +177,17 @@
 										<Truck size={20} />
 									</div>
 									<div>
-										<h3 class="text-sm font-black tracking-tighter text-slate-900 uppercase">{i18n.t('vehicles')}</h3>
-										<p class="text-[9px] font-black tracking-widest text-amber-600 uppercase">
+										<h3 class="text-sm font-black tracking-tighter text-slate-900 capitalize">
+											{i18n.t('vehicles')}
+										</h3>
+										<p class="text-[9px] font-black tracking-widest text-amber-600 capitalize">
 											On Premises
 										</p>
 									</div>
 								</div>
 								<div class="text-right">
-									<span class="block text-xl leading-none font-black tracking-tighter text-amber-700"
+									<span
+										class="block text-xl leading-none font-black tracking-tighter text-amber-700"
 										><CountUp value={data.currentlyInside?.vehicleStats?.total || 0} /></span
 									>
 								</div>
@@ -199,8 +204,10 @@
 										<Truck size={16} />
 									</div>
 									<div>
-										<h3 class="text-xs font-black tracking-tighter text-slate-800 uppercase">{i18n.t('transportVehicle')}</h3>
-										<p class="text-[8px] font-black tracking-widest text-blue-600 uppercase">
+										<h3 class="text-xs font-black tracking-tighter text-slate-800 capitalize">
+											{i18n.t('transportVehicle')}
+										</h3>
+										<p class="text-[8px] font-black tracking-widest text-blue-600 capitalize">
 											Logistics
 										</p>
 									</div>
@@ -223,14 +230,17 @@
 										<Truck size={16} />
 									</div>
 									<div>
-										<h3 class="text-xs font-black tracking-tighter text-slate-800 uppercase">{i18n.t('regularVehicle')}</h3>
-										<p class="text-[8px] font-black tracking-widest text-indigo-600 uppercase">
+										<h3 class="text-xs font-black tracking-tighter text-slate-800 capitalize">
+											{i18n.t('regularVehicle')}
+										</h3>
+										<p class="text-[8px] font-black tracking-widest text-indigo-600 capitalize">
 											Personal
 										</p>
 									</div>
 								</div>
 								<div class="text-right">
-									<span class="block text-lg leading-none font-black tracking-tighter text-indigo-700"
+									<span
+										class="block text-lg leading-none font-black tracking-tighter text-indigo-700"
 										><CountUp value={data.currentlyInside?.vehicleStats?.regular || 0} /></span
 									>
 								</div>
@@ -248,25 +258,29 @@
 				<div class="rounded-xl border-2 border-emerald-100 bg-white p-3 shadow-sm">
 					<div class="mb-1.5 flex items-center gap-2 text-emerald-700">
 						<ArrowRight size={14} />
-						<span class="text-[9px] font-black tracking-widest uppercase">Today's Entries</span>
+						<span class="text-[9px] font-black tracking-widest capitalize">Today's Entries</span>
 					</div>
-					<span class="text-xl font-black text-slate-900 tracking-tighter"><CountUp value={data.todayActivity?.entries || 0} /></span>
+					<span class="text-xl font-black tracking-tighter text-slate-900"
+						><CountUp value={data.todayActivity?.entries || 0} /></span
+					>
 				</div>
 				<div class="rounded-xl border-2 border-rose-100 bg-white p-3 shadow-sm">
 					<div class="mb-1.5 flex items-center gap-2 text-rose-700">
 						<LogOut size={14} />
-						<span class="text-[9px] font-black tracking-widest uppercase">Today's Exits</span>
+						<span class="text-[9px] font-black tracking-widest capitalize">Today's Exits</span>
 					</div>
-					<span class="text-xl font-black text-slate-900 tracking-tighter"><CountUp value={data.todayActivity?.exits || 0} /></span>
+					<span class="text-xl font-black tracking-tighter text-slate-900"
+						><CountUp value={data.todayActivity?.exits || 0} /></span
+					>
 				</div>
 			</div>
 
 			<!-- Recent Activity -->
-			<Card.Root class="border-2 border-slate-200 bg-white shadow-sm scan-line-hover">
+			<Card.Root class="border-2 border-slate-200 bg-white shadow-sm">
 				<Card.Header class="px-4 pt-3 pb-0">
 					<div class="flex items-center justify-between">
 						<Card.Title
-							class="flex items-center gap-2 text-xs font-black tracking-widest text-slate-600 uppercase"
+							class="flex items-center gap-2 text-xs font-black tracking-widest text-slate-600 capitalize"
 						>
 							<Clock size={14} />
 							Recent Activity
@@ -274,7 +288,7 @@
 						<Button
 							variant="ghost"
 							size="sm"
-							class="h-7 text-[10px] font-black text-primary-600 hover:bg-primary-50 uppercase tracking-tighter"
+							class="h-7 text-[10px] font-black tracking-tighter text-primary-600 capitalize hover:bg-primary-50"
 							href="/attendance"
 						>
 							View all
@@ -285,7 +299,7 @@
 					<div class="divide-y-2 divide-slate-50">
 						{#each data.recentLogs as log (log.id)}
 							<button
-								class="group flex w-full items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-slate-50 cursor-pointer"
+								class="group flex w-full cursor-pointer items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-slate-50"
 								onclick={() => goto(`/people/${log.personId}`)}
 							>
 								<div class="flex min-w-0 items-center gap-3">
@@ -304,7 +318,7 @@
 										<p class="truncate text-xs font-black text-slate-900">{log.personName}</p>
 										<div class="flex items-center gap-1.5">
 											<p
-												class="truncate text-[9px] font-black tracking-wider text-slate-500 uppercase"
+												class="truncate text-[9px] font-black tracking-wider text-slate-500 capitalize"
 											>
 												{log.categoryName}
 											</p>
@@ -318,14 +332,14 @@
 									{#if log.status === 'on_premises'}
 										<span
 											class={cn(
-												'rounded-md border px-1 py-0.5 text-[8px] font-black tracking-wide uppercase',
+												'rounded-md border px-1 py-0.5 text-[8px] font-black tracking-wide capitalize',
 												statusBadgeClasses.on_premises
 											)}>In</span
 										>
 									{:else}
 										<span
 											class={cn(
-												'rounded-md border px-1 py-0.5 text-[8px] font-black tracking-wide uppercase',
+												'rounded-md border px-1 py-0.5 text-[8px] font-black tracking-wide capitalize',
 												statusBadgeClasses.checked_out
 											)}>Out</span
 										>
@@ -340,16 +354,18 @@
 			</Card.Root>
 
 			<!-- 7-Day Trend -->
-			<Card.Root class="border-2 border-slate-200 bg-white shadow-sm scan-line-hover">
+			<Card.Root class="border-2 border-slate-200 bg-white shadow-sm">
 				<Card.Header class="px-4 py-3">
 					<div class="flex items-center justify-between">
 						<Card.Title
-							class="flex items-center gap-2 text-xs font-black tracking-widest text-slate-600 uppercase"
+							class="flex items-center gap-2 text-xs font-black tracking-widest text-slate-600 capitalize"
 						>
 							<TrendingUp size={14} />
 							{i18n.t('trend7Day')}
 						</Card.Title>
-						<span class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">{trendTotal} total</span>
+						<span class="text-[10px] font-black tracking-tighter text-slate-500 capitalize"
+							>{trendTotal} total</span
+						>
 					</div>
 				</Card.Header>
 				<Card.Content class="p-4 pt-0">
@@ -357,9 +373,9 @@
 						{#each data.trend7Day as day, i (day.date)}
 							{@const isToday = i === data.trend7Day.length - 1}
 							{@const pct = trendMax > 0 ? (day.count / trendMax) * 100 : 0}
-							<div class="group flex flex-1 flex-col items-center h-full">
+							<div class="group flex h-full flex-1 flex-col items-center">
 								<!-- Bar Container -->
-								<div class="relative flex-1 w-full flex items-end justify-center">
+								<div class="relative flex w-full flex-1 items-end justify-center">
 									<!-- Tooltip-ish Value -->
 									<div
 										class="pointer-events-none absolute -top-6 z-10 rounded bg-slate-900 px-1.5 py-0.5 text-[9px] font-black text-white opacity-0 transition-opacity group-hover:opacity-100"
@@ -370,17 +386,17 @@
 									<!-- Bar -->
 									<div
 										class={clsx(
-											'w-full max-w-[20px] rounded-t-sm transition-all duration-500 cursor-pointer',
+											'w-full max-w-[20px] cursor-pointer rounded-t-sm transition-all duration-500',
 											isToday ? 'bg-primary-600' : 'bg-slate-200 group-hover:bg-primary-400'
 										)}
 										style="height: {Math.max(pct, 5)}%"
 									></div>
 								</div>
-								
+
 								<!-- Day label -->
 								<span
 									class={clsx(
-										'w-full truncate text-center text-[8px] font-black uppercase mt-2',
+										'mt-2 w-full truncate text-center text-[8px] font-black capitalize',
 										isToday ? 'text-primary-700' : 'text-slate-500'
 									)}
 								>
@@ -400,13 +416,13 @@
 	<Dialog.Content class="sm:max-w-112.5">
 		<Dialog.Header>
 			<Dialog.Title class="text-2xl font-black">Choose Entry Type</Dialog.Title>
-			<Dialog.Description class="text-xs font-black tracking-widest text-slate-500 uppercase">
+			<Dialog.Description class="text-xs font-black tracking-widest text-slate-500 capitalize">
 				Select the type of entry to record
 			</Dialog.Description>
 		</Dialog.Header>
 		<div class="grid grid-cols-2 gap-4 py-4">
 			<button
-				class="group flex flex-col items-center justify-center rounded-3xl border-2 border-slate-100 p-6 transition-all hover:border-primary-500 hover:bg-primary-50 cursor-pointer"
+				class="group flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-slate-100 p-6 transition-all hover:border-primary-500 hover:bg-primary-50"
 				onclick={openPersonCheckIn}
 			>
 				<div
@@ -414,11 +430,13 @@
 				>
 					<Users size={32} />
 				</div>
-				<span class="font-black text-slate-900 tracking-tighter uppercase">{i18n.t('personLabel')}</span>
+				<span class="font-black tracking-tighter text-slate-900 capitalize"
+					>{i18n.t('personLabel')}</span
+				>
 			</button>
 
 			<button
-				class="group flex flex-col items-center justify-center rounded-3xl border-2 border-slate-100 p-6 transition-all hover:border-amber-500 hover:bg-amber-50 cursor-pointer"
+				class="group flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-slate-100 p-6 transition-all hover:border-amber-500 hover:bg-amber-50"
 				onclick={openVehicleCheckIn}
 			>
 				<div
@@ -426,15 +444,14 @@
 				>
 					<Truck size={32} />
 				</div>
-				<span class="font-black text-slate-900 tracking-tighter uppercase">{i18n.t('vehicles')}</span>
+				<span class="font-black tracking-tighter text-slate-900 capitalize"
+					>{i18n.t('vehicles')}</span
+				>
 			</button>
 		</div>
 	</Dialog.Content>
 </Dialog.Root>
 
-<CheckInDialog
-	bind:open={isPersonCheckInOpen}
-/>
+<CheckInDialog bind:open={isPersonCheckInOpen} />
 <VehicleCheckInDialog bind:open={isVehicleCheckInOpen} />
 <RegisterDialog bind:open={isRegisterOpen} />
-

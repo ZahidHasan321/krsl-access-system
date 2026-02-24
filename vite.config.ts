@@ -5,7 +5,7 @@ import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 
 export default defineConfig({
 	plugins: [
-		tailwindcss(), 
+		tailwindcss(),
 		sveltekit(),
 		SvelteKitPWA({
 			registerType: 'autoUpdate',
@@ -53,7 +53,8 @@ export default defineConfig({
 	build: {
 		rollupOptions: {
 			onwarn(warning, defaultHandler) {
-				if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message?.includes('drizzle-orm')) return;
+				if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message?.includes('drizzle-orm'))
+					return;
 				defaultHandler(warning);
 			}
 		}
@@ -62,6 +63,13 @@ export default defineConfig({
 		allowedHosts: true
 	},
 	ssr: {
-		noExternal: ['lucide-svelte', '@lucide/svelte', 'bits-ui', 'svelte-sonner', 'formsnap', 'sveltekit-superforms']
+		noExternal: [
+			'lucide-svelte',
+			'@lucide/svelte',
+			'bits-ui',
+			'svelte-sonner',
+			'formsnap',
+			'sveltekit-superforms'
+		]
 	}
 });

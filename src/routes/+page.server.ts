@@ -25,7 +25,7 @@ export const load: PageServerLoad = async (event) => {
 
 	// Check device status
 	const allDevices = await db.select({ lastHeartbeat: devices.lastHeartbeat }).from(devices);
-	const anyDeviceOnline = allDevices.some(d => isDeviceOnline(d.lastHeartbeat));
+	const anyDeviceOnline = allDevices.some((d) => isDeviceOnline(d.lastHeartbeat));
 
 	// Currently inside people - grouped by their direct category
 	const insideByCategory = await db
@@ -38,57 +38,55 @@ export const load: PageServerLoad = async (event) => {
 		.where(eq(attendanceLogs.status, 'on_premises'))
 		.groupBy(people.categoryId);
 
-	const countMap = new Map(insideByCategory.map(r => [r.categoryId, r.count]));
+	const countMap = new Map(insideByCategory.map((r) => [r.categoryId, r.count]));
 
 	// Build category tree with counts rolling up using hardcoded CATEGORIES
-	const roots = CATEGORIES.filter(c => !c.parentId);
+	const roots = CATEGORIES.filter((c) => !c.parentId);
 
-    type CategoryNode = {
-        id: string;
-        name: string;
-        slug: string;
-        color: string;
-        count: number;
-        directCount: number;
-        children: CategoryNode[];
-    };
+	type CategoryNode = {
+		id: string;
+		name: string;
+		slug: string;
+		color: string;
+		count: number;
+		directCount: number;
+		children: CategoryNode[];
+	};
 
 	function getDescendantCount(catId: string): number {
 		let total = countMap.get(catId) || 0;
-		for (const child of CATEGORIES.filter(c => c.parentId === catId)) {
+		for (const child of CATEGORIES.filter((c) => c.parentId === catId)) {
 			total += getDescendantCount(child.id);
 		}
 		return total;
 	}
 
 	function buildChildren(parentId: string): CategoryNode[] {
-		return CATEGORIES
-			.filter(c => c.parentId === parentId)
-			.map(c => {
-				const children = buildChildren(c.id);
-				const directCount = countMap.get(c.id) || 0;
-				const totalCount = getDescendantCount(c.id);
-				return {
-                    id: c.id,
-					name: c.name,
-					slug: c.slug,
-                    color: c.color,
-					count: totalCount,
-					directCount,
-					children
-				};
-			});
+		return CATEGORIES.filter((c) => c.parentId === parentId).map((c) => {
+			const children = buildChildren(c.id);
+			const directCount = countMap.get(c.id) || 0;
+			const totalCount = getDescendantCount(c.id);
+			return {
+				id: c.id,
+				name: c.name,
+				slug: c.slug,
+				color: c.color,
+				count: totalCount,
+				directCount,
+				children
+			};
+		});
 	}
 
-	const categoryTree: CategoryNode[] = roots.map(r => {
+	const categoryTree: CategoryNode[] = roots.map((r) => {
 		const children = buildChildren(r.id);
 		const totalCount = getDescendantCount(r.id);
 		const directCount = countMap.get(r.id) || 0;
 		return {
-            id: r.id,
+			id: r.id,
 			name: r.name,
 			slug: r.slug,
-            color: r.color,
+			color: r.color,
 			count: totalCount,
 			directCount,
 			children
@@ -98,9 +96,7 @@ export const load: PageServerLoad = async (event) => {
 	const totalPeopleInside = categoryTree.reduce((acc, c) => acc + c.count, 0);
 
 	// Total registered people
-	const [totalPeopleCount] = await db
-		.select({ value: count() })
-		.from(people);
+	const [totalPeopleCount] = await db.select({ value: count() }).from(people);
 
 	// Currently Inside - Vehicles
 	const [vehiclesInsideCount] = await db
@@ -119,8 +115,8 @@ export const load: PageServerLoad = async (event) => {
 
 	const vehicleStats = {
 		total: vehiclesInsideCount.value,
-		transport: vehiclesByType.find(v => v.type === 'transport')?.count || 0,
-		regular: vehiclesByType.find(v => v.type === 'regular')?.count || 0
+		transport: vehiclesByType.find((v) => v.type === 'transport')?.count || 0,
+		regular: vehiclesByType.find((v) => v.type === 'regular')?.count || 0
 	};
 
 	// Today's Activity
@@ -133,11 +129,13 @@ export const load: PageServerLoad = async (event) => {
 	const [todayExits] = await db
 		.select({ value: count() })
 		.from(attendanceLogs)
-		.where(and(
-			eq(attendanceLogs.status, 'checked_out'),
-			gte(attendanceLogs.exitTime, todayStart),
-			lte(attendanceLogs.exitTime, todayEnd)
-		));
+		.where(
+			and(
+				eq(attendanceLogs.status, 'checked_out'),
+				gte(attendanceLogs.exitTime, todayStart),
+				lte(attendanceLogs.exitTime, todayEnd)
+			)
+		);
 
 	const [todayVehiclesIn] = await db
 		.select({ value: count() })
@@ -160,7 +158,7 @@ export const load: PageServerLoad = async (event) => {
 		.groupBy(attendanceLogs.date)
 		.orderBy(attendanceLogs.date);
 
-	const trendMap = new Map(trendData.map(d => [d.date, d.count]));
+	const trendMap = new Map(trendData.map((d) => [d.date, d.count]));
 	const trend7Day = Array.from({ length: 7 }, (_, i) => {
 		const date = format(subDays(new Date(), 6 - i), 'yyyy-MM-dd');
 		return { date, count: trendMap.get(date) || 0 };
@@ -180,39 +178,40 @@ export const load: PageServerLoad = async (event) => {
 		.from(attendanceLogs)
 		.innerJoin(people, eq(attendanceLogs.personId, people.id))
 		.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
-		.where(or(
-			// Entered today
-			eq(attendanceLogs.date, today),
-			// Still on premises (entered earlier, not yet checked out)
-			eq(attendanceLogs.status, 'on_premises'),
-			// Exited today but entered before today (cross-midnight)
-			and(
-				eq(attendanceLogs.status, 'checked_out'),
-				gte(attendanceLogs.exitTime, todayStart),
-				lte(attendanceLogs.exitTime, todayEnd)
+		.where(
+			or(
+				// Entered today
+				eq(attendanceLogs.date, today),
+				// Still on premises (entered earlier, not yet checked out)
+				eq(attendanceLogs.status, 'on_premises'),
+				// Exited today but entered before today (cross-midnight)
+				and(
+					eq(attendanceLogs.status, 'checked_out'),
+					gte(attendanceLogs.exitTime, todayStart),
+					lte(attendanceLogs.exitTime, todayEnd)
+				)
 			)
-		))
+		)
 		.orderBy(desc(attendanceLogs.entryTime))
 		.limit(8);
 
-	    return {
-			currentlyInside: {
-				totalPeople: totalPeopleInside,
-				categoryTree,
-				totalVehicles: vehiclesInsideCount.value,
-				vehicleStats
-			},
-			totalPeople: totalPeopleCount.value,
-			todayActivity: {
-				entries: todayEntries.value,
-				exits: todayExits.value,
-				stillInside: totalPeopleInside,
-				vehiclesIn: todayVehiclesIn.value,
-				vehiclesOut: todayVehiclesOut.value
-			},
-			trend7Day,
-			recentLogs,
-			anyDeviceOnline
-		};
+	return {
+		currentlyInside: {
+			totalPeople: totalPeopleInside,
+			categoryTree,
+			totalVehicles: vehiclesInsideCount.value,
+			vehicleStats
+		},
+		totalPeople: totalPeopleCount.value,
+		todayActivity: {
+			entries: todayEntries.value,
+			exits: todayExits.value,
+			stillInside: totalPeopleInside,
+			vehiclesIn: todayVehiclesIn.value,
+			vehiclesOut: todayVehiclesOut.value
+		},
+		trend7Day,
+		recentLogs,
+		anyDeviceOnline
 	};
-
+};

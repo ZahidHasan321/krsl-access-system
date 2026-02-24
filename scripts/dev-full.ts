@@ -15,28 +15,46 @@ const env = {
 
 function log(name: string, data: any) {
 	const prefix = `[\x1b[1m${name}\x1b[0m] `;
-	process.stdout.write(data.toString().split('\n').map((l: string) => l ? prefix + l : '').join('\n'));
+	process.stdout.write(
+		data
+			.toString()
+			.split('\n')
+			.map((l: string) => (l ? prefix + l : ''))
+			.join('\n')
+	);
 }
 
 console.log('\x1b[1mStarting Unified CRM Development Environment...\x1b[0m');
 
 // 1. Start SvelteKit
 const svelte = spawn('npm', ['run', 'dev'], { env });
-svelte.stdout.on('data', d => log('\x1b[35mApp\x1b[0m', d));
-svelte.stderr.on('data', d => log('\x1b[31mApp:Err\x1b[0m', d));
+svelte.stdout.on('data', (d) => log('\x1b[35mApp\x1b[0m', d));
+svelte.stderr.on('data', (d) => log('\x1b[31mApp:Err\x1b[0m', d));
 
 // 2. Start Device Service
-const service = spawn('node', ['--env-file=.env', '--import=tsx', 'scripts/device-service.ts'], { env });
-service.stdout.on('data', d => log('\x1b[36mService\x1b[0m', d));
-service.stderr.on('data', d => log('\x1b[31mService:Err\x1b[0m', d));
+const service = spawn('node', ['--env-file=.env', '--import=tsx', 'scripts/device-service.ts'], {
+	env
+});
+service.stdout.on('data', (d) => log('\x1b[36mService\x1b[0m', d));
+service.stderr.on('data', (d) => log('\x1b[31mService:Err\x1b[0m', d));
 
 // 3. Start Interactive Dummy Device
 // Wait 3 seconds for the others to boot
 setTimeout(() => {
-	const dummy = spawn('node', ['--env-file=.env', '--import=tsx', 'scripts/dummy-device.ts', 'http://localhost:8080/iclock', 'TEST_SN_001'], {
-		env,
-		stdio: 'inherit'
-	});
+	const dummy = spawn(
+		'node',
+		[
+			'--env-file=.env',
+			'--import=tsx',
+			'scripts/dummy-device.ts',
+			'http://localhost:8080/iclock',
+			'TEST_SN_001'
+		],
+		{
+			env,
+			stdio: 'inherit'
+		}
+	);
 
 	dummy.on('exit', () => {
 		console.log('\nShutting down everything...');

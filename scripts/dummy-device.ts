@@ -63,7 +63,7 @@ async function handleCommand(cmdLine: string) {
 	const cmd = cmdLine.substring(secondColon + 1);
 
 	console.log(`[Action] Executing CMD ${id}...`);
-	await new Promise(r => setTimeout(r, 1000));
+	await new Promise((r) => setTimeout(r, 1000));
 
 	const body = new URLSearchParams({ ID: id, Return: '0', CMD: cmd });
 	await fetch(`${TARGET_URL}/devicecmd?SN=${SN}`, {
@@ -101,10 +101,18 @@ setInterval(heartbeat, 10000);
 process.stdin.on('keypress', (str, key) => {
 	if (key.ctrl && key.name === 'c') process.exit();
 	switch (key.name) {
-		case 'h': handshake(); break;
-		case 'b': heartbeat(); break;
-		case 'p': sendPunch(); break;
-		case 'q': process.exit(); break;
+		case 'h':
+			handshake();
+			break;
+		case 'b':
+			heartbeat();
+			break;
+		case 'p':
+			sendPunch();
+			break;
+		case 'q':
+			process.exit();
+			break;
 	}
 });
 

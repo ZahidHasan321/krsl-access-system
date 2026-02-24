@@ -11,7 +11,8 @@ export const GET: RequestHandler = async ({ url }) => {
 	if (!sn) return new Response('Missing SN', { status: 400 });
 
 	// Update heartbeat
-	await db.update(devices)
+	await db
+		.update(devices)
 		.set({ lastHeartbeat: new Date(), status: 'online' })
 		.where(eq(devices.serialNumber, sn));
 
@@ -19,18 +20,14 @@ export const GET: RequestHandler = async ({ url }) => {
 	const [cmd] = await db
 		.select()
 		.from(deviceCommands)
-		.where(
-			and(
-				eq(deviceCommands.deviceSn, sn),
-				eq(deviceCommands.status, 'PENDING')
-			)
-		)
+		.where(and(eq(deviceCommands.deviceSn, sn), eq(deviceCommands.status, 'PENDING')))
 		.orderBy(asc(deviceCommands.createdAt))
 		.limit(1);
 
 	if (cmd) {
 		// Mark as SENT
-		await db.update(deviceCommands)
+		await db
+			.update(deviceCommands)
 			.set({ status: 'SENT', updatedAt: new Date() })
 			.where(eq(deviceCommands.id, cmd.id));
 

@@ -1,3 +1,3 @@
-import Skeleton from "./skeleton.svelte";
+import Skeleton from './skeleton.svelte';
 
 export { Skeleton };

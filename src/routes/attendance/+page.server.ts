@@ -11,239 +11,258 @@ import { CATEGORIES } from '$lib/constants/categories';
 
 /** Given a root category ID, return all descendant IDs (inclusive). */
 function getDescendantIds(categoryId: string): string[] {
-    const ids: string[] = [categoryId];
-    const queue = [categoryId];
-    while (queue.length > 0) {
-        const parentId = queue.shift()!;
-        for (const cat of CATEGORIES) {
-            if (cat.parentId === parentId) {
-                ids.push(cat.id);
-                queue.push(cat.id);
-            }
-        }
-    }
-    return ids;
+	const ids: string[] = [categoryId];
+	const queue = [categoryId];
+	while (queue.length > 0) {
+		const parentId = queue.shift()!;
+		for (const cat of CATEGORIES) {
+			if (cat.parentId === parentId) {
+				ids.push(cat.id);
+				queue.push(cat.id);
+			}
+		}
+	}
+	return ids;
 }
 
 function buildRootLookup() {
-    const byId = new Map(CATEGORIES.map(c => [c.id, c]));
-    const rootOf = new Map<string, { id: string; name: string; slug: string }>();
-    for (const cat of CATEGORIES) {
-        let current = cat;
-        while (current.parentId) {
-            const parent = byId.get(current.parentId);
-            if (!parent) break;
-            current = parent;
-        }
-        rootOf.set(cat.id, { id: current.id, name: current.name, slug: current.slug });
-    }
-    return rootOf;
+	const byId = new Map(CATEGORIES.map((c) => [c.id, c]));
+	const rootOf = new Map<string, { id: string; name: string; slug: string }>();
+	for (const cat of CATEGORIES) {
+		let current = cat;
+		while (current.parentId) {
+			const parent = byId.get(current.parentId);
+			if (!parent) break;
+			current = parent;
+		}
+		rootOf.set(cat.id, { id: current.id, name: current.name, slug: current.slug });
+	}
+	return rootOf;
 }
 
 export const load: PageServerLoad = async (event) => {
-    requirePermission(event.locals, 'people.view');
+	requirePermission(event.locals, 'people.view');
 
-    const query = event.url.searchParams.get('q') || '';
-    const categoryId = event.url.searchParams.get('category') || '';
-    const page = parseInt(event.url.searchParams.get('page') || '1');
-    const limit = Math.min(100, Math.max(1, parseInt(event.url.searchParams.get('limit') || '20')));
-    const offset = (page - 1) * limit;
+	const query = event.url.searchParams.get('q') || '';
+	const categoryId = event.url.searchParams.get('category') || '';
+	const location = event.url.searchParams.get('location') || '';
+	const page = parseInt(event.url.searchParams.get('page') || '1');
+	const limit = Math.min(100, Math.max(1, parseInt(event.url.searchParams.get('limit') || '20')));
+	const offset = (page - 1) * limit;
 
-    const rootLookup = buildRootLookup();
+	const rootLookup = buildRootLookup();
 
-    const whereClauses: (SQL | undefined)[] = [
-        eq(attendanceLogs.status, 'on_premises')
-    ];
+	const whereClauses: (SQL | undefined)[] = [eq(attendanceLogs.status, 'on_premises')];
 
-    if (query) {
-        whereClauses.push(or(
-            like(people.name, `%${query}%`),
-            like(people.codeNo, `%${query}%`),
-            like(people.company, `%${query}%`),
-            like(people.contactNo, `%${query}%`)
-        ));
-    }
+	if (query) {
+		whereClauses.push(
+			or(
+				like(people.name, `%${query}%`),
+				like(people.codeNo, `%${query}%`),
+				like(people.company, `%${query}%`),
+				like(people.contactNo, `%${query}%`)
+			)
+		);
+	}
 
-    if (categoryId) {
-        const descendantIds = getDescendantIds(categoryId);
-        whereClauses.push(inArray(people.categoryId, descendantIds));
-    }
+	if (categoryId) {
+		const descendantIds = getDescendantIds(categoryId);
+		whereClauses.push(inArray(people.categoryId, descendantIds));
+	}
 
-    const where = and(...whereClauses.filter((c): c is SQL => !!c));
+	if (location && location !== 'all') {
+		whereClauses.push(eq(attendanceLogs.location, location));
+	}
 
-    const [totalCountResult] = await db
-        .select({ count: count() })
-        .from(attendanceLogs)
-        .innerJoin(people, eq(attendanceLogs.personId, people.id))
-        .innerJoin(personCategories, eq(people.categoryId, personCategories.id))
-        .where(where);
-    
-    const totalCount = totalCountResult?.count || 0;
-    const totalPages = Math.ceil(totalCount / limit);
-    const validatedPage = Math.max(1, Math.min(page, totalPages || 1));
-    const validatedOffset = (validatedPage - 1) * limit;
+	const where = and(...whereClauses.filter((c): c is SQL => !!c));
 
-    // Load active entries (on_premises) only with filtering
-    const logs = await db
-        .select({
-            id: attendanceLogs.id,
-            entryTime: attendanceLogs.entryTime,
-            exitTime: attendanceLogs.exitTime,
-            status: attendanceLogs.status,
-            verifyMethod: attendanceLogs.verifyMethod,
-            purpose: attendanceLogs.purpose,
-            person: {
-                id: people.id,
-                name: people.name,
-                codeNo: people.codeNo,
-                company: people.company,
-                categoryId: people.categoryId,
-                photoUrl: people.photoUrl
-            },
-            category: {
-                id: personCategories.id,
-                parentId: personCategories.parentId,
-                name: personCategories.name,
-                slug: personCategories.slug
-            }
-        })
-        .from(attendanceLogs)
-        .innerJoin(people, eq(attendanceLogs.personId, people.id))
-        .innerJoin(personCategories, eq(people.categoryId, personCategories.id))
-        .where(where)
-        .orderBy(desc(attendanceLogs.entryTime))
-        .limit(limit)
-        .offset(validatedOffset);
+	const [totalCountResult] = await db
+		.select({ count: count() })
+		.from(attendanceLogs)
+		.innerJoin(people, eq(attendanceLogs.personId, people.id))
+		.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
+		.where(where);
 
-    // Add root category info to each log
-    const logsWithRoot = logs.map(log => {
-        const root = rootLookup.get(log.person.categoryId);
-        return {
-            ...log,
-            rootCategory: root ? { id: root.id, name: root.name, slug: root.slug } : log.category
-        };
-    });
+	const totalCount = totalCountResult?.count || 0;
+	const totalPages = Math.ceil(totalCount / limit);
+	const validatedPage = Math.max(1, Math.min(page, totalPages || 1));
+	const validatedOffset = (validatedPage - 1) * limit;
 
-    return {
-        logs: logsWithRoot,
-        filters: {
-            query,
-            categoryId
-        },
-        pagination: {
-            page: validatedPage,
-            limit,
-            totalPages,
-            totalCount
-        }
-    };
+	// Load active entries (on_premises) only with filtering
+	const logs = await db
+		.select({
+			id: attendanceLogs.id,
+			entryTime: attendanceLogs.entryTime,
+			exitTime: attendanceLogs.exitTime,
+			status: attendanceLogs.status,
+			verifyMethod: attendanceLogs.verifyMethod,
+			purpose: attendanceLogs.purpose,
+			location: attendanceLogs.location,
+			person: {
+				id: people.id,
+				name: people.name,
+				codeNo: people.codeNo,
+				company: people.company,
+				categoryId: people.categoryId,
+				photoUrl: people.photoUrl
+			},
+			category: {
+				id: personCategories.id,
+				parentId: personCategories.parentId,
+				name: personCategories.name,
+				slug: personCategories.slug
+			}
+		})
+		.from(attendanceLogs)
+		.innerJoin(people, eq(attendanceLogs.personId, people.id))
+		.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
+		.where(where)
+		.orderBy(desc(attendanceLogs.entryTime))
+		.limit(limit)
+		.offset(validatedOffset);
+
+	const now = new Date();
+
+	// Add root category info and duration to each log
+	const logsWithExtras = logs.map((log) => {
+		const root = rootLookup.get(log.person.categoryId);
+		const durationSeconds = Math.floor((now.getTime() - log.entryTime.getTime()) / 1000);
+
+		return {
+			...log,
+			durationSeconds,
+			rootCategory: root ? { id: root.id, name: root.name, slug: root.slug } : log.category
+		};
+	});
+
+	return {
+		logs: logsWithExtras,
+		filters: {
+			query,
+			categoryId,
+			location
+		},
+		pagination: {
+			page: validatedPage,
+			limit,
+			totalPages,
+			totalCount
+		}
+	};
 };
 
 export const actions: Actions = {
-    checkIn: async (event) => {
-        requirePermission(event.locals, 'people.create');
-        const data = await event.request.formData();
-        const personId = data.get('personId') as string;
-        const purpose = data.get('purpose') as string || null;
+	checkIn: async (event) => {
+		requirePermission(event.locals, 'people.create');
+		const data = await event.request.formData();
+		const personId = data.get('personId') as string;
+		const purpose = (data.get('purpose') as string) || null;
+		const location = (data.get('location') as string) || null;
 
-        if (!personId) return fail(400, { message: 'Person ID required' });
+		if (!personId) return fail(400, { message: 'Person ID required' });
+		if (!location) return fail(400, { message: 'Location (Ship/Yard) required' });
 
-        // 1. Verify person exists
-        const person = await db.query.people.findFirst({
-            where: eq(people.id, personId)
-        });
-        if (!person) return fail(404, { message: 'Person not found' });
+		// 1. Verify person exists
+		const person = await db.query.people.findFirst({
+			where: eq(people.id, personId)
+		});
+		if (!person) return fail(404, { message: 'Person not found' });
 
-        // 2. Check if already on premises
-        const activeLog = await db.query.attendanceLogs.findFirst({
-            where: and(
-                eq(attendanceLogs.personId, personId),
-                eq(attendanceLogs.status, 'on_premises')
-            )
-        });
+		// 2. Check if already on premises
+		const activeLog = await db.query.attendanceLogs.findFirst({
+			where: and(eq(attendanceLogs.personId, personId), eq(attendanceLogs.status, 'on_premises'))
+		});
 
-        if (activeLog) {
-            return fail(400, { message: 'Person must exit before entering again' });
-        }
+		if (activeLog) {
+			return fail(400, { message: 'Person must exit before entering again' });
+		}
 
-        const logId = crypto.randomUUID();
-        // 3. Create log
-        const now = new Date();
-        await db.insert(attendanceLogs).values({
-            id: logId,
-            personId,
-            entryTime: now,
-            status: 'on_premises',
-            purpose,
-            date: format(now, 'yyyy-MM-dd')
-        });
+		const logId = crypto.randomUUID();
+		// 3. Create log
+		const now = new Date();
+		await db.insert(attendanceLogs).values({
+			id: logId,
+			personId,
+			entryTime: now,
+			status: 'on_premises',
+			purpose,
+			location,
+			date: format(now, 'yyyy-MM-dd')
+		});
 
-        notifyCheckIn({
-            personId,
-            personName: person.name,
-            verifyMethod: 'manual',
-            photoUrl: person.photoUrl,
-            logId,
-            categoryId: person.categoryId
-        });
-        notifyChange();
-        return { success: true };
-    },
+		notifyCheckIn({
+			personId,
+			personName: person.name,
+			verifyMethod: 'manual',
+			photoUrl: person.photoUrl,
+			logId,
+			categoryId: person.categoryId,
+			isTrained: person.isTrained
+		});
+		notifyChange();
+		return { success: true };
+	},
 
-    checkOut: async (event) => {
-        requirePermission(event.locals, 'people.create');
-        const data = await event.request.formData();
-        const logId = data.get('logId') as string;
+	checkOut: async (event) => {
+		requirePermission(event.locals, 'people.create');
+		const data = await event.request.formData();
+		const logId = data.get('logId') as string;
 
-        if (!logId) return fail(400, { message: 'Log ID required' });
+		if (!logId) return fail(400, { message: 'Log ID required' });
 
-        const log = await db.query.attendanceLogs.findFirst({
-            where: eq(attendanceLogs.id, logId)
-        });
+		const log = await db.query.attendanceLogs.findFirst({
+			where: eq(attendanceLogs.id, logId)
+		});
 
-        if (!log || log.status !== 'on_premises') {
-            return fail(400, { message: 'Active log not found' });
-        }
+		if (!log || log.status !== 'on_premises') {
+			return fail(400, { message: 'Active log not found' });
+		}
 
-        // Fetch person for toast notification
-        const checkedOutPerson = await db.query.people.findFirst({
-            where: eq(people.id, log.personId)
-        });
+		// Fetch person for toast notification
+		const checkedOutPerson = await db.query.people.findFirst({
+			where: eq(people.id, log.personId)
+		});
 
-        await db.update(attendanceLogs)
-            .set({
-                exitTime: new Date(),
-                status: 'checked_out'
-            })
-            .where(eq(attendanceLogs.id, logId));
+		await db
+			.update(attendanceLogs)
+			.set({
+				exitTime: new Date(),
+				status: 'checked_out'
+			})
+			.where(eq(attendanceLogs.id, logId));
 
-        if (checkedOutPerson) {
-            notifyCheckOut({
-                personId: checkedOutPerson.id,
-                personName: checkedOutPerson.name,
-                verifyMethod: 'manual',
-                photoUrl: checkedOutPerson.photoUrl,
-                logId,
-                categoryId: checkedOutPerson.categoryId
-            });
-        }
-        notifyChange();
-        return { success: true };
-    },
+		if (checkedOutPerson) {
+			notifyCheckOut({
+				personId: checkedOutPerson.id,
+				personName: checkedOutPerson.name,
+				verifyMethod: 'manual',
+				photoUrl: checkedOutPerson.photoUrl,
+				logId,
+				categoryId: checkedOutPerson.categoryId
+			});
+		}
+		notifyChange();
+		return { success: true };
+	},
 
-    updatePurpose: async (event) => {
-        requirePermission(event.locals, 'people.create');
-        const data = await event.request.formData();
-        const logId = data.get('logId') as string;
-        const purpose = data.get('purpose') as string;
+	updatePurpose: async (event) => {
+		requirePermission(event.locals, 'people.create');
+		const data = await event.request.formData();
+		const logId = data.get('logId') as string;
+		const purpose = (data.get('purpose') as string) || null;
+		const location = (data.get('location') as string) || null;
 
-        if (!logId) return fail(400, { message: 'Log ID required' });
+		if (!logId) return fail(400, { message: 'Log ID required' });
 
-        await db.update(attendanceLogs)
-            .set({ purpose })
-            .where(eq(attendanceLogs.id, logId));
-        
-        notifyChange();
-        return { success: true };
-    }
+		await db
+			.update(attendanceLogs)
+			.set({
+				purpose,
+				location
+			})
+			.where(eq(attendanceLogs.id, logId));
+
+		notifyChange();
+		return { success: true };
+	}
 };

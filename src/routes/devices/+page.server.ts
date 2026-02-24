@@ -20,7 +20,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.where(eq(deviceCommands.status, 'PENDING'))
 		.groupBy(deviceCommands.deviceSn);
 
-	const pendingMap = Object.fromEntries(pendingCounts.map(r => [r.deviceSn, r.count]));
+	const pendingMap = Object.fromEntries(pendingCounts.map((r) => [r.deviceSn, r.count]));
 
 	// Template stats
 	const [templateCount] = await db
@@ -37,7 +37,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.where(isNotNull(people.biometricId));
 
 	return {
-		devices: allDevices.map(d => ({
+		devices: allDevices.map((d) => ({
 			...d,
 			status: isDeviceOnline(d.lastHeartbeat) ? 'online' : 'offline',
 			pendingCommands: pendingMap[d.serialNumber] || 0

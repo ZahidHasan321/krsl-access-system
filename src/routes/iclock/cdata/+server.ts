@@ -2,7 +2,13 @@ import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
 import { devices, rawPunches, people, attendanceLogs, bioTemplates } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { buildHandshakeResponse, parseAttLog, parseOperLog, toDateString, verifyCodeToMethod } from '$lib/zkteco';
+import {
+	buildHandshakeResponse,
+	parseAttLog,
+	parseOperLog,
+	toDateString,
+	verifyCodeToMethod
+} from '$lib/zkteco';
 import { notifyChange, notifyCheckIn, notifyCheckOut, notifyEnrollment } from '$lib/server/events';
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
@@ -10,11 +16,16 @@ import { Buffer } from 'node:buffer';
 import sharp from 'sharp';
 
 /** Save photo and generate thumbnail. Returns { photoUrl, thumbUrl }. */
-async function savePersonPhoto(pin: string, imageBuffer: Buffer): Promise<{ photoUrl: string; thumbUrl: string } | null> {
+async function savePersonPhoto(
+	pin: string,
+	imageBuffer: Buffer
+): Promise<{ photoUrl: string; thumbUrl: string } | null> {
 	if (imageBuffer.length === 0) return null;
 
 	const uploadDir = join(process.cwd(), 'static', 'uploads', 'people');
-	try { mkdirSync(uploadDir, { recursive: true }); } catch {}
+	try {
+		mkdirSync(uploadDir, { recursive: true });
+	} catch {}
 
 	const baseName = `user_${pin}_face`;
 
@@ -47,24 +58,21 @@ export const GET: RequestHandler = async ({ url }) => {
 	console.log(`[ZK:Handshake] Device ${sn} connected`);
 
 	// Upsert device (auto-register on first contact)
-	const [existing] = await db
-		.select()
-		.from(devices)
-		.where(eq(devices.serialNumber, sn));
+	const [existing] = await db.select().from(devices).where(eq(devices.serialNumber, sn));
 
 	if (existing) {
-		await db.update(devices)
+		await db
+			.update(devices)
 			.set({ lastHeartbeat: new Date(), status: 'online' })
 			.where(eq(devices.serialNumber, sn));
 	} else {
-		await db.insert(devices)
-			.values({
-				id: crypto.randomUUID(),
-				serialNumber: sn,
-				name: `Device ${sn}`,
-				lastHeartbeat: new Date(),
-				status: 'online'
-			});
+		await db.insert(devices).values({
+			id: crypto.randomUUID(),
+			serialNumber: sn,
+			name: `Device ${sn}`,
+			lastHeartbeat: new Date(),
+			status: 'online'
+		});
 	}
 
 	const response = buildHandshakeResponse(sn);
@@ -99,13 +107,11 @@ export const POST: RequestHandler = async ({ url, request }) => {
 
 			const result = await savePersonPhoto(pin, imageBuffer);
 			if (result) {
-				const [person] = await db
-					.select()
-					.from(people)
-					.where(eq(people.biometricId, pin));
+				const [person] = await db.select().from(people).where(eq(people.biometricId, pin));
 
 				if (person) {
-					await db.update(people)
+					await db
+						.update(people)
 						.set({ photoUrl: result.photoUrl })
 						.where(eq(people.id, person.id));
 					console.log(`[ZK:Photo] Saved ATTPHOTO for ${person.name}: ${result.photoUrl}`);
@@ -126,7 +132,9 @@ export const POST: RequestHandler = async ({ url, request }) => {
 
 	const body = await request.text();
 	// Log truncated body for debugging
-	console.log(`[ZK:Data] Body (${body.length} chars): ${body.substring(0, 200).replace(/\n/g, ' ')}...`);
+	console.log(
+		`[ZK:Data] Body (${body.length} chars): ${body.substring(0, 200).replace(/\n/g, ' ')}...`
+	);
 
 	// Process OPERLOG for enrollment tracking + face photos
 	if (table === 'OPERLOG') {
@@ -135,22 +143,24 @@ export const POST: RequestHandler = async ({ url, request }) => {
 		if (photoMatch) {
 			const photoPin = photoMatch[1];
 			const base64Content = photoMatch[2];
-			console.log(`[ZK:OperLog] Found face photo for PIN ${photoPin} (${base64Content.length} base64 chars)`);
+			console.log(
+				`[ZK:OperLog] Found face photo for PIN ${photoPin} (${base64Content.length} base64 chars)`
+			);
 
 			try {
 				const imageBuffer = Buffer.from(base64Content, 'base64');
 				const result = await savePersonPhoto(photoPin, imageBuffer);
 				if (result) {
-					const [person] = await db
-						.select()
-						.from(people)
-						.where(eq(people.biometricId, photoPin));
+					const [person] = await db.select().from(people).where(eq(people.biometricId, photoPin));
 
 					if (person) {
-						await db.update(people)
+						await db
+							.update(people)
 							.set({ photoUrl: result.photoUrl })
 							.where(eq(people.id, person.id));
-						console.log(`[ZK:OperLog] Saved face photo for ${person.name}: ${result.photoUrl} (thumb: ${result.thumbUrl})`);
+						console.log(
+							`[ZK:OperLog] Saved face photo for ${person.name}: ${result.photoUrl} (thumb: ${result.thumbUrl})`
+						);
 						notifyChange();
 					}
 				}
@@ -163,21 +173,21 @@ export const POST: RequestHandler = async ({ url, request }) => {
 		for (const entry of opEntries) {
 			if (!entry.enrollMethod) continue;
 
-			const [person] = await db
-				.select()
-				.from(people)
-				.where(eq(people.biometricId, entry.pin));
+			const [person] = await db.select().from(people).where(eq(people.biometricId, entry.pin));
 
 			if (!person) continue;
 
 			let methods: string[] = [];
 			try {
 				methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : [];
-			} catch { methods = []; }
+			} catch {
+				methods = [];
+			}
 
 			if (!methods.includes(entry.enrollMethod)) {
 				methods.push(entry.enrollMethod);
-				await db.update(people)
+				await db
+					.update(people)
 					.set({ enrolledMethods: JSON.stringify(methods) })
 					.where(eq(people.id, person.id));
 				console.log(`[ZK:Enroll] Detected ${entry.enrollMethod} enrollment for ${person.name}`);
@@ -205,15 +215,14 @@ export const POST: RequestHandler = async ({ url, request }) => {
 		// Parse FID and No from body KV pairs
 		const fidMatch = body.match(/(?:^|\t)FID=(\w+)/im) || body.match(/(?:^|\t)Fid=(\w+)/im);
 		const noMatch = body.match(/(?:^|\t)No=(\w+)/im);
-		const fid = fidMatch ? fidMatch[1] : (table === 'FACE' ? '111' : '0');
+		const fid = fidMatch ? fidMatch[1] : table === 'FACE' ? '111' : '0';
 		const templateNo = noMatch ? noMatch[1] : '0';
 
-		console.log(`[ZK:BioData] Received ${table} template for PIN ${pin} FID=${fid} No=${templateNo}`);
+		console.log(
+			`[ZK:BioData] Received ${table} template for PIN ${pin} FID=${fid} No=${templateNo}`
+		);
 		if (pin) {
-			const [person] = await db
-				.select()
-				.from(people)
-				.where(eq(people.biometricId, pin));
+			const [person] = await db.select().from(people).where(eq(people.biometricId, pin));
 
 			if (person) {
 				// Strip table name prefix from body (device sends "BIODATA Pin=1\t..." but we just want the KV pairs)
@@ -225,27 +234,29 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				const [existingTemplate] = await db
 					.select()
 					.from(bioTemplates)
-					.where(and(
-						eq(bioTemplates.personId, person.id),
-						eq(bioTemplates.templateType, table!),
-						eq(bioTemplates.fid, fid)
-					));
+					.where(
+						and(
+							eq(bioTemplates.personId, person.id),
+							eq(bioTemplates.templateType, table!),
+							eq(bioTemplates.fid, fid)
+						)
+					);
 
 				if (existingTemplate) {
-					await db.update(bioTemplates)
+					await db
+						.update(bioTemplates)
 						.set({ templateData: kvData, templateNo, updatedAt: new Date() })
 						.where(eq(bioTemplates.id, existingTemplate.id));
 					console.log(`[ZK:BioData] Updated ${table} template for ${person.name}`);
 				} else {
-					await db.insert(bioTemplates)
-						.values({
-							id: crypto.randomUUID(),
-							personId: person.id,
-							templateType: table!,
-							templateData: kvData,
-							fid,
-							templateNo
-						});
+					await db.insert(bioTemplates).values({
+						id: crypto.randomUUID(),
+						personId: person.id,
+						templateType: table!,
+						templateData: kvData,
+						fid,
+						templateNo
+					});
 					console.log(`[ZK:BioData] Stored new ${table} template for ${person.name}`);
 				}
 
@@ -253,14 +264,17 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				let methods: string[] = [];
 				try {
 					methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : [];
-				} catch { methods = []; }
+				} catch {
+					methods = [];
+				}
 
 				const method = fid === '111' || table === 'FACE' ? 'face' : 'finger';
 				console.log(`[ZK:BioData] Associating template as ${method} for ${person.name}`);
 
 				if (!methods.includes(method)) {
 					methods.push(method);
-					await db.update(people)
+					await db
+						.update(people)
 						.set({ enrolledMethods: JSON.stringify(methods) })
 						.where(eq(people.id, person.id));
 				}
@@ -291,23 +305,19 @@ export const POST: RequestHandler = async ({ url, request }) => {
 		const rawId = crypto.randomUUID();
 
 		// 1. Store raw punch (audit trail)
-		await db.insert(rawPunches)
-			.values({
-				id: rawId,
-				deviceSn: sn,
-				pin: entry.pin,
-				punchTime: entry.timestamp,
-				status: entry.status,
-				verify: entry.verify,
-				rawLine: entry.rawLine,
-				processed: false
-			});
+		await db.insert(rawPunches).values({
+			id: rawId,
+			deviceSn: sn,
+			pin: entry.pin,
+			punchTime: entry.timestamp,
+			status: entry.status,
+			verify: entry.verify,
+			rawLine: entry.rawLine,
+			processed: false
+		});
 
 		// 2. Look up person by biometricId
-		const [person] = await db
-			.select()
-			.from(people)
-			.where(eq(people.biometricId, entry.pin));
+		const [person] = await db.select().from(people).where(eq(people.biometricId, entry.pin));
 
 		if (!person) continue; // No matching person — raw punch still stored
 
@@ -317,27 +327,21 @@ export const POST: RequestHandler = async ({ url, request }) => {
 		const [activeLog] = await db
 			.select()
 			.from(attendanceLogs)
-			.where(
-				and(
-					eq(attendanceLogs.personId, person.id),
-					eq(attendanceLogs.status, 'on_premises')
-				)
-			);
+			.where(and(eq(attendanceLogs.personId, person.id), eq(attendanceLogs.status, 'on_premises')));
 
 		const method = verifyCodeToMethod(entry.verify);
 
 		if (!activeLog) {
 			// CHECK-IN: no active log → create new entry
 			const newLogId = crypto.randomUUID();
-			await db.insert(attendanceLogs)
-				.values({
-					id: newLogId,
-					personId: person.id,
-					entryTime: entry.timestamp,
-					verifyMethod: method,
-					status: 'on_premises',
-					date: punchDate
-				});
+			await db.insert(attendanceLogs).values({
+				id: newLogId,
+				personId: person.id,
+				entryTime: entry.timestamp,
+				verifyMethod: method,
+				status: 'on_premises',
+				date: punchDate
+			});
 
 			// Notify real-time check-in
 			notifyCheckIn({
@@ -346,11 +350,13 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				verifyMethod: method,
 				photoUrl: person.photoUrl,
 				logId: newLogId,
-				categoryId: person.categoryId
+				categoryId: person.categoryId,
+				isTrained: person.isTrained
 			});
 		} else if (activeLog.date === punchDate) {
 			// CHECK-OUT: same day, second punch → mark as checked out
-			await db.update(attendanceLogs)
+			await db
+				.update(attendanceLogs)
 				.set({ exitTime: entry.timestamp, status: 'checked_out' })
 				.where(eq(attendanceLogs.id, activeLog.id));
 
@@ -365,7 +371,8 @@ export const POST: RequestHandler = async ({ url, request }) => {
 			});
 		} else {
 			// CLOSE + NEW: different day → close old, create new
-			await db.update(attendanceLogs)
+			await db
+				.update(attendanceLogs)
 				.set({ exitTime: entry.timestamp, status: 'checked_out' })
 				.where(eq(attendanceLogs.id, activeLog.id));
 
@@ -380,15 +387,14 @@ export const POST: RequestHandler = async ({ url, request }) => {
 			});
 
 			const newLogId = crypto.randomUUID();
-			await db.insert(attendanceLogs)
-				.values({
-					id: newLogId,
-					personId: person.id,
-					entryTime: entry.timestamp,
-					verifyMethod: method,
-					status: 'on_premises',
-					date: punchDate
-				});
+			await db.insert(attendanceLogs).values({
+				id: newLogId,
+				personId: person.id,
+				entryTime: entry.timestamp,
+				verifyMethod: method,
+				status: 'on_premises',
+				date: punchDate
+			});
 
 			// Notify real-time check-in (new day entry)
 			notifyCheckIn({
@@ -397,14 +403,13 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				verifyMethod: method,
 				photoUrl: person.photoUrl,
 				logId: newLogId,
-				categoryId: person.categoryId
+				categoryId: person.categoryId,
+				isTrained: person.isTrained
 			});
 		}
 
 		// 4. Mark raw punch as processed
-		await db.update(rawPunches)
-			.set({ processed: true })
-			.where(eq(rawPunches.id, rawId));
+		await db.update(rawPunches).set({ processed: true }).where(eq(rawPunches.id, rawId));
 	}
 
 	notifyChange();

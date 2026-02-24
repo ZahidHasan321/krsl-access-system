@@ -15,6 +15,13 @@
       "when": 1771342601587,
       "tag": "0001_absurd_wind_dancer",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771876082906,
+      "tag": "0002_pretty_mariko_yashida",
+      "breakpoints": true
     }
   ]
 }

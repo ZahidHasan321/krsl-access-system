@@ -9,16 +9,24 @@ export const GET: RequestHandler = async ({ locals }) => {
 	}
 
 	const allDevices = await db
-		.select({ id: devices.id, name: devices.name, serialNumber: devices.serialNumber, lastHeartbeat: devices.lastHeartbeat })
+		.select({
+			id: devices.id,
+			name: devices.name,
+			serialNumber: devices.serialNumber,
+			lastHeartbeat: devices.lastHeartbeat
+		})
 		.from(devices);
 
-	const onlineDevices = allDevices.filter(d => isDeviceOnline(d.lastHeartbeat));
+	const onlineDevices = allDevices.filter((d) => isDeviceOnline(d.lastHeartbeat));
 
-	return new Response(JSON.stringify({
-		online: onlineDevices.length > 0,
-		count: onlineDevices.length,
-		devices: onlineDevices
-	}), {
-		headers: { 'Content-Type': 'application/json' }
-	});
+	return new Response(
+		JSON.stringify({
+			online: onlineDevices.length > 0,
+			count: onlineDevices.length,
+			devices: onlineDevices
+		}),
+		{
+			headers: { 'Content-Type': 'application/json' }
+		}
+	);
 };

@@ -10,7 +10,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { i18n } from '$lib/i18n.svelte';
 	import { clsx } from 'clsx';
-	import { Lock, Plus, Save, Shield, Trash2 } from 'lucide-svelte';
+	import { Lock, Plus, Save, Shield, ShieldCheck, Trash2 } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
 	import { ROLES } from '$lib/constants/roles';
 	import type { PageData } from './$types';
@@ -31,16 +31,18 @@
 	}
 </script>
 
-<div class="space-y-8 pb-20">
-	<div class="flex items-center justify-between">
+<div class="space-y-8 px-4 pb-20 md:px-0">
+	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
-			<h1 class="text-3xl font-black tracking-tight text-slate-900">{i18n.t('roleManagement')}</h1>
-			<p class="mt-1 text-sm font-bold tracking-widest text-slate-500 uppercase">
+			<h1 class="text-3xl font-black tracking-tight text-slate-900 capitalize">
+				{i18n.t('roleManagement')}
+			</h1>
+			<p class="mt-1 text-sm font-bold tracking-widest text-slate-500 capitalize">
 				{data.roles.length} System Roles
 			</p>
 		</div>
 		<Button
-			class="h-11 gap-2 px-6 font-black shadow-lg"
+			class="h-11 shrink-0 gap-2 rounded-xl px-6 font-black shadow-lg sm:h-12 sm:rounded-2xl"
 			onclick={() => (isCreateDialogOpen = true)}
 		>
 			<Plus size={20} />
@@ -49,20 +51,22 @@
 	</div>
 
 	<div class="grid grid-cols-1 gap-8 lg:grid-cols-4">
-		<!-- Role List -->
+		<!-- Role List - Horizontal on mobile, vertical sidebar on desktop -->
 		<div class="space-y-3 lg:col-span-1">
-			<p class="ml-1 text-[10px] font-black tracking-widest text-slate-400 uppercase">
+			<p class="ml-1 text-[10px] font-black tracking-widest text-slate-400 capitalize">
 				System Roles
 			</p>
-			<div class="flex flex-col gap-1.5">
+			<div
+				class="custom-scrollbar flex flex-row gap-2 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0"
+			>
 				{#each data.roles as r (r.id)}
 					<button
 						onclick={() => (selectedRole = r.id)}
 						class={clsx(
-							'group flex w-full items-center justify-between rounded-2xl border-2 px-4 py-4 text-left transition-all',
+							'group flex shrink-0 items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition-all sm:rounded-2xl sm:py-4 lg:w-full',
 							selectedRole === r.id
 								? 'border-primary-100 bg-primary-50 text-primary-900 shadow-sm'
-								: 'border-transparent text-slate-600 hover:bg-slate-50'
+								: 'border-slate-100 bg-white text-slate-600 hover:border-slate-200'
 						)}
 					>
 						<div class="flex items-center gap-3">
@@ -71,8 +75,8 @@
 								class={selectedRole === r.id ? 'text-primary-600' : 'text-slate-300'}
 							/>
 							<div>
-								<p class="leading-tight font-black">{r.name}</p>
-								<p class="text-[10px] font-bold tracking-widest uppercase opacity-50">{r.id}</p>
+								<p class="text-sm leading-tight font-black sm:text-base">{r.name}</p>
+								<p class="text-[9px] font-bold tracking-widest capitalize opacity-50">{r.id}</p>
 							</div>
 						</div>
 					</button>
@@ -83,18 +87,33 @@
 		<!-- Permissions Editor -->
 		<div class="lg:col-span-3">
 			{#if role}
-				<Card.Root class="overflow-hidden border-2 border-slate-100">
-					<div class="flex items-start justify-between border-b-2 border-slate-50 p-4">
+				<Card.Root class="overflow-hidden border-2 border-slate-100 bg-white">
+					<div
+						class="flex flex-col justify-between gap-4 border-b-2 border-slate-50 p-4 sm:flex-row sm:items-start sm:p-6"
+					>
 						<div>
 							<div class="flex items-center gap-3">
-								<h2 class="text-2xl leading-tight font-black text-slate-900">{role.name}</h2>
+								<h2 class="text-xl leading-tight font-black text-slate-900 sm:text-2xl">
+									{role.name}
+								</h2>
 								<Badge
 									variant="secondary"
-									class="bg-slate-100 text-[10px] font-bold tracking-widest uppercase"
-									>{role.id}</Badge
+									class={clsx(
+										'px-2 py-0.5 text-[9px] font-black tracking-wider capitalize',
+										role.id === ROLES.ADMIN
+											? 'border border-rose-100 bg-rose-50 text-rose-700'
+											: 'border border-indigo-100 bg-indigo-50 text-indigo-700'
+									)}
 								>
+									{#if role.id === ROLES.ADMIN}
+										<Shield size={12} class="mr-1.5 opacity-70" />
+									{:else}
+										<ShieldCheck size={12} class="mr-1.5 opacity-70" />
+									{/if}
+									{role.id}
+								</Badge>
 							</div>
-							<p class="mt-2 font-bold text-slate-500">
+							<p class="mt-2 text-xs leading-relaxed font-bold text-slate-500 sm:text-sm">
 								{role.description || 'No description provided.'}
 							</p>
 						</div>
@@ -104,7 +123,7 @@
 								<Button
 									type="button"
 									variant="ghost"
-									class="gap-2 rounded-xl border-2 border-transparent font-bold text-rose-600 hover:border-rose-100 hover:bg-rose-50 hover:text-rose-700"
+									class="w-full gap-2 rounded-xl border-2 border-transparent font-bold text-rose-600 hover:border-rose-100 hover:bg-rose-50 hover:text-rose-700 sm:w-auto"
 									onclick={(e: MouseEvent) =>
 										triggerDelete((e.currentTarget as HTMLButtonElement).form as HTMLFormElement)}
 								>
@@ -115,7 +134,7 @@
 						{/if}
 					</div>
 
-					<Card.Content class="p-2">
+					<Card.Content class="p-4 sm:p-6">
 						<form
 							method="POST"
 							action="?/updatePermissions"
@@ -129,27 +148,34 @@
 
 							{#if role.id === ROLES.ADMIN}
 								<div
-									class="mb-4 flex items-center gap-4 rounded-2xl border-2 border-amber-100 bg-amber-50 p-4 text-amber-900"
+									class="mb-6 flex items-center gap-4 rounded-2xl border-2 border-amber-100 bg-amber-50 p-4 text-amber-900"
 								>
 									<div
 										class="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600"
 									>
 										<Lock size={20} />
 									</div>
-									<p class="text-sm font-bold">
-										This role is system-protected. Administrators always have full access to all
-										permissions.
+									<p class="text-xs font-bold sm:text-sm">
+										This role is system-protected. Most permissions are locked, except for
+										"checkin.view_details" which controls the check-in verification dialog.
 									</p>
 								</div>
 							{/if}
 
-							<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+							<div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
 								{#each data.allPermissions as perm (perm.id)}
-									{@const isChecked = role.id === ROLES.ADMIN || role.permissions.includes(perm.id)}
+									{@const isCheckinView = perm.id === 'checkin.view_details'}
+									{@const isChecked =
+										role.id === ROLES.ADMIN
+											? isCheckinView
+												? role.permissions.includes(perm.id)
+												: true
+											: role.permissions.includes(perm.id)}
+									{@const isDisabled = role.id === ROLES.ADMIN && !isCheckinView}
 									<label
 										class={clsx(
-											'flex items-start gap-4 rounded-2xl border-2 p-5 transition-all',
-											role.id === ROLES.ADMIN
+											'flex items-start gap-3 rounded-2xl border-2 p-4 transition-all sm:gap-4 sm:p-5',
+											isDisabled
 												? 'cursor-not-allowed border-slate-100 bg-slate-50 opacity-80'
 												: 'group cursor-pointer border-slate-50 hover:bg-slate-50'
 										)}
@@ -158,16 +184,20 @@
 											name="permissions"
 											value={perm.id}
 											checked={isChecked}
-											disabled={role.id === ROLES.ADMIN}
+											disabled={isDisabled}
 											class="mt-0.5"
 										/>
-										<div>
+										<div class="min-w-0">
 											<p
-												class="text-sm font-black tracking-tight text-slate-900 uppercase transition-colors group-hover:text-primary-700"
+												class="truncate text-xs font-black tracking-tight text-slate-900 capitalize transition-colors group-hover:text-primary-700 sm:text-sm"
 											>
 												{perm.id}
 											</p>
-											<p class="mt-0.5 text-xs font-bold text-slate-400">{perm.description}</p>
+											<p
+												class="mt-0.5 text-[10px] leading-tight font-bold text-slate-400 sm:text-xs"
+											>
+												{perm.description}
+											</p>
 										</div>
 									</label>
 								{/each}
@@ -175,7 +205,10 @@
 
 							{#if role.id !== ROLES.ADMIN}
 								<div class="mt-10 flex justify-end">
-									<Button type="submit" class="h-12 gap-2 px-8 text-base font-black shadow-lg">
+									<Button
+										type="submit"
+										class="h-12 w-full gap-2 rounded-xl px-8 text-base font-black shadow-lg sm:w-auto"
+									>
 										<Save size={20} />
 										Save Permissions
 									</Button>
@@ -189,7 +222,7 @@
 					class="flex h-96 flex-col items-center justify-center rounded-3xl border-4 border-dashed border-slate-100 bg-slate-50 text-slate-300"
 				>
 					<Shield size={64} class="mb-4 opacity-10" />
-					<p class="text-xs font-bold tracking-widest uppercase">
+					<p class="text-xs font-bold tracking-widest capitalize">
 						Select a role to manage its permissions
 					</p>
 				</div>
@@ -249,4 +282,3 @@
 	variant="danger"
 	onconfirm={() => deleteFormElement?.requestSubmit()}
 />
-

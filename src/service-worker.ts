@@ -73,7 +73,8 @@ self.addEventListener('push', (event) => {
 	const options = {
 		body: data.body ?? 'New notification received',
 		icon: '/pwa-192x192.png',
-		            badge: '/favicon-32x32.png',		data: {
+		badge: '/favicon-32x32.png',
+		data: {
 			url: data.url ?? '/'
 		}
 	};

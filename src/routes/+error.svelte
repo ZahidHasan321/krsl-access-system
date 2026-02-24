@@ -7,8 +7,12 @@
 	let message = $derived(page.error?.message || 'Something went wrong');
 </script>
 
-<div class="flex min-h-[400px] w-full flex-col items-center justify-center rounded-3xl border-2 border-dashed border-rose-100 bg-rose-50/30 p-12 text-center">
-	<div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
+<div
+	class="flex min-h-[400px] w-full flex-col items-center justify-center rounded-3xl border-2 border-dashed border-rose-100 bg-rose-50/30 p-12 text-center"
+>
+	<div
+		class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-100 text-rose-600"
+	>
 		<AlertCircle size={32} />
 	</div>
 	<p class="mb-1 text-5xl font-black text-rose-300">{status}</p>
@@ -31,11 +35,15 @@
 		{/if}
 	</p>
 	<div class="flex items-center gap-3">
-		<Button variant="outline" class="font-bold gap-2 border-2 border-slate-200" onclick={() => history.back()}>
+		<Button
+			variant="outline"
+			class="gap-2 border-2 border-slate-200 font-bold"
+			onclick={() => history.back()}
+		>
 			<ArrowLeft size={18} />
 			Go Back
 		</Button>
-		<Button class="font-bold gap-2" href="/">
+		<Button class="gap-2 font-bold" href="/">
 			<Home size={18} />
 			Dashboard
 		</Button>

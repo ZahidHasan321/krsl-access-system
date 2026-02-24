@@ -18,7 +18,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const [person] = await db.select().from(people).where(eq(people.id, personId));
 	if (!person || !person.biometricId) {
-		return new Response(JSON.stringify({ error: 'Person not found or has no biometric ID' }), { status: 404 });
+		return new Response(JSON.stringify({ error: 'Person not found or has no biometric ID' }), {
+			status: 404
+		});
 	}
 
 	if (method === 'card') {
@@ -31,10 +33,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		await queueDeviceSync(person.biometricId, person.name, cardNo);
 		// Update enrolledMethods
 		let methods: string[] = [];
-		try { methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : []; } catch { methods = []; }
+		try {
+			methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : [];
+		} catch {
+			methods = [];
+		}
 		if (!methods.includes('card')) {
 			methods.push('card');
-			await db.update(people).set({ enrolledMethods: JSON.stringify(methods) }).where(eq(people.id, personId));
+			await db
+				.update(people)
+				.set({ enrolledMethods: JSON.stringify(methods) })
+				.where(eq(people.id, personId));
 		}
 		notifyChange();
 		return new Response(JSON.stringify({ success: true }));

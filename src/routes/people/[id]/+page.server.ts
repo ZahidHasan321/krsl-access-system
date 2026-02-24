@@ -14,219 +14,228 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 async function savePhoto(photo: FormDataEntryValue | null): Promise<string | null> {
-    if (!photo || !(photo instanceof File) || photo.size === 0) return null;
+	if (!photo || !(photo instanceof File) || photo.size === 0) return null;
 
-    if (photo.size > MAX_FILE_SIZE) {
-        throw new Error('File size exceeds 5MB limit');
-    }
+	if (photo.size > MAX_FILE_SIZE) {
+		throw new Error('File size exceeds 5MB limit');
+	}
 
-    const fileName = `${crypto.randomUUID()}.webp`;
-    const uploadDir = join(process.cwd(), 'static', 'uploads', 'people');
+	const fileName = `${crypto.randomUUID()}.webp`;
+	const uploadDir = join(process.cwd(), 'static', 'uploads', 'people');
 
-    if (!existsSync(uploadDir)) {
-        mkdirSync(uploadDir, { recursive: true });
-    }
+	if (!existsSync(uploadDir)) {
+		mkdirSync(uploadDir, { recursive: true });
+	}
 
-    const filePath = join(uploadDir, fileName);
+	const filePath = join(uploadDir, fileName);
 
-    try {
-        const buffer = Buffer.from(await photo.arrayBuffer());
-        
-        const processedImage = sharp(buffer);
-        const metadata = await processedImage.metadata();
+	try {
+		const buffer = Buffer.from(await photo.arrayBuffer());
 
-        if (!metadata.format || !ALLOWED_MIME_TYPES.includes(`image/${metadata.format}`)) {
-            throw new Error('Invalid file type. Only JPEG, PNG and WebP are allowed.');
-        }
+		const processedImage = sharp(buffer);
+		const metadata = await processedImage.metadata();
 
-        await processedImage
-            .webp({ quality: 80 })
-            .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-            .toFile(filePath);
+		if (!metadata.format || !ALLOWED_MIME_TYPES.includes(`image/${metadata.format}`)) {
+			throw new Error('Invalid file type. Only JPEG, PNG and WebP are allowed.');
+		}
 
-        return `/uploads/people/${fileName}`;
-    } catch (e: any) {
-        console.error('Photo processing error:', e);
-        throw new Error(e.message || 'Failed to process photo');
-    }
+		await processedImage
+			.webp({ quality: 80 })
+			.resize(800, 800, { fit: 'inside', withoutEnlargement: true })
+			.toFile(filePath);
+
+		return `/uploads/people/${fileName}`;
+	} catch (e: any) {
+		console.error('Photo processing error:', e);
+		throw new Error(e.message || 'Failed to process photo');
+	}
 }
 
 export const load: PageServerLoad = async (event) => {
-    requirePermission(event.locals, 'people.view');
-    const { id } = event.params;
+	requirePermission(event.locals, 'people.view');
+	const { id } = event.params;
 
-    const [person] = await db
-        .select({
-            id: people.id,
-            name: people.name,
-            codeNo: people.codeNo,
-            cardNo: people.cardNo,
-            biometricId: people.biometricId,
-            enrolledMethods: people.enrolledMethods,
-            photoUrl: people.photoUrl,
-            company: people.company,
-            contactNo: people.contactNo,
-            designation: people.designation,
-            isTrained: people.isTrained,
-            joinDate: people.joinDate,
-            notes: people.notes,
-            createdAt: people.createdAt,
-            category: {
-                id: personCategories.id,
-                name: personCategories.name,
-                slug: personCategories.slug
-            }
-        })
-        .from(people)
-        .innerJoin(personCategories, eq(people.categoryId, personCategories.id))
-        .where(eq(people.id, id));
+	const [person] = await db
+		.select({
+			id: people.id,
+			name: people.name,
+			codeNo: people.codeNo,
+			cardNo: people.cardNo,
+			biometricId: people.biometricId,
+			enrolledMethods: people.enrolledMethods,
+			photoUrl: people.photoUrl,
+			company: people.company,
+			contactNo: people.contactNo,
+			designation: people.designation,
+			isTrained: people.isTrained,
+			joinDate: people.joinDate,
+			notes: people.notes,
+			createdAt: people.createdAt,
+			category: {
+				id: personCategories.id,
+				name: personCategories.name,
+				slug: personCategories.slug
+			}
+		})
+		.from(people)
+		.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
+		.where(eq(people.id, id));
 
-    if (!person) {
-        error(404, 'Person not found');
-    }
+	if (!person) {
+		error(404, 'Person not found');
+	}
 
-    const recentLogs = await db
-        .select()
-        .from(attendanceLogs)
-        .where(eq(attendanceLogs.personId, id))
-        .orderBy(desc(sql`COALESCE(${attendanceLogs.exitTime}, ${attendanceLogs.entryTime})`))
-        .limit(20);
+	const recentLogs = await db
+		.select()
+		.from(attendanceLogs)
+		.where(eq(attendanceLogs.personId, id))
+		.orderBy(desc(sql`COALESCE(${attendanceLogs.exitTime}, ${attendanceLogs.entryTime})`))
+		.limit(20);
 
-    const [stats] = await db
-        .select({
-            totalVisits: count(),
-            avgDuration: sql<number>`AVG(CASE WHEN ${attendanceLogs.exitTime} IS NOT NULL THEN EXTRACT(EPOCH FROM (${attendanceLogs.exitTime} - ${attendanceLogs.entryTime})) ELSE NULL END)`
-        })
-        .from(attendanceLogs)
-        .where(eq(attendanceLogs.personId, id));
+	const [statsResult] = await db
+		.select({
+			totalVisits: count(),
+			totalSeconds: sql<string>`COALESCE(SUM(
+                CASE 
+                    WHEN ${attendanceLogs.exitTime} IS NOT NULL 
+                    THEN EXTRACT(EPOCH FROM (${attendanceLogs.exitTime} - ${attendanceLogs.entryTime}))
+                    ELSE EXTRACT(EPOCH FROM (NOW() - ${attendanceLogs.entryTime}))
+                END
+            ), 0)`
+		})
+		.from(attendanceLogs)
+		.where(eq(attendanceLogs.personId, id));
 
-    const isInside = await db.query.attendanceLogs.findFirst({
-        where: and(
-            eq(attendanceLogs.personId, id),
-            eq(attendanceLogs.status, 'on_premises')
-        )
-    });
+	const stats = {
+		totalVisits: statsResult.totalVisits,
+		totalDuration: Math.floor(parseFloat(statsResult.totalSeconds))
+	};
 
-    const allCategories = await db.select().from(personCategories);
+	const isInside = await db.query.attendanceLogs.findFirst({
+		where: and(eq(attendanceLogs.personId, id), eq(attendanceLogs.status, 'on_premises'))
+	});
 
-    const allCategoriesFlat: any[] = [];
+	const allCategories = await db.select().from(personCategories);
 
-    function traverse(parentId: string | null, level = 0) {
-        const children = allCategories.filter(c => c.parentId === parentId);
-        children.forEach(child => {
-            allCategoriesFlat.push({ ...child, level });
-            traverse(child.id, level + 1);
-        });
-    }
-    traverse(null);
+	const allCategoriesFlat: any[] = [];
 
-    return {
-        person,
-        recentLogs,
-        stats,
-        isInside: !!isInside,
-        activeLog: isInside,
-        allCategoriesFlat
-    };
+	function traverse(parentId: string | null, level = 0) {
+		const children = allCategories.filter((c) => c.parentId === parentId);
+		children.forEach((child) => {
+			allCategoriesFlat.push({ ...child, level });
+			traverse(child.id, level + 1);
+		});
+	}
+	traverse(null);
+
+	return {
+		person,
+		recentLogs,
+		stats,
+		isInside: !!isInside,
+		activeLog: isInside,
+		allCategoriesFlat
+	};
 };
 
 export const actions: Actions = {
-    update: async (event) => {
-        requirePermission(event.locals, 'people.edit');
-        const { id } = event.params;
-        const data = await event.request.formData();
+	update: async (event) => {
+		requirePermission(event.locals, 'people.edit');
+		const { id } = event.params;
+		const data = await event.request.formData();
 
-        const name = data.get('name') as string;
-        const categoryId = data.get('categoryId') as string;
-        const photo = data.get('photo') as File | null;
+		const name = data.get('name') as string;
+		const categoryId = data.get('categoryId') as string;
+		const photo = data.get('photo') as File | null;
 
-        if (!name) return fail(400, { message: 'Name required' });
+		if (!name) return fail(400, { message: 'Name required' });
 
-        const updates: Record<string, any> = {
-            name,
-            codeNo: data.get('codeNo') as string || null,
-            company: data.get('company') as string || null,
-            contactNo: data.get('contactNo') as string || null,
-            designation: data.get('designation') as string || null,
-            isTrained: data.get('isTrained') === 'true',
-            notes: data.get('notes') as string || null
-        };
+		const updates: Record<string, any> = {
+			name,
+			codeNo: (data.get('codeNo') as string) || null,
+			company: (data.get('company') as string) || null,
+			contactNo: (data.get('contactNo') as string) || null,
+			designation: (data.get('designation') as string) || null,
+			isTrained: data.get('isTrained') === 'true',
+			notes: (data.get('notes') as string) || null
+		};
 
-        if (categoryId) {
-            updates.categoryId = categoryId;
-        }
+		if (categoryId) {
+			updates.categoryId = categoryId;
+		}
 
-        try {
-            const photoUrl = await savePhoto(photo);
-            if (photoUrl) {
-                // Get old photo URL to delete it
-                const [oldPerson] = await db.select({ photoUrl: people.photoUrl }).from(people).where(eq(people.id, id));
-                if (oldPerson?.photoUrl) {
-                    const oldPhotoPath = join(process.cwd(), 'static', oldPerson.photoUrl);
-                    try {
-                        if (existsSync(oldPhotoPath)) {
-                            unlinkSync(oldPhotoPath);
-                        }
-                    } catch (err) {
-                        console.error('Failed to delete old photo file:', err);
-                    }
-                }
-                updates.photoUrl = photoUrl;
-            }
+		try {
+			const photoUrl = await savePhoto(photo);
+			if (photoUrl) {
+				// Get old photo URL to delete it
+				const [oldPerson] = await db
+					.select({ photoUrl: people.photoUrl })
+					.from(people)
+					.where(eq(people.id, id));
+				if (oldPerson?.photoUrl) {
+					const oldPhotoPath = join(process.cwd(), 'static', oldPerson.photoUrl);
+					try {
+						if (existsSync(oldPhotoPath)) {
+							unlinkSync(oldPhotoPath);
+						}
+					} catch (err) {
+						console.error('Failed to delete old photo file:', err);
+					}
+				}
+				updates.photoUrl = photoUrl;
+			}
 
-            await db.update(people)
-                .set(updates)
-                .where(eq(people.id, id));
+			await db.update(people).set(updates).where(eq(people.id, id));
 
-            // Auto-sync to device if person has biometricId
-            const [person] = await db.select().from(people).where(eq(people.id, id));
-            if (person?.biometricId) {
-                await queueDeviceSync(person.biometricId, name, person.cardNo);
-            }
+			// Auto-sync to device if person has biometricId
+			const [person] = await db.select().from(people).where(eq(people.id, id));
+			if (person?.biometricId) {
+				await queueDeviceSync(person.biometricId, name, person.cardNo);
+			}
 
-            notifyChange();
-            return { success: true };
-        } catch (e: any) {
-            if (e.message?.includes('duplicate key value violates unique constraint')) {
-                return fail(400, { message: 'Code Number already exists' });
-            }
-            if (e.message?.includes('File size exceeds') || e.message?.includes('Invalid file type')) {
-                return fail(400, { message: e.message });
-            }
-            return fail(500, { message: 'Failed to update person' });
-        }
-    },
+			notifyChange();
+			return { success: true };
+		} catch (e: any) {
+			if (e.message?.includes('duplicate key value violates unique constraint')) {
+				return fail(400, { message: 'Code Number already exists' });
+			}
+			if (e.message?.includes('File size exceeds') || e.message?.includes('Invalid file type')) {
+				return fail(400, { message: e.message });
+			}
+			return fail(500, { message: 'Failed to update person' });
+		}
+	},
 
-    delete: async (event) => {
-        requirePermission(event.locals, 'people.delete');
-        const { id } = event.params;
+	delete: async (event) => {
+		requirePermission(event.locals, 'people.delete');
+		const { id } = event.params;
 
-        try {
-            // Look up person to get biometricId and photoUrl before deleting
-            const [person] = await db.select().from(people).where(eq(people.id, id));
+		try {
+			// Look up person to get biometricId and photoUrl before deleting
+			const [person] = await db.select().from(people).where(eq(people.id, id));
 
-            if (person?.photoUrl) {
-                const photoPath = join(process.cwd(), 'static', person.photoUrl);
-                try {
-                    if (existsSync(photoPath)) {
-                        unlinkSync(photoPath);
-                    }
-                } catch (err) {
-                    console.error('Failed to delete photo file:', err);
-                }
-            }
+			if (person?.photoUrl) {
+				const photoPath = join(process.cwd(), 'static', person.photoUrl);
+				try {
+					if (existsSync(photoPath)) {
+						unlinkSync(photoPath);
+					}
+				} catch (err) {
+					console.error('Failed to delete photo file:', err);
+				}
+			}
 
-            await db.delete(people).where(eq(people.id, id));
+			await db.delete(people).where(eq(people.id, id));
 
-            // Remove user from all ZK devices so the PIN is fully cleared
-            if (person?.biometricId) {
-                await queueDeviceDelete(person.biometricId);
-            }
+			// Remove user from all ZK devices so the PIN is fully cleared
+			if (person?.biometricId) {
+				await queueDeviceDelete(person.biometricId);
+			}
 
-            notifyChange();
-            return { success: true };
-        } catch (e) {
-            return fail(500, { message: 'Cannot delete person with attendance history' });
-        }
-    }
+			notifyChange();
+			return { success: true };
+		} catch (e) {
+			return fail(500, { message: 'Cannot delete person with attendance history' });
+		}
+	}
 };

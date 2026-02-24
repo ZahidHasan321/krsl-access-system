@@ -40,7 +40,6 @@
 	let selectedDate = $state('');
 	let searchQuery = $state('');
 	let isGenerationOpen = $state(false);
-	let isPreparingPrint = $state(false);
 	let isClearConfirmOpen = $state(false);
 	let debounceTimer: any;
 
@@ -50,6 +49,7 @@
 	let entryRangeEnd = $state('08:15');
 	let exitRangeStart = $state('16:45');
 	let exitRangeEnd = $state('17:15');
+	let genLocation = $state('yard');
 	let selectedPersonIds = $state<Set<string>>(new Set());
 	let useRealEntry = $state(false);
 	let isGenerating = $state(false);
@@ -60,6 +60,24 @@
 
 	// People list search in generation panel
 	let genPeopleSearch = $state('');
+
+	// People filtered by generation category
+	const genCategoryFiltered = $derived.by(() => {
+		if (!genCategoryId) return data.allPeople;
+		const descendantIds = getDescendantIds(genCategoryId);
+		return data.allPeople.filter((p) => descendantIds.includes(p.categoryId));
+	});
+
+	const genFilteredPeople = $derived.by(() => {
+		const q = genPeopleSearch.trim().toLowerCase();
+		if (!q) return genCategoryFiltered;
+		return genCategoryFiltered.filter(
+			(p) =>
+				p.name.toLowerCase().includes(q) ||
+				(p.codeNo && p.codeNo.toLowerCase().includes(q)) ||
+				(p.company && p.company.toLowerCase().includes(q))
+		);
+	});
 
 	// Virtual scroll state for people list
 	const ITEM_HEIGHT = 40; // px per row
@@ -87,36 +105,25 @@
 	});
 
 	// Editable entries (local state for inline editing)
-	let editableEntries = $state<Map<string, { entryTime: string; exitTime: string; purpose: string }>>(new Map());
-	let isSaving = $state(false);
+	let editableEntries = $state<
+		Map<
+			string,
+			{ entryTime: string; exitTime: string; purpose: string; isTrained: boolean; location: string }
+		>
+	>(new Map());
 
 	$effect(() => {
 		selectedDate = data.filters.date;
 		searchQuery = data.filters.query;
 	});
 
-	// People filtered by generation category
-	const genCategoryFiltered = $derived.by(() => {
-		if (!genCategoryId) return data.allPeople;
-		const descendantIds = getDescendantIds(genCategoryId);
-		return data.allPeople.filter(p => descendantIds.includes(p.categoryId));
-	});
-
-	const genFilteredPeople = $derived.by(() => {
-		const q = genPeopleSearch.trim().toLowerCase();
-		if (!q) return genCategoryFiltered;
-		return genCategoryFiltered.filter(p =>
-			p.name.toLowerCase().includes(q) ||
-			(p.codeNo && p.codeNo.toLowerCase().includes(q)) ||
-			(p.company && p.company.toLowerCase().includes(q))
-		);
-	});
-
 	// Active root for generation panel subcategory display
 	const activeGenRoot = $derived.by(() => {
 		if (!genCategoryId) return '';
-		if (ROOT_CATEGORIES.some(c => c.id === genCategoryId)) return genCategoryId;
-		const parent = ROOT_CATEGORIES.find(c => getSubCategories(c.id).some(sc => sc.id === genCategoryId));
+		if (ROOT_CATEGORIES.some((c) => c.id === genCategoryId)) return genCategoryId;
+		const parent = ROOT_CATEGORIES.find((c) =>
+			getSubCategories(c.id).some((sc) => sc.id === genCategoryId)
+		);
 		return parent?.id || '';
 	});
 
@@ -149,7 +156,7 @@
 	}
 
 	function deselectAll() {
-		const filtered = new Set(genFilteredPeople.map(p => p.id));
+		const filtered = new Set(genFilteredPeople.map((p) => p.id));
 		const newSet = new Set(selectedPersonIds);
 		for (const id of filtered) {
 			newSet.delete(id);
@@ -168,7 +175,7 @@
 	}
 
 	const presentCount = $derived.by(() => {
-		return genFilteredPeople.filter(p => data.realLogMap[p.id]).length;
+		return genFilteredPeople.filter((p) => data.realLogMap[p.id]).length;
 	});
 
 	function togglePerson(id: string) {
@@ -250,44 +257,78 @@
 		return entry.purpose || '';
 	}
 
-	function updateEntryField(entryId: string, field: 'entryTime' | 'exitTime' | 'purpose', value: string) {
-		const existing = editableEntries.get(entryId);
-		const entry = data.entries.find(e => e.id === entryId);
+	function getLocation(entry: any): string {
+		const edited = editableEntries.get(entry.id);
+		if (edited) return edited.location;
+		return entry.location || 'yard';
+	}
+
+	function getIsTrained(entry: any): boolean {
+		const edited = editableEntries.get(entry.id);
+		if (edited) return edited.isTrained;
+		return entry.isTrained;
+	}
+
+	async function updateEntryField(
+		entryId: string,
+		field: 'entryTime' | 'exitTime' | 'purpose' | 'isTrained' | 'location',
+		value: any
+	) {
+		const entry = data.entries.find((e) => e.id === entryId);
 		if (!entry) return;
 
+		// Update local state for immediate UI feedback
+		const existing = editableEntries.get(entryId);
 		const current = existing || {
 			entryTime: format(entry.entryTime, 'HH:mm'),
 			exitTime: entry.exitTime ? format(entry.exitTime, 'HH:mm') : '',
-			purpose: entry.purpose || ''
+			purpose: entry.purpose || '',
+			isTrained: entry.isTrained,
+			location: entry.location || 'yard'
 		};
 
 		const newMap = new Map(editableEntries);
 		newMap.set(entryId, { ...current, [field]: value });
 		editableEntries = newMap;
+
+		// Save to database in background
+		const formData = new FormData();
+		formData.set('id', entryId);
+		formData.set('field', field);
+		formData.set('value', value.toString());
+		formData.set('date', selectedDate);
+
+		try {
+			await fetch('?/update', {
+				method: 'POST',
+				body: formData
+			});
+			// No invalidateAll to keep it non-blocking and smooth
+		} catch (e) {
+			console.error('Failed to update entry', e);
+		}
 	}
 
-	// Check if there are unsaved edits
-	const hasEdits = $derived(editableEntries.size > 0);
-
 	// Print
-	$effect(() => {
-		if (page.url.searchParams.has('print')) {
-			isPreparingPrint = true;
-			const timer = setTimeout(() => {
-				window.print();
-				isPreparingPrint = false;
-				const url = new URL(page.url);
-				url.searchParams.delete('print');
-				goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
-			}, 1500);
-			return () => clearTimeout(timer);
-		}
-	});
-
 	function printReport() {
-		const url = new URL(page.url);
-		url.searchParams.set('print', '1');
-		goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
+		window.print();
+	}
+
+	function getPrintEntryTime(entry: any): string {
+		const edited = editableEntries.get(entry.id);
+		if (edited) {
+			return format(new Date(`${selectedDate}T${edited.entryTime}:00`), 'hh:mm a');
+		}
+		return format(entry.entryTime, 'hh:mm a');
+	}
+
+	function getPrintExitTime(entry: any): string {
+		const edited = editableEntries.get(entry.id);
+		if (edited) {
+			if (!edited.exitTime) return '-';
+			return format(new Date(`${selectedDate}T${edited.exitTime}:00`), 'hh:mm a');
+		}
+		return entry.exitTime ? format(entry.exitTime, 'hh:mm a') : '-';
 	}
 
 	// Generate handler
@@ -302,6 +343,7 @@
 		formData.set('personIds', JSON.stringify([...selectedPersonIds]));
 		formData.set('useRealEntry', useRealEntry.toString());
 		formData.set('realLogMap', JSON.stringify(data.realLogMap));
+		formData.set('location', genLocation);
 
 		try {
 			const res = await fetch('?/generate', {
@@ -319,40 +361,6 @@
 			appToast.error('Failed to generate entries');
 		} finally {
 			isGenerating = false;
-		}
-	}
-
-	// Save edits handler
-	async function handleSave() {
-		isSaving = true;
-		const entriesToSave = [...editableEntries.entries()].map(([id, edits]) => {
-			return {
-				id,
-				entryTime: new Date(`${selectedDate}T${edits.entryTime}:00`).toISOString(),
-				exitTime: edits.exitTime ? new Date(`${selectedDate}T${edits.exitTime}:00`).toISOString() : '',
-				purpose: edits.purpose
-			};
-		});
-
-		const formData = new FormData();
-		formData.set('entries', JSON.stringify(entriesToSave));
-
-		try {
-			const res = await fetch('?/save', {
-				method: 'POST',
-				body: formData
-			});
-			if (res.ok) {
-				appToast.success('Changes saved successfully');
-				editableEntries = new Map();
-				await invalidateAll();
-			} else {
-				appToast.error('Failed to save changes');
-			}
-		} catch {
-			appToast.error('Failed to save changes');
-		} finally {
-			isSaving = false;
 		}
 	}
 
@@ -430,26 +438,52 @@
 		<thead>
 			<tr style="background: #f0f0f0;">
 				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">#</th>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">{i18n.t('name')}</th>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">{i18n.t('codeNo')}</th>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">{i18n.t('category')}</th>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">{i18n.t('company')}</th>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">{i18n.t('entryTime')}</th>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">{i18n.t('exitTime')}</th>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">{i18n.t('purpose')}</th>
+				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
+					>{i18n.t('name')}</th
+				>
+				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
+					>{i18n.t('category')}</th
+				>
+				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
+					>Location</th
+				>
+				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
+					>Safety Trained</th
+				>
+				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
+					>{i18n.t('entryTime')}</th
+				>
+				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
+					>{i18n.t('exitTime')}</th
+				>
 			</tr>
 		</thead>
 		<tbody>
 			{#each data.entries as entry, index (entry.id)}
+				{@const rootCat = getCategoryPath(entry.person.categoryId)[0]}
 				<tr>
 					<td style="border: 1px solid #ddd; padding: 8px;">{index + 1}</td>
-					<td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">{entry.person.name}</td>
-					<td style="border: 1px solid #ddd; padding: 8px;">{entry.person.codeNo || '-'}</td>
-					<td style="border: 1px solid #ddd; padding: 8px;">{entry.category.name}</td>
-					<td style="border: 1px solid #ddd; padding: 8px;">{entry.person.company || '-'}</td>
-					<td style="border: 1px solid #ddd; padding: 8px;">{format(entry.entryTime, 'hh:mm a')}</td>
-					<td style="border: 1px solid #ddd; padding: 8px;">{entry.exitTime ? format(entry.exitTime, 'hh:mm a') : '-'}</td>
-					<td style="border: 1px solid #ddd; padding: 8px;">{entry.purpose || '-'}</td>
+					<td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;"
+						>{entry.person.name}</td
+					>
+					<td style="border: 1px solid #ddd; padding: 8px;"
+						>{i18n.t(rootCat.slug as any) || rootCat.name}</td
+					>
+					<td
+						style="border: 1px solid #ddd; padding: 8px; font-weight: 700; text-transform: uppercase;"
+						>{getLocation(entry)}</td
+					>
+					<td
+						style="border: 1px solid #ddd; padding: 8px; font-weight: 700; color: {getIsTrained(
+							entry
+						)
+							? '#16a34a'
+							: '#dc2626'};"
+					>
+						{getIsTrained(entry) ? 'TRAINED' : 'TO BE VERIFIED'}
+					</td>
+					<td style="border: 1px solid #ddd; padding: 8px;">{getPrintEntryTime(entry)}</td>
+					<td style="border: 1px solid #ddd; padding: 8px;">{getPrintExitTime(entry)}</td>
 				</tr>
 			{/each}
 		</tbody>
@@ -462,156 +496,146 @@
 	</div>
 </div>
 
-<!-- Loading overlay for print preparation -->
-{#if isPreparingPrint}
-	<div class="fixed inset-0 z-100 flex flex-col items-center justify-center bg-white">
-		<Loader2 class="mb-4 animate-spin text-primary-600" size={48} />
-		<h2 class="text-xl font-black text-slate-900">Preparing Audit Report...</h2>
-		<p class="mt-2 font-bold text-slate-500">Loading all entries</p>
-	</div>
-{/if}
-
 <!-- Screen view -->
 <div class="no-print pb-20">
-	<!-- Sticky Top Bar -->
-	<div class="sticky-filter-bar">
-		<div class="content-container flex flex-wrap items-center justify-between gap-4">
-			<!-- Left: Date + Search -->
-			<div class="flex items-center gap-3 flex-1 min-w-0">
+	<!-- Main Content Area -->
+	<div class="content-container space-y-6">
+		<div class="flex flex-col justify-between gap-4 px-4 md:flex-row md:items-end md:px-0">
+			<div class="space-y-1">
+				<h1 class="text-3xl font-black tracking-tighter text-slate-900 capitalize">
+					<span class="electric-text">{i18n.t('auditReport')}</span>
+				</h1>
+				<p class="text-sm font-bold text-slate-500">
+					Manage and generate security audit logs for official reporting.
+				</p>
+			</div>
+
+			<div
+				class="flex items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white p-2 shadow-sm"
+			>
+				<span class="pl-2 text-[10px] font-black tracking-widest text-slate-400 uppercase"
+					>Reporting Date</span
+				>
 				<input
 					type="date"
 					value={selectedDate}
 					onchange={changeDate}
-					class="h-12 rounded-2xl border-2 border-slate-100 bg-white px-4 text-sm font-bold shadow-sm focus:border-primary-500 focus:outline-none"
+					class="h-10 cursor-pointer rounded-xl border-2 border-slate-100 bg-slate-50 px-4 text-sm font-black transition-colors hover:bg-white focus:border-primary-500 focus:outline-none"
 				/>
-				<div class="group relative flex-1 max-w-md">
-					<div class="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500">
-						<Search size={20} />
-					</div>
-					<Input
-						bind:value={searchQuery}
-						oninput={handleSearchInput}
-						placeholder={i18n.t('searchHistoryPlaceholder')}
-						class="h-12 w-full rounded-2xl border-2 border-slate-300 bg-white pr-12 pl-12 text-base font-bold shadow-sm transition-all focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/30"
-					/>
-					{#if searchQuery}
-						<button
-							class="absolute top-1/2 right-4 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100"
-							onclick={() => { searchQuery = ''; applyFilters(); }}
-						>
-							<X size={16} />
-						</button>
-					{/if}
-				</div>
-			</div>
-
-			<!-- Right: Actions -->
-			<div class="flex items-center gap-2">
-				<div class="flex h-8 items-center gap-2 border-r-2 border-slate-100 pr-4">
-					<span class="text-[10px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('auditReport')}</span>
-					<Badge class="border-primary-200 bg-primary-100 text-xs font-black text-primary-700">
-						{data.entries.length} entries
-					</Badge>
-				</div>
-
-				<Button
-					variant="outline"
-					class="h-12 cursor-pointer gap-2 rounded-2xl border-2 border-slate-200 px-6 font-black transition-all hover:border-primary-300 hover:bg-primary-50"
-					onclick={printReport}
-				>
-					<Printer size={18} />
-					<span>{i18n.t('printReport')}</span>
-				</Button>
 			</div>
 		</div>
-	</div>
 
-	<!-- Main Content Area -->
-	<div class="content-container">
 		<main class="space-y-6">
 			<!-- Generation Panel (Collapsible) -->
-			<Card.Root class="border-2 border-slate-100 bg-white">
-				<button
-					class="flex w-full cursor-pointer items-center justify-between p-5 text-left"
-					onclick={() => isGenerationOpen = !isGenerationOpen}
-				>
-					<div class="flex items-center gap-3">
+			<Card.Root class="overflow-hidden border-2 border-slate-100 bg-white shadow-sm">
+				<div class="flex w-full items-center justify-between p-5">
+					<button
+						class="flex flex-1 cursor-pointer items-center gap-3 text-left"
+						onclick={() => (isGenerationOpen = !isGenerationOpen)}
+					>
 						<div class="rounded-xl bg-primary-100 p-2 text-primary-600">
 							<Users size={20} />
 						</div>
 						<div>
 							<h3 class="text-sm font-black text-slate-900">{i18n.t('generationPanel')}</h3>
-							<p class="text-xs font-bold text-slate-400">Generate audit entries with randomized times</p>
+							<p class="text-xs font-bold text-slate-400">
+								Generate audit entries with randomized times
+							</p>
 						</div>
+						{#if isGenerationOpen}
+							<ChevronUp size={20} class="text-slate-400" />
+						{:else}
+							<ChevronDown size={20} class="text-slate-400" />
+						{/if}
+					</button>
+
+					<div class="flex items-center gap-2 border-l-2 border-slate-50 pl-4">
+						{#if data.entries.length > 0}
+							<Button
+								variant="ghost"
+								size="sm"
+								class="h-9 cursor-pointer gap-1.5 rounded-lg font-bold text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+								onclick={() => (isClearConfirmOpen = true)}
+							>
+								<Trash2 size={14} />
+								{i18n.t('clearAll')}
+							</Button>
+						{/if}
 					</div>
-					{#if isGenerationOpen}
-						<ChevronUp size={20} class="text-slate-400" />
-					{:else}
-						<ChevronDown size={20} class="text-slate-400" />
-					{/if}
-				</button>
+				</div>
 
 				{#if isGenerationOpen}
-					<div class="border-t border-slate-100" transition:slide={{ duration: 150, easing: cubicOut }}>
+					<div
+						class="border-t border-slate-100"
+						transition:slide={{ duration: 150, easing: cubicOut }}
+					>
 						<!-- Two-column layout: Settings left, People right -->
-						<div class="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+						<div
+							class="grid grid-cols-1 divide-y divide-slate-100 lg:grid-cols-[1fr_1.2fr] lg:divide-x lg:divide-y-0"
+						>
 							<!-- Left Column: Settings -->
-							<div class="p-4 flex flex-col gap-3">
-								<!-- Category selector -->
-								<div>
-									<span
-										class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block"
-										>{i18n.t('category')}</span
-									>
-									<div class="flex flex-wrap gap-1">
+							<div class="flex flex-col gap-8 p-6">
+								<!-- Step 1: Category -->
+								<div class="space-y-4">
+									<div class="flex flex-wrap gap-1.5">
 										<button
 											class={clsx(
-												'cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-bold transition-all',
+												'cursor-pointer rounded-lg px-3 py-1.5 text-xs font-bold transition-all',
 												genCategoryId === ''
-													? 'bg-primary-600 text-white'
+													? 'bg-primary-600 text-white shadow-sm'
 													: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
 											)}
-											onclick={() => genCategoryId = ''}
+											onclick={() => (genCategoryId = '')}
 										>
 											{i18n.t('all')} ({data.allPeople.length})
 										</button>
 										{#each ROOT_CATEGORIES as cat (cat.id)}
-											{@const isActive = genCategoryId === cat.id || getSubCategories(cat.id).some(sc => sc.id === genCategoryId)}
-											{@const catCount = data.allPeople.filter(p => getDescendantIds(cat.id).includes(p.categoryId)).length}
+											{@const isActive =
+												genCategoryId === cat.id ||
+												getSubCategories(cat.id).some((sc) => sc.id === genCategoryId)}
+											{@const catCount = data.allPeople.filter((p) =>
+												getDescendantIds(cat.id).includes(p.categoryId)
+											).length}
 											<button
 												class={clsx(
-													'cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-bold transition-all',
+													'cursor-pointer rounded-lg px-3 py-1.5 text-xs font-bold transition-all',
 													isActive
 														? 'bg-primary-100 text-primary-700'
 														: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
 												)}
-												onclick={() => genCategoryId = cat.id}
+												onclick={() => (genCategoryId = cat.id)}
 											>
 												{i18n.t(cat.slug as any) || cat.name} ({catCount})
 											</button>
 										{/each}
 									</div>
 									{#if activeGenRoot && activeGenSubs.length > 0}
-										<div class="flex flex-wrap gap-1 mt-1.5 pl-2 border-l-2 border-primary-200" transition:slide={{ duration: 200, easing: sineInOut }}>
+										<div
+											class="mt-2 flex flex-wrap gap-1.5 border-l-2 border-primary-200 pl-3"
+											transition:slide={{ duration: 200, easing: sineInOut }}
+										>
 											<button
 												class={clsx(
-													'cursor-pointer rounded-full px-2 py-0.5 text-[10px] font-bold transition-all',
+													'cursor-pointer rounded-full px-3 py-1 text-[10px] font-bold transition-all',
 													genCategoryId === activeGenRoot
-														? 'bg-primary-500 text-white'
-														: 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+														? 'bg-primary-500 text-white shadow-sm'
+														: 'bg-slate-50 text-slate-500 hover:bg-slate-100'
 												)}
-												onclick={() => genCategoryId = activeGenRoot}
-											>All</button>
+												onclick={() => (genCategoryId = activeGenRoot)}
+												>All {i18n.t(getCategoryById(activeGenRoot)?.slug as any)}</button
+											>
 											{#each activeGenSubs as sub (sub.id)}
-												{@const subCount = data.allPeople.filter(p => p.categoryId === sub.id).length}
+												{@const subCount = data.allPeople.filter(
+													(p) => p.categoryId === sub.id
+												).length}
 												<button
 													class={clsx(
-														'cursor-pointer rounded-full px-2 py-0.5 text-[10px] font-bold transition-all',
+														'cursor-pointer rounded-full px-3 py-1 text-[10px] font-bold transition-all',
 														genCategoryId === sub.id
-															? 'bg-primary-500 text-white'
-															: 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+															? 'bg-primary-500 text-white shadow-sm'
+															: 'bg-slate-50 text-slate-500 hover:bg-slate-100'
 													)}
-													onclick={() => genCategoryId = sub.id}
+													onclick={() => (genCategoryId = sub.id)}
 												>
 													{i18n.t(sub.slug as any) || sub.name} ({subCount})
 												</button>
@@ -620,216 +644,375 @@
 									{/if}
 								</div>
 
-								<!-- Time Configuration -->
-								<div class="max-w-xs space-y-2.5">
-									<!-- Entry Time -->
-									<div class="space-y-1">
-										<span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{i18n.t('entryTime')}</span>
-										<div class="flex items-center gap-1.5">
-											<input type="time" bind:value={entryRangeStart} class="w-24 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-bold focus:border-primary-500 focus:outline-none" />
-											<span class="text-slate-300 text-[10px]">to</span>
-											<input type="time" bind:value={entryRangeEnd} class="w-24 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-bold focus:border-primary-500 focus:outline-none" />
-											<span class="text-[10px] text-amber-500 ml-1" title="Warn if before">
-												<AlertTriangle size={10} class="inline" />
-											</span>
-											<input type="time" bind:value={warnEntryBefore} class="w-26 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-1 text-[11px] font-bold text-amber-700 focus:border-amber-400 focus:outline-none" />
-										</div>
-									</div>
-									<!-- Exit Time -->
-									<div class="space-y-1">
-										<span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{i18n.t('exitTime')}</span>
-										<div class="flex items-center gap-1.5">
-											<input type="time" bind:value={exitRangeStart} class="w-24 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-bold focus:border-primary-500 focus:outline-none" />
-											<span class="text-slate-300 text-[10px]">to</span>
-											<input type="time" bind:value={exitRangeEnd} class="w-24 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1 text-xs font-bold focus:border-primary-500 focus:outline-none" />
-											<span class="text-[10px] text-amber-500 ml-1" title="Warn if after">
-												<AlertTriangle size={10} class="inline" />
-											</span>
-											<input type="time" bind:value={warnExitAfter} class="w-26 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-1 text-[11px] font-bold text-amber-700 focus:border-amber-400 focus:outline-none" />
-										</div>
-									</div>
-								</div>
-
-								<!-- Options + Actions -->
-								<div class="flex items-center justify-between gap-2">
-									<label class="flex items-center gap-1.5 cursor-pointer">
-										<input type="checkbox" bind:checked={useRealEntry} class="size-3.5 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
-										<span class="text-[11px] font-bold text-slate-600">{i18n.t('useRealEntryTime')}</span>
-									</label>
-									<div class="flex items-center gap-1.5">
-										{#if data.entries.length > 0}
-											<Button
-												variant="outline"
-												size="sm"
-												class="h-8 cursor-pointer gap-1.5 rounded-lg border border-rose-200 px-3 text-xs font-bold text-rose-600 hover:bg-rose-50"
-												onclick={() => isClearConfirmOpen = true}
+								<!-- Step 2: Time Configuration -->
+								<div class="space-y-4">
+									<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+										<!-- Entry Block -->
+										<div class="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+											<span class="text-[10px] font-black tracking-widest text-slate-400 uppercase"
+												>{i18n.t('entryTime')} Range</span
 											>
-												<Trash2 size={13} />
-												{i18n.t('clearAll')}
-											</Button>
-										{/if}
-										<Button
-											size="sm"
-											class="h-8 cursor-pointer gap-1.5 rounded-lg bg-primary-600 px-4 text-xs font-black text-white hover:bg-primary-700"
-											onclick={handleGenerate}
-											disabled={isGenerating || selectedPersonIds.size === 0}
+											<div class="flex items-center gap-2">
+												<input
+													type="time"
+													bind:value={entryRangeStart}
+													class="flex-1 rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-sm font-black focus:border-primary-500 focus:outline-none"
+												/>
+												<span class="text-xs font-bold text-slate-300">to</span>
+												<input
+													type="time"
+													bind:value={entryRangeEnd}
+													class="flex-1 rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-sm font-black focus:border-primary-500 focus:outline-none"
+												/>
+											</div>
+											<div class="flex items-center justify-between border-t border-slate-100 pt-2">
+												<span
+													class="flex items-center gap-1 text-[9px] font-bold text-amber-600 uppercase"
+												>
+													<AlertTriangle size={10} />
+													Warning Before
+												</span>
+												<input
+													type="time"
+													bind:value={warnEntryBefore}
+													class="w-24 rounded-lg border-2 border-amber-100 bg-amber-50 px-2 py-1 text-[11px] font-black text-amber-700 focus:border-amber-400 focus:outline-none"
+												/>
+											</div>
+										</div>
+
+										<!-- Exit Block -->
+										<div class="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+											<span class="text-[10px] font-black tracking-widest text-slate-400 uppercase"
+												>{i18n.t('exitTime')} Range</span
+											>
+											<div class="flex items-center gap-2">
+												<input
+													type="time"
+													bind:value={exitRangeStart}
+													class="flex-1 rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-sm font-black focus:border-primary-500 focus:outline-none"
+												/>
+												<span class="text-xs font-bold text-slate-300">to</span>
+												<input
+													type="time"
+													bind:value={exitRangeEnd}
+													class="flex-1 rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-sm font-black focus:border-primary-500 focus:outline-none"
+												/>
+											</div>
+											<div class="flex items-center justify-between border-t border-slate-100 pt-2">
+												<span
+													class="flex items-center gap-1 text-[9px] font-bold text-amber-600 uppercase"
+												>
+													<AlertTriangle size={10} />
+													Warning After
+												</span>
+												<input
+													type="time"
+													bind:value={warnExitAfter}
+													class="w-24 rounded-lg border-2 border-amber-100 bg-amber-50 px-2 py-1 text-[11px] font-black text-amber-700 focus:border-amber-400 focus:outline-none"
+												/>
+											</div>
+										</div>
+									</div>
+
+									<div class="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+										<span class="text-[10px] font-black tracking-widest text-slate-400 uppercase"
+											>Default Location</span
 										>
-											{#if isGenerating}
-												<Loader2 size={14} class="animate-spin" />
-											{/if}
-											{i18n.t('generate')} ({selectedPersonIds.size})
-										</Button>
+										<div class="mt-2 flex gap-2">
+											<button
+												class={clsx(
+													'flex-1 rounded-xl border-2 py-2 text-xs font-black transition-all',
+													genLocation === 'ship'
+														? 'border-primary-600 bg-primary-600 text-white shadow-md shadow-primary-600/20'
+														: 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+												)}
+												onclick={() => (genLocation = 'ship')}
+											>
+												SHIP
+											</button>
+											<button
+												class={clsx(
+													'flex-1 rounded-xl border-2 py-2 text-xs font-black transition-all',
+													genLocation === 'yard'
+														? 'border-primary-600 bg-primary-600 text-white shadow-md shadow-primary-600/20'
+														: 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+												)}
+												onclick={() => (genLocation = 'yard')}
+											>
+												YARD
+											</button>
+										</div>
+										<p class="mt-2 text-[10px] font-bold text-slate-400">
+											Used if real entry location is not available or "Use Real Entry Time" is off.
+										</p>
 									</div>
 								</div>
 							</div>
 
 							<!-- Right Column: People Selection -->
-							<div class="p-4 space-y-2">
-								<div class="flex items-center justify-between gap-2">
-									<span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-										People
-										<span class="text-primary-600">{selectedPersonIds.size}</span>
-										<span class="text-slate-300">/</span>
-										{genCategoryFiltered.length}
-									</span>
-									<div class="flex items-center gap-1.5">
-										{#if presentCount > 0}
+							<div class="flex flex-col p-6">
+								<div class="flex flex-1 flex-col gap-3">
+									<div
+										class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3"
+									>
+										<span class="text-[10px] font-black tracking-widest text-slate-500 uppercase">
+											Selected: <span class="ml-1 text-sm text-primary-600"
+												>{selectedPersonIds.size}</span
+											>
+											<span class="mx-1 text-slate-300">/</span>
+											{genCategoryFiltered.length}
+										</span>
+										<div class="flex items-center gap-1.5">
+											{#if presentCount > 0}
+												<button
+													class="flex cursor-pointer items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-600 transition-all hover:bg-emerald-100"
+													onclick={selectPresent}
+												>
+													<CheckSquare size={12} />
+													Present ({presentCount})
+												</button>
+											{/if}
 											<button
-												class="flex items-center gap-1 text-[11px] font-bold text-emerald-600 cursor-pointer rounded-md px-2 py-0.5 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition-all"
-												onclick={selectPresent}
+												class="flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-primary-600 transition-colors hover:bg-primary-50 hover:text-primary-700"
+												onclick={selectAll}
 											>
 												<CheckSquare size={12} />
-												Present ({presentCount})
+												All
+											</button>
+											<button
+												class="flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+												onclick={deselectAll}
+											>
+												<Square size={12} />
+												None
+											</button>
+										</div>
+									</div>
+
+									<!-- Search -->
+									<div class="relative">
+										<Search
+											size={16}
+											class="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400"
+										/>
+										<input
+											type="text"
+											bind:value={genPeopleSearch}
+											placeholder={i18n.t('searchPeoplePlaceholder')}
+											class="w-full rounded-2xl border-2 border-slate-200 bg-white py-2.5 pr-9 pl-10 text-sm font-bold transition-all placeholder:text-slate-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 focus:outline-none"
+										/>
+										{#if genPeopleSearch}
+											<button
+												class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+												onclick={() => (genPeopleSearch = '')}
+											>
+												<X size={14} />
 											</button>
 										{/if}
-										<button
-											class="flex items-center gap-1 text-[11px] font-bold text-primary-600 hover:text-primary-700 cursor-pointer px-1.5 py-0.5"
-											onclick={selectAll}
-										>
-											<CheckSquare size={12} />
-											All
-										</button>
-										<button
-											class="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-slate-600 cursor-pointer px-1.5 py-0.5"
-											onclick={deselectAll}
-										>
-											<Square size={12} />
-											None
-										</button>
+									</div>
+
+									<!-- Virtual list -->
+									<div
+										bind:this={peopleListEl}
+										onscroll={(e) => (scrollTop = (e.target as HTMLDivElement).scrollTop)}
+										class="max-h-[20rem] overflow-y-auto rounded-2xl border-2 border-slate-100 bg-white shadow-inner"
+									>
+										{#if genFilteredPeople.length > 0}
+											<div style="height: {virtualSlice.totalHeight}px; position: relative;">
+												{#each genFilteredPeople.slice(virtualSlice.startIdx, virtualSlice.endIdx) as person, i (person.id)}
+													{@const isSelected = selectedPersonIds.has(person.id)}
+													{@const isPresent = !!data.realLogMap[person.id]}
+													<button
+														class={clsx(
+															'absolute inset-x-0 flex w-full cursor-pointer items-center gap-3 px-4 text-left text-xs transition-colors',
+															isSelected
+																? 'bg-primary-50/50 text-primary-700'
+																: 'text-slate-600 hover:bg-slate-50'
+														)}
+														style="height: {ITEM_HEIGHT}px; top: {(virtualSlice.startIdx + i) *
+															ITEM_HEIGHT}px;"
+														onclick={() => togglePerson(person.id)}
+													>
+														<div
+															class={clsx(
+																'flex size-4 shrink-0 items-center justify-center rounded border-2 transition-all',
+																isSelected
+																	? 'border-primary-600 bg-primary-600 shadow-sm'
+																	: 'border-slate-200 bg-white'
+															)}
+														>
+															{#if isSelected}
+																<svg
+																	class="size-3 text-white"
+																	viewBox="0 0 12 12"
+																	fill="none"
+																	stroke="currentColor"
+																	stroke-width="3"
+																>
+																	<path d="M2 6l3 3 5-5" />
+																</svg>
+															{/if}
+														</div>
+														<span class={cn('truncate', isSelected ? 'font-black' : 'font-bold')}
+															>{person.name}</span
+														>
+														{#if isPresent}
+															<Badge
+																class="h-4 border-emerald-200 bg-emerald-100 px-1 text-[8px] font-black text-emerald-700"
+																>PRESENT</Badge
+															>
+														{/if}
+														<span class="ml-auto shrink-0 text-[10px] font-medium text-slate-400"
+															>{person.codeNo || ''}</span
+														>
+													</button>
+												{/each}
+											</div>
+										{:else}
+											<div class="flex flex-col items-center justify-center py-12 text-center">
+												<div
+													class="mb-2 flex size-12 items-center justify-center rounded-full bg-slate-50 text-slate-300"
+												>
+													<Users size={24} />
+												</div>
+												<p class="text-xs font-bold text-slate-400">
+													{genPeopleSearch ? 'No matches found' : 'Category is empty'}
+												</p>
+											</div>
+										{/if}
 									</div>
 								</div>
-								<!-- Search -->
-								<div class="relative">
-									<Search size={14} class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-									<input
-										type="text"
-										bind:value={genPeopleSearch}
-										placeholder={i18n.t('searchPeoplePlaceholder')}
-										class="w-full rounded-lg border border-slate-300 bg-slate-50 py-1.5 pl-8 pr-7 text-xs font-bold transition-all placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/30"
-									/>
-									{#if genPeopleSearch}
-										<button
-											class="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer rounded p-0.5 text-slate-400 hover:text-slate-600"
-											onclick={() => genPeopleSearch = ''}
+							</div>
+						</div>
+
+						<!-- New Sticky-ish Footer for Actions -->
+						<div
+							class="flex flex-col items-center justify-between gap-4 border-t border-slate-100 bg-slate-50/80 p-5 sm:flex-row"
+						>
+							<div class="flex flex-wrap items-center gap-6">
+								<label class="group flex cursor-pointer items-center gap-2">
+									<div class="relative flex h-5 w-5 items-center justify-center">
+										<input
+											type="checkbox"
+											bind:checked={useRealEntry}
+											class="peer h-5 w-5 cursor-pointer appearance-none rounded-lg border-2 border-slate-200 bg-white transition-all checked:border-primary-600 checked:bg-primary-600"
+										/>
+										<svg
+											class="pointer-events-none absolute size-3 text-white opacity-0 transition-opacity peer-checked:opacity-100"
+											viewBox="0 0 12 12"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="3"
 										>
-											<X size={12} />
-										</button>
-									{/if}
-								</div>
-								<!-- Virtual list -->
-								<div
-									bind:this={peopleListEl}
-									onscroll={(e) => scrollTop = (e.target as HTMLDivElement).scrollTop}
-									class="max-h-[24rem] overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/50"
+											<path d="M2 6l3 3 5-5" />
+										</svg>
+									</div>
+									<span
+										class="text-sm font-black text-slate-600 transition-colors group-hover:text-slate-900"
+										>{i18n.t('useRealEntryTime')}</span
+									>
+								</label>
+							</div>
+
+							<div class="flex w-full items-center gap-3 sm:w-auto">
+								<Button
+									class="h-12 flex-1 cursor-pointer gap-2 rounded-xl bg-primary-600 px-10 text-base font-black text-white shadow-lg shadow-primary-600/20 transition-all hover:bg-primary-700 active:scale-[0.98] disabled:opacity-50 sm:flex-initial"
+									onclick={handleGenerate}
+									disabled={isGenerating || selectedPersonIds.size === 0}
 								>
-									{#if genFilteredPeople.length > 0}
-										<div style="height: {virtualSlice.totalHeight}px; position: relative;">
-											{#each genFilteredPeople.slice(virtualSlice.startIdx, virtualSlice.endIdx) as person, i (person.id)}
-												{@const isSelected = selectedPersonIds.has(person.id)}
-												{@const isPresent = !!data.realLogMap[person.id]}
-												<button
-													class={clsx(
-														'flex w-full items-center gap-2 px-3 text-left text-xs transition-colors cursor-pointer absolute inset-x-0',
-														isSelected ? 'bg-primary-50 text-primary-700 font-bold' : 'text-slate-600 hover:bg-white'
-													)}
-													style="height: {ITEM_HEIGHT}px; top: {(virtualSlice.startIdx + i) * ITEM_HEIGHT}px;"
-													onclick={() => togglePerson(person.id)}
-												>
-													<div class={clsx(
-														'size-3.5 rounded border-[1.5px] flex items-center justify-center shrink-0',
-														isSelected ? 'border-primary-600 bg-primary-600' : 'border-slate-300 bg-white'
-													)}>
-														{#if isSelected}
-															<svg class="size-2.5 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5">
-																<path d="M2 6l3 3 5-5" />
-															</svg>
-														{/if}
-													</div>
-													<span class="truncate font-semibold">{person.name}</span>
-													{#if isPresent}
-														<span class="shrink-0 size-1.5 rounded-full bg-emerald-500"></span>
-													{/if}
-													{#if person.company}
-														<span class="text-[10px] text-slate-400 truncate hidden sm:inline ml-auto">{person.company}</span>
-													{/if}
-													<span class="text-[10px] text-slate-400 shrink-0 {person.company ? '' : 'ml-auto'}">{person.codeNo || ''}</span>
-												</button>
-											{/each}
-										</div>
+									{#if isGenerating}
+										<Loader2 size={20} class="animate-spin" />
+										<span>Generating...</span>
 									{:else}
-										<p class="text-center text-xs text-slate-400 py-6">
-											{genPeopleSearch ? 'No people matching your search' : 'No people in this category'}
-										</p>
+										<CheckSquare size={20} />
+										<span>{i18n.t('generate')} ({selectedPersonIds.size})</span>
 									{/if}
-								</div>
+								</Button>
 							</div>
 						</div>
 					</div>
 				{/if}
 			</Card.Root>
 
-			<!-- Save bar (when edits exist) -->
-			{#if hasEdits}
-				<div class="sticky top-28 z-30 flex items-center justify-between rounded-2xl border-2 border-amber-200 bg-amber-50 px-5 py-3 shadow-sm">
-					<span class="text-sm font-bold text-amber-700">You have unsaved changes ({editableEntries.size} modified)</span>
-					<div class="flex gap-2">
-						<Button
-							variant="ghost"
-							class="font-bold text-slate-500 cursor-pointer"
-							onclick={() => editableEntries = new Map()}
-						>
-							Discard
-						</Button>
-						<Button
-							class="cursor-pointer gap-2 rounded-xl bg-primary-600 px-6 font-black text-white hover:bg-primary-700"
-							onclick={handleSave}
-							disabled={isSaving}
-						>
-							{#if isSaving}
-								<Loader2 size={16} class="animate-spin" />
-							{/if}
-							{i18n.t('save')}
-						</Button>
-					</div>
-				</div>
-			{/if}
-
 			<!-- Results Table -->
 			<div class="space-y-4">
+				<div class="flex items-center justify-between gap-4 px-4 md:px-0">
+					<div class="group relative max-w-md flex-1">
+						<div
+							class="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500"
+						>
+							<Search size={18} />
+						</div>
+						<Input
+							bind:value={searchQuery}
+							oninput={handleSearchInput}
+							placeholder={i18n.t('searchHistoryPlaceholder')}
+							class="h-11 w-full rounded-2xl border-2 border-slate-200 bg-white pr-10 pl-11 text-sm font-bold shadow-sm transition-all focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/10"
+						/>
+						{#if searchQuery}
+							<button
+								class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100"
+								onclick={() => {
+									searchQuery = '';
+									applyFilters();
+								}}
+							>
+								<X size={14} />
+							</button>
+						{/if}
+					</div>
+
+					<Button
+						variant="outline"
+						class="h-11 shrink-0 gap-2 rounded-2xl border-2 border-slate-200 px-6 font-black transition-all hover:border-primary-300 hover:bg-primary-50"
+						onclick={printReport}
+					>
+						<Printer size={18} />
+						<span>{i18n.t('printReport')}</span>
+					</Button>
+				</div>
+
 				{#if data.entries.length > 0}
 					<div class="overflow-x-auto rounded-2xl border-2 border-slate-100 bg-white shadow-sm">
 						<table class="w-full text-sm">
 							<thead>
 								<tr class="border-b-2 border-slate-100 bg-slate-50">
-									<th class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase">#</th>
-									<th class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('name')}</th>
-									<th class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('codeNo')}</th>
-									<th class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('category')}</th>
-									<th class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('company')}</th>
-									<th class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('entryTime')}</th>
-									<th class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('exitTime')}</th>
-									<th class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('purpose')}</th>
-									<th class="px-4 py-3 text-right text-[10px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('actions')}</th>
+									<th
+										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+										>#</th
+									>
+									<th
+										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+										>{i18n.t('name')}</th
+									>
+									<th
+										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+										>{i18n.t('codeNo')}</th
+									>
+									<th
+										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+										>{i18n.t('category')}</th
+									>
+									<th
+										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+										>Location</th
+									>
+									<th
+										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+										>Safety Trained</th
+									>
+									<th
+										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+										>{i18n.t('entryTime')}</th
+									>
+									<th
+										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+										>{i18n.t('exitTime')}</th
+									>
+									<th
+										class="px-4 py-3 text-right text-[10px] font-black tracking-widest text-slate-400 uppercase"
+										>{i18n.t('actions')}</th
+									>
 								</tr>
 							</thead>
 							<tbody>
@@ -837,15 +1020,17 @@
 									{@const entryWarning = hasEntryWarning(entry.entryTime)}
 									{@const exitWarning = hasExitWarning(entry.exitTime)}
 									{@const hasWarning = entryWarning || exitWarning}
-									<tr class={clsx(
-										'border-b border-slate-50 transition-colors hover:bg-slate-50',
-										hasWarning && 'bg-amber-50/50'
-									)}>
-										<td class="px-4 py-3 text-slate-500 font-bold">{index + 1}</td>
+									<tr
+										class={clsx(
+											'border-b border-slate-50 transition-colors hover:bg-slate-50',
+											hasWarning && 'bg-amber-50/50'
+										)}
+									>
+										<td class="px-4 py-3 font-bold text-slate-500">{index + 1}</td>
 										<td class="px-4 py-3">
 											<span class="font-black text-slate-900">{entry.person.name}</span>
 										</td>
-										<td class="px-4 py-3 text-slate-600 font-bold">{entry.person.codeNo || '-'}</td>
+										<td class="px-4 py-3 font-bold text-slate-600">{entry.person.codeNo || '-'}</td>
 										<td class="px-4 py-3">
 											<div class="flex gap-1">
 												{#each getCategoryPath(entry.person.categoryId) as cat, i (cat.id)}
@@ -861,21 +1046,90 @@
 												{/each}
 											</div>
 										</td>
-										<td class="px-4 py-3 text-slate-600 font-bold">{entry.person.company || '-'}</td>
+										<td class="px-4 py-3">
+											<div class="flex w-fit rounded-lg border border-slate-200 bg-slate-100 p-0.5">
+												<button
+													class={cn(
+														'rounded-md px-2 py-0.5 text-[9px] font-black uppercase transition-all',
+														getLocation(entry) === 'ship'
+															? 'bg-white text-primary-600 shadow-sm'
+															: 'text-slate-400 hover:text-slate-600'
+													)}
+													onclick={() => updateEntryField(entry.id, 'location', 'ship')}
+												>
+													SHIP
+												</button>
+												<button
+													class={cn(
+														'rounded-md px-2 py-0.5 text-[9px] font-black uppercase transition-all',
+														getLocation(entry) === 'yard'
+															? 'bg-white text-primary-600 shadow-sm'
+															: 'text-slate-400 hover:text-slate-600'
+													)}
+													onclick={() => updateEntryField(entry.id, 'location', 'yard')}
+												>
+													YARD
+												</button>
+											</div>
+										</td>
+										<td class="px-4 py-3">
+											<label class="group flex cursor-pointer items-center gap-2">
+												<div class="relative flex h-5 w-5 items-center justify-center">
+													<input
+														type="checkbox"
+														checked={getIsTrained(entry)}
+														onchange={(e) =>
+															updateEntryField(
+																entry.id,
+																'isTrained',
+																(e.target as HTMLInputElement).checked
+															)}
+														class="peer h-5 w-5 cursor-pointer appearance-none rounded-lg border-2 border-slate-200 bg-white transition-all checked:border-primary-600 checked:bg-primary-600"
+													/>
+													<svg
+														class="pointer-events-none absolute size-3 text-white opacity-0 transition-opacity peer-checked:opacity-100"
+														viewBox="0 0 12 12"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="3"
+													>
+														<path d="M2 6l3 3 5-5" />
+													</svg>
+												</div>
+												<span
+													class={cn(
+														'text-xs font-black transition-colors',
+														getIsTrained(entry) ? 'text-emerald-600' : 'text-slate-400'
+													)}
+												>
+													{getIsTrained(entry) ? 'TRAINED' : 'PENDING'}
+												</span>
+											</label>
+										</td>
 										<td class="px-4 py-3">
 											<div class="flex items-center gap-1.5">
 												{#if entryWarning}
-													<span title="Entry before {warnEntryBefore} BD time" class="text-amber-500">
+													<span
+														title="Entry before {warnEntryBefore} BD time"
+														class="text-amber-500"
+													>
 														<AlertTriangle size={14} />
 													</span>
 												{/if}
 												<input
 													type="time"
 													value={getEntryTime(entry)}
-													onchange={(e) => updateEntryField(entry.id, 'entryTime', (e.target as HTMLInputElement).value)}
+													onchange={(e) =>
+														updateEntryField(
+															entry.id,
+															'entryTime',
+															(e.target as HTMLInputElement).value
+														)}
 													class={clsx(
-														'rounded-lg border px-2 py-1 text-sm font-bold focus:border-primary-500 focus:outline-none w-28',
-														entryWarning ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'
+														'w-28 rounded-lg border px-2 py-1 text-sm font-bold focus:border-primary-500 focus:outline-none',
+														entryWarning
+															? 'border-amber-300 bg-amber-50'
+															: 'border-slate-200 bg-white'
 													)}
 												/>
 											</div>
@@ -890,26 +1144,24 @@
 												<input
 													type="time"
 													value={getExitTime(entry)}
-													onchange={(e) => updateEntryField(entry.id, 'exitTime', (e.target as HTMLInputElement).value)}
+													onchange={(e) =>
+														updateEntryField(
+															entry.id,
+															'exitTime',
+															(e.target as HTMLInputElement).value
+														)}
 													class={clsx(
-														'rounded-lg border px-2 py-1 text-sm font-bold focus:border-primary-500 focus:outline-none w-28',
-														exitWarning ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'
+														'w-28 rounded-lg border px-2 py-1 text-sm font-bold focus:border-primary-500 focus:outline-none',
+														exitWarning
+															? 'border-amber-300 bg-amber-50'
+															: 'border-slate-200 bg-white'
 													)}
 												/>
 											</div>
 										</td>
-										<td class="px-4 py-3">
-											<input
-												type="text"
-												value={getPurpose(entry)}
-												onchange={(e) => updateEntryField(entry.id, 'purpose', (e.target as HTMLInputElement).value)}
-												placeholder="—"
-												class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm font-bold focus:border-primary-500 focus:outline-none min-w-[100px]"
-											/>
-										</td>
 										<td class="px-4 py-3 text-right">
 											<button
-												class="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 cursor-pointer"
+												class="cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500"
 												onclick={() => handleRemove(entry.id)}
 												title={i18n.t('removeEntry')}
 											>
@@ -925,17 +1177,22 @@
 					<!-- Summary -->
 					<div class="flex items-center justify-between rounded-2xl bg-slate-50 px-5 py-3">
 						<span class="text-sm font-bold text-slate-500">
-							{i18n.t('total')}: <span class="text-slate-900 font-black">{data.entries.length}</span> entries
+							{i18n.t('total')}:
+							<span class="font-black text-slate-900">{data.entries.length}</span> entries
 						</span>
 					</div>
 				{:else}
-					<div class="py-24 text-center space-y-6 bg-white border-2 border-dashed border-slate-200 rounded-3xl">
-						<div class="size-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-300">
+					<div
+						class="space-y-6 rounded-3xl border-2 border-dashed border-slate-200 bg-white py-24 text-center"
+					>
+						<div
+							class="mx-auto flex size-24 items-center justify-center rounded-full bg-slate-100 text-slate-300"
+						>
 							<Users size={48} />
 						</div>
 						<div class="space-y-2">
 							<p class="text-xl font-black text-slate-600">{i18n.t('noData')}</p>
-							<p class="text-slate-400 text-sm font-bold uppercase tracking-widest">
+							<p class="text-sm font-bold tracking-widest text-slate-400 uppercase">
 								Open the generation panel above to create audit entries
 							</p>
 						</div>

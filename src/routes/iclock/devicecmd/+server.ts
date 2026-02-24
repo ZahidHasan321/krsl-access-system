@@ -25,51 +25,58 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 	if (cmdId) {
 		const newStatus = returnCode === '0' ? 'SUCCESS' : 'FAILED';
-		console.log(`[ZK:Result] Command ${cmdId} finished with status ${newStatus} (Return=${returnCode})`);
+		console.log(
+			`[ZK:Result] Command ${cmdId} finished with status ${newStatus} (Return=${returnCode})`
+		);
 
 		// Fetch the command to see what it was
-		const [cmd] = await db
-			.select()
-			.from(deviceCommands)
-			.where(eq(deviceCommands.id, cmdId));
+		const [cmd] = await db.select().from(deviceCommands).where(eq(deviceCommands.id, cmdId));
 
-		await db.update(deviceCommands)
+		await db
+			.update(deviceCommands)
 			.set({ status: newStatus as 'SUCCESS' | 'FAILED', updatedAt: new Date() })
 			.where(eq(deviceCommands.id, cmdId));
 
 		// Handle enrollment command results
-		const isEnrollCmd = cmd && (cmd.commandString.startsWith('ENROLL_FP') || cmd.commandString.startsWith('ENROLL_BIO') || cmd.commandString.startsWith('ENROLL_MF'));
+		const isEnrollCmd =
+			cmd &&
+			(cmd.commandString.startsWith('ENROLL_FP') ||
+				cmd.commandString.startsWith('ENROLL_BIO') ||
+				cmd.commandString.startsWith('ENROLL_MF'));
 		if (sn && isEnrollCmd) {
 			const match = cmd.commandString.match(/PIN=(\w+)/);
 			const pin = match ? match[1] : null;
 
 			if (pin) {
-				const [person] = await db
-					.select()
-					.from(people)
-					.where(eq(people.biometricId, pin));
+				const [person] = await db.select().from(people).where(eq(people.biometricId, pin));
 
 				if (newStatus === 'SUCCESS' && person) {
 					// Enrollment succeeded — create/sync user on device
-					await db.insert(deviceCommands)
-						.values({
-							id: await nextCommandId(),
-							deviceSn: sn,
-							commandString: Commands.setUser(pin, person.name),
-							status: 'PENDING'
-						});
+					await db.insert(deviceCommands).values({
+						id: await nextCommandId(),
+						deviceSn: sn,
+						commandString: Commands.setUser(pin, person.name),
+						status: 'PENDING'
+					});
 
 					// Determine method from command string
-					const method = cmd.commandString.includes('FID=111') ? 'face'
-						: cmd.commandString.includes('ENROLL_BIO') ? 'face'
-						: 'finger';
+					const method = cmd.commandString.includes('FID=111')
+						? 'face'
+						: cmd.commandString.includes('ENROLL_BIO')
+							? 'face'
+							: 'finger';
 
 					// Update enrolledMethods in DB
 					let methods: string[] = [];
-					try { methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : []; } catch { methods = []; }
+					try {
+						methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : [];
+					} catch {
+						methods = [];
+					}
 					if (!methods.includes(method)) {
 						methods.push(method);
-						await db.update(people)
+						await db
+							.update(people)
 							.set({ enrolledMethods: JSON.stringify(methods) })
 							.where(eq(people.id, person.id));
 					}
@@ -78,7 +85,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					notifyEnrollment({ personId: person.id, method });
 				} else if (newStatus === 'FAILED' && person) {
 					// Enrollment failed — notify UI so it can stop spinning
-					console.log(`[ZK:Enroll] Enrollment FAILED for ${person.name} (PIN=${pin}, Return=${returnCode})`);
+					console.log(
+						`[ZK:Enroll] Enrollment FAILED for ${person.name} (PIN=${pin}, Return=${returnCode})`
+					);
 					notifyEnrollmentFailed({ personId: person.id, returnCode: returnCode || 'unknown' });
 				}
 			}

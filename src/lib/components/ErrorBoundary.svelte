@@ -15,18 +15,26 @@
 	{@render children()}
 
 	{#snippet failed(error, reset)}
-		<div class="flex min-h-[400px] w-full flex-col items-center justify-center rounded-3xl border-2 border-dashed border-rose-100 bg-rose-50/30 p-12 text-center">
-			<div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
+		<div
+			class="flex min-h-[400px] w-full flex-col items-center justify-center rounded-3xl border-2 border-dashed border-rose-100 bg-rose-50/30 p-12 text-center"
+		>
+			<div
+				class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-100 text-rose-600"
+			>
 				<AlertCircle size={32} />
 			</div>
 			<h2 class="mb-2 text-xl font-black text-slate-900">Something went wrong</h2>
 			<p class="mb-6 max-w-md text-sm font-medium text-slate-500">
 				An unexpected error occurred in this section of the application.
-				<code class="mt-2 block rounded bg-rose-100/50 px-2 py-1 text-xs text-rose-700 font-mono">
+				<code class="mt-2 block rounded bg-rose-100/50 px-2 py-1 font-mono text-xs text-rose-700">
 					{(error as any)?.message || 'Unknown Error'}
 				</code>
 			</p>
-			<Button variant="outline" class="font-bold gap-2 border-2 border-rose-200 text-rose-700 hover:bg-rose-100" onclick={handleReset}>
+			<Button
+				variant="outline"
+				class="gap-2 border-2 border-rose-200 font-bold text-rose-700 hover:bg-rose-100"
+				onclick={handleReset}
+			>
 				<RotateCcw size={18} />
 				Reload Page
 			</Button>

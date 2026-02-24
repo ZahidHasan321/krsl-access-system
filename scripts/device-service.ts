@@ -1,12 +1,12 @@
 /**
  * ZKTeco Device Communication Service (Middleware)
- * 
- * This service runs on a separate port (e.g. 8080) and handles 
+ *
+ * This service runs on a separate port (e.g. 8080) and handles
  * insecure HTTP communication from ZKTeco devices.
- * 
- * It shares the same database with the SvelteKit app and 
+ *
+ * It shares the same database with the SvelteKit app and
  * notifies the app of events via an internal API.
- * 
+ *
  * Run with: node --env-file=.env --import=tsx scripts/device-service.ts
  */
 
@@ -16,11 +16,11 @@ import pg from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { eq, and, asc, sql } from 'drizzle-orm';
 import * as schema from '../src/lib/server/db/schema';
-import { 
-	buildHandshakeResponse, 
-	parseAttLog, 
-	parseOperLog, 
-	toDateString, 
+import {
+	buildHandshakeResponse,
+	parseAttLog,
+	parseOperLog,
+	toDateString,
 	verifyCodeToMethod,
 	formatCommand,
 	Commands
@@ -53,17 +53,25 @@ pool.query('SELECT NOW()', (err) => {
 /** Notify SvelteKit of an event via internal API */
 async function notifySvelte(type: string, data: any = {}) {
 	try {
+		console.log(`[Notify] Sending ${type} event to SvelteKit...`);
 		const res = await fetch(`${SVELTE_INTERNAL_URL}/api/internal/event`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${INTERNAL_API_KEY}`
+				Authorization: `Bearer ${INTERNAL_API_KEY}`
 			},
 			body: JSON.stringify({ type, data })
 		});
-		if (!res.ok) console.error(`[Notify] Failed to notify SvelteKit: ${res.statusText}`);
-	} catch (e) {
-		console.error(`[Notify] Error notifying SvelteKit:`, e);
+		if (!res.ok) {
+			const text = await res.text();
+			console.error(
+				`[Notify] Failed to notify SvelteKit: ${res.status} ${res.statusText} - ${text}`
+			);
+		} else {
+			console.log(`[Notify] Successfully notified SvelteKit of ${type}`);
+		}
+	} catch (e: any) {
+		console.error(`[Notify] Error notifying SvelteKit:`, e.message);
 	}
 }
 
@@ -71,7 +79,7 @@ async function notifySvelte(type: string, data: any = {}) {
 async function readBody(req: http.IncomingMessage): Promise<string> {
 	return new Promise((resolve, reject) => {
 		let body = '';
-		req.on('data', chunk => body += chunk.toString());
+		req.on('data', (chunk) => (body += chunk.toString()));
 		req.on('end', () => resolve(body));
 		req.on('error', reject);
 	});
@@ -81,7 +89,7 @@ async function readBody(req: http.IncomingMessage): Promise<string> {
 async function readBuffer(req: http.IncomingMessage): Promise<Buffer> {
 	return new Promise((resolve, reject) => {
 		const chunks: any[] = [];
-		req.on('data', chunk => chunks.push(chunk));
+		req.on('data', (chunk) => chunks.push(chunk));
 		req.on('end', () => resolve(Buffer.concat(chunks)));
 		req.on('error', reject);
 	});
@@ -96,11 +104,16 @@ async function nextCommandId(): Promise<number> {
 }
 
 /** Save photo and generate thumbnail. Returns { photoUrl, thumbUrl }. */
-async function savePersonPhoto(pin: string, imageBuffer: Buffer): Promise<{ photoUrl: string; thumbUrl: string } | null> {
+async function savePersonPhoto(
+	pin: string,
+	imageBuffer: Buffer
+): Promise<{ photoUrl: string; thumbUrl: string } | null> {
 	if (imageBuffer.length === 0) return null;
 
 	const uploadDir = join(process.cwd(), 'static', 'uploads', 'people');
-	try { mkdirSync(uploadDir, { recursive: true }); } catch {}
+	try {
+		mkdirSync(uploadDir, { recursive: true });
+	} catch {}
 
 	const baseName = `user_${pin}_face`;
 
@@ -144,11 +157,17 @@ const server = http.createServer(async (req, res) => {
 		if (pathname === '/iclock/cdata') {
 			if (req.method === 'GET') {
 				if (!sn) return res.writeHead(400).end('Missing SN');
-				
+
 				// Upsert device
-				const [existing] = await db.select().from(schema.devices).where(eq(schema.devices.serialNumber, sn));
+				const [existing] = await db
+					.select()
+					.from(schema.devices)
+					.where(eq(schema.devices.serialNumber, sn));
 				if (existing) {
-					await db.update(schema.devices).set({ lastHeartbeat: new Date(), status: 'online' }).where(eq(schema.devices.serialNumber, sn));
+					await db
+						.update(schema.devices)
+						.set({ lastHeartbeat: new Date(), status: 'online' })
+						.where(eq(schema.devices.serialNumber, sn));
 				} else {
 					await db.insert(schema.devices).values({
 						id: crypto.randomUUID(),
@@ -160,7 +179,7 @@ const server = http.createServer(async (req, res) => {
 				}
 
 				const response = buildHandshakeResponse(sn);
-				res.writeHead(200, { 
+				res.writeHead(200, {
 					'Content-Type': 'text/plain',
 					'Content-Length': Buffer.byteLength(response).toString()
 				});
@@ -183,9 +202,15 @@ const server = http.createServer(async (req, res) => {
 
 						const result = await savePersonPhoto(pin, imageBuffer);
 						if (result) {
-							const [person] = await db.select().from(schema.people).where(eq(schema.people.biometricId, pin));
+							const [person] = await db
+								.select()
+								.from(schema.people)
+								.where(eq(schema.people.biometricId, pin));
 							if (person) {
-								await db.update(schema.people).set({ photoUrl: result.photoUrl }).where(eq(schema.people.id, person.id));
+								await db
+									.update(schema.people)
+									.set({ photoUrl: result.photoUrl })
+									.where(eq(schema.people.id, person.id));
 								console.log(`[ZK:Photo] Saved ATTPHOTO for ${person.name}: ${result.photoUrl}`);
 								notifySvelte('change');
 							}
@@ -197,7 +222,7 @@ const server = http.createServer(async (req, res) => {
 				}
 
 				const body = await readBody(req);
-				
+
 				// Process OPERLOG for enrollment tracking + face photos
 				if (table === 'OPERLOG') {
 					// Check for embedded BIOPHOTO/face photo (BIOPHOTO PIN=2\tNo=0\t...Content=<base64>)
@@ -205,16 +230,26 @@ const server = http.createServer(async (req, res) => {
 					if (photoMatch) {
 						const photoPin = photoMatch[1];
 						const base64Content = photoMatch[2];
-						console.log(`[ZK:OperLog] Found face photo for PIN ${photoPin} (${base64Content.length} base64 chars)`);
+						console.log(
+							`[ZK:OperLog] Found face photo for PIN ${photoPin} (${base64Content.length} base64 chars)`
+						);
 
 						try {
 							const imageBuffer = Buffer.from(base64Content, 'base64');
 							const result = await savePersonPhoto(photoPin, imageBuffer);
 							if (result) {
-								const [person] = await db.select().from(schema.people).where(eq(schema.people.biometricId, photoPin));
+								const [person] = await db
+									.select()
+									.from(schema.people)
+									.where(eq(schema.people.biometricId, photoPin));
 								if (person) {
-									await db.update(schema.people).set({ photoUrl: result.photoUrl }).where(eq(schema.people.id, person.id));
-									console.log(`[ZK:OperLog] Saved face photo for ${person.name}: ${result.photoUrl} (thumb: ${result.thumbUrl})`);
+									await db
+										.update(schema.people)
+										.set({ photoUrl: result.photoUrl })
+										.where(eq(schema.people.id, person.id));
+									console.log(
+										`[ZK:OperLog] Saved face photo for ${person.name}: ${result.photoUrl} (thumb: ${result.thumbUrl})`
+									);
 									notifySvelte('change');
 								}
 							}
@@ -227,20 +262,35 @@ const server = http.createServer(async (req, res) => {
 					for (const entry of opEntries) {
 						if (!entry.enrollMethod) continue;
 
-						const [person] = await db.select().from(schema.people).where(eq(schema.people.biometricId, entry.pin));
+						const [person] = await db
+							.select()
+							.from(schema.people)
+							.where(eq(schema.people.biometricId, entry.pin));
 						if (!person) continue;
 
 						let methods: string[] = [];
 						try {
 							methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : [];
-						} catch { methods = []; }
+						} catch {
+							methods = [];
+						}
 
 						if (!methods.includes(entry.enrollMethod)) {
 							methods.push(entry.enrollMethod);
-							await db.update(schema.people).set({ enrolledMethods: JSON.stringify(methods) }).where(eq(schema.people.id, person.id));
-							console.log(`[ZK:Enroll] Detected ${entry.enrollMethod} enrollment for ${person.name}`);
-							notifySvelte('enrollment', { personId: person.id, method: entry.enrollMethod, photoUrl: person.photoUrl });
+							await db
+								.update(schema.people)
+								.set({ enrolledMethods: JSON.stringify(methods) })
+								.where(eq(schema.people.id, person.id));
+							console.log(
+								`[ZK:Enroll] Detected ${entry.enrollMethod} enrollment for ${person.name}`
+							);
 						}
+						// Always notify SvelteKit so the UI can close its waiting dialog
+						notifySvelte('enrollment', {
+							personId: person.id,
+							method: entry.enrollMethod,
+							photoUrl: person.photoUrl
+						});
 					}
 					notifySvelte('change');
 					return res.writeHead(200).end('OK');
@@ -258,12 +308,17 @@ const server = http.createServer(async (req, res) => {
 					// Parse FID and No from body KV pairs
 					const fidMatch = body.match(/(?:^|\t)FID=(\w+)/im) || body.match(/(?:^|\t)Fid=(\w+)/im);
 					const noMatch = body.match(/(?:^|\t)No=(\w+)/im);
-					const fid = fidMatch ? fidMatch[1] : (table === 'FACE' ? '111' : '0');
+					const fid = fidMatch ? fidMatch[1] : table === 'FACE' ? '111' : '0';
 					const templateNo = noMatch ? noMatch[1] : '0';
 
-					console.log(`[ZK:BioData] Received ${table} template for PIN ${pin} FID=${fid} No=${templateNo}`);
+					console.log(
+						`[ZK:BioData] Received ${table} template for PIN ${pin} FID=${fid} No=${templateNo}`
+					);
 					if (pin) {
-						const [person] = await db.select().from(schema.people).where(eq(schema.people.biometricId, pin));
+						const [person] = await db
+							.select()
+							.from(schema.people)
+							.where(eq(schema.people.biometricId, pin));
 						if (person) {
 							// Strip table name prefix from body (device sends "BIODATA Pin=1\t..." but we just want the KV pairs)
 							let kvData = body.trim();
@@ -274,27 +329,29 @@ const server = http.createServer(async (req, res) => {
 							const [existingTemplate] = await db
 								.select()
 								.from(schema.bioTemplates)
-								.where(and(
-									eq(schema.bioTemplates.personId, person.id),
-									eq(schema.bioTemplates.templateType, table),
-									eq(schema.bioTemplates.fid, fid)
-								));
+								.where(
+									and(
+										eq(schema.bioTemplates.personId, person.id),
+										eq(schema.bioTemplates.templateType, table),
+										eq(schema.bioTemplates.fid, fid)
+									)
+								);
 
 							if (existingTemplate) {
-								await db.update(schema.bioTemplates)
+								await db
+									.update(schema.bioTemplates)
 									.set({ templateData: kvData, templateNo, updatedAt: new Date() })
 									.where(eq(schema.bioTemplates.id, existingTemplate.id));
 								console.log(`[ZK:BioData] Updated ${table} template for ${person.name}`);
 							} else {
-								await db.insert(schema.bioTemplates)
-									.values({
-										id: crypto.randomUUID(),
-										personId: person.id,
-										templateType: table,
-										templateData: kvData,
-										fid,
-										templateNo
-									});
+								await db.insert(schema.bioTemplates).values({
+									id: crypto.randomUUID(),
+									personId: person.id,
+									templateType: table,
+									templateData: kvData,
+									fid,
+									templateNo
+								});
 								console.log(`[ZK:BioData] Stored new ${table} template for ${person.name}`);
 							}
 
@@ -302,24 +359,36 @@ const server = http.createServer(async (req, res) => {
 							let methods: string[] = [];
 							try {
 								methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : [];
-							} catch { methods = []; }
+							} catch {
+								methods = [];
+							}
 
 							const method = fid === '111' || table === 'FACE' ? 'face' : 'finger';
 							console.log(`[ZK:BioData] Associating template as ${method} for ${person.name}`);
 
 							if (!methods.includes(method)) {
 								methods.push(method);
-								await db.update(schema.people).set({ enrolledMethods: JSON.stringify(methods) }).where(eq(schema.people.id, person.id));
+								await db
+									.update(schema.people)
+									.set({ enrolledMethods: JSON.stringify(methods) })
+									.where(eq(schema.people.id, person.id));
 							}
-							notifySvelte('enrollment', { personId: person.id, method, photoUrl: person.photoUrl });
+							// Always notify SvelteKit so the UI can close its waiting dialog
+							notifySvelte('enrollment', {
+								personId: person.id,
+								method,
+								photoUrl: person.photoUrl
+							});
 							notifySvelte('change');
 						}
 					}
 					return res.writeHead(200).end('OK');
 				}
 
+				// Handle ATTLOG
 				if (table === 'ATTLOG') {
 					const entries = parseAttLog(body);
+					console.log(`[ZK:Punch] Received ${entries.length} punches from device ${sn}`);
 					for (const entry of entries) {
 						const rawId = crypto.randomUUID();
 						await db.insert(schema.rawPunches).values({
@@ -333,18 +402,30 @@ const server = http.createServer(async (req, res) => {
 							processed: false
 						});
 
-						const [person] = await db.select().from(schema.people).where(eq(schema.people.biometricId, entry.pin));
-						if (!person) continue;
+						const [person] = await db
+							.select()
+							.from(schema.people)
+							.where(eq(schema.people.biometricId, entry.pin));
+						if (!person) {
+							console.log(`[ZK:Punch] Unknown PIN ${entry.pin} punched`);
+							continue;
+						}
 
 						const punchDate = toDateString(entry.timestamp);
-						const [activeLog] = await db.select().from(schema.attendanceLogs).where(and(
-							eq(schema.attendanceLogs.personId, person.id),
-							eq(schema.attendanceLogs.status, 'on_premises')
-						));
+						const [activeLog] = await db
+							.select()
+							.from(schema.attendanceLogs)
+							.where(
+								and(
+									eq(schema.attendanceLogs.personId, person.id),
+									eq(schema.attendanceLogs.status, 'on_premises')
+								)
+							);
 
 						const method = verifyCodeToMethod(entry.verify);
 						if (!activeLog) {
 							const newLogId = crypto.randomUUID();
+							console.log(`[ZK:Punch] CHECK-IN for ${person.name} (${method})`);
 							await db.insert(schema.attendanceLogs).values({
 								id: newLogId,
 								personId: person.id,
@@ -353,30 +434,38 @@ const server = http.createServer(async (req, res) => {
 								status: 'on_premises',
 								date: punchDate
 							});
-							notifySvelte('checkin', { 
-								personId: person.id, 
-								personName: person.name, 
-								verifyMethod: method, 
+							notifySvelte('checkin', {
+								personId: person.id,
+								personName: person.name,
+								verifyMethod: method,
 								photoUrl: person.photoUrl,
 								logId: newLogId,
 								categoryId: person.categoryId
 							});
 						} else if (activeLog.date === punchDate) {
-							await db.update(schema.attendanceLogs).set({ exitTime: entry.timestamp, status: 'checked_out' }).where(eq(schema.attendanceLogs.id, activeLog.id));
-							notifySvelte('checkout', { 
-								personId: person.id, 
-								personName: person.name, 
-								verifyMethod: method, 
+							console.log(`[ZK:Punch] CHECK-OUT for ${person.name} (${method})`);
+							await db
+								.update(schema.attendanceLogs)
+								.set({ exitTime: entry.timestamp, status: 'checked_out' })
+								.where(eq(schema.attendanceLogs.id, activeLog.id));
+							notifySvelte('checkout', {
+								personId: person.id,
+								personName: person.name,
+								verifyMethod: method,
 								photoUrl: person.photoUrl,
 								logId: activeLog.id,
 								categoryId: person.categoryId
 							});
 						} else {
-							await db.update(schema.attendanceLogs).set({ exitTime: entry.timestamp, status: 'checked_out' }).where(eq(schema.attendanceLogs.id, activeLog.id));
-							notifySvelte('checkout', { 
-								personId: person.id, 
-								personName: person.name, 
-								verifyMethod: method, 
+							console.log(`[ZK:Punch] CLOSE + NEW for ${person.name} (day shift)`);
+							await db
+								.update(schema.attendanceLogs)
+								.set({ exitTime: entry.timestamp, status: 'checked_out' })
+								.where(eq(schema.attendanceLogs.id, activeLog.id));
+							notifySvelte('checkout', {
+								personId: person.id,
+								personName: person.name,
+								verifyMethod: method,
 								photoUrl: person.photoUrl,
 								logId: activeLog.id,
 								categoryId: person.categoryId
@@ -390,21 +479,24 @@ const server = http.createServer(async (req, res) => {
 								status: 'on_premises',
 								date: punchDate
 							});
-							notifySvelte('checkin', { 
-								personId: person.id, 
-								personName: person.name, 
-								verifyMethod: method, 
+							notifySvelte('checkin', {
+								personId: person.id,
+								personName: person.name,
+								verifyMethod: method,
 								photoUrl: person.photoUrl,
 								logId: newLogId,
 								categoryId: person.categoryId
 							});
 						}
-						await db.update(schema.rawPunches).set({ processed: true }).where(eq(schema.rawPunches.id, rawId));
+						await db
+							.update(schema.rawPunches)
+							.set({ processed: true })
+							.where(eq(schema.rawPunches.id, rawId));
 					}
 					notifySvelte('change');
 					return res.writeHead(200).end('OK');
 				}
-				
+
 				// Generic OK for any other tables
 				return res.writeHead(200).end('OK');
 			}
@@ -413,18 +505,28 @@ const server = http.createServer(async (req, res) => {
 		// ZKTeco Command Polling
 		if (pathname === '/iclock/getrequest') {
 			if (!sn) return res.writeHead(400).end('Missing SN');
-			
-			await db.update(schema.devices).set({ lastHeartbeat: new Date(), status: 'online' }).where(eq(schema.devices.serialNumber, sn));
 
-			const [cmd] = await db.select().from(schema.deviceCommands).where(and(
-				eq(schema.deviceCommands.deviceSn, sn),
-				eq(schema.deviceCommands.status, 'PENDING')
-			)).orderBy(asc(schema.deviceCommands.createdAt)).limit(1);
+			await db
+				.update(schema.devices)
+				.set({ lastHeartbeat: new Date(), status: 'online' })
+				.where(eq(schema.devices.serialNumber, sn));
+
+			const [cmd] = await db
+				.select()
+				.from(schema.deviceCommands)
+				.where(
+					and(eq(schema.deviceCommands.deviceSn, sn), eq(schema.deviceCommands.status, 'PENDING'))
+				)
+				.orderBy(asc(schema.deviceCommands.createdAt))
+				.limit(1);
 
 			if (cmd) {
-				await db.update(schema.deviceCommands).set({ status: 'SENT', updatedAt: new Date() }).where(eq(schema.deviceCommands.id, cmd.id));
+				await db
+					.update(schema.deviceCommands)
+					.set({ status: 'SENT', updatedAt: new Date() })
+					.where(eq(schema.deviceCommands.id, cmd.id));
 				const response = formatCommand(cmd.id, cmd.commandString);
-				res.writeHead(200, { 
+				res.writeHead(200, {
 					'Content-Type': 'text/plain',
 					'Content-Length': Buffer.byteLength(response).toString()
 				});
@@ -443,16 +545,29 @@ const server = http.createServer(async (req, res) => {
 
 			if (cmdId) {
 				const newStatus = returnCode === '0' ? 'SUCCESS' : 'FAILED';
-				const [cmd] = await db.select().from(schema.deviceCommands).where(eq(schema.deviceCommands.id, cmdId));
-				
-				await db.update(schema.deviceCommands).set({ status: newStatus as any, updatedAt: new Date() }).where(eq(schema.deviceCommands.id, cmdId));
+				const [cmd] = await db
+					.select()
+					.from(schema.deviceCommands)
+					.where(eq(schema.deviceCommands.id, cmdId));
+
+				await db
+					.update(schema.deviceCommands)
+					.set({ status: newStatus as any, updatedAt: new Date() })
+					.where(eq(schema.deviceCommands.id, cmdId));
 
 				// Enrollment logic
-				if (sn && cmd && (cmd.commandString.startsWith('ENROLL_FP') || cmd.commandString.startsWith('ENROLL_BIO'))) {
+				if (
+					sn &&
+					cmd &&
+					(cmd.commandString.startsWith('ENROLL_FP') || cmd.commandString.startsWith('ENROLL_BIO'))
+				) {
 					const match = cmd.commandString.match(/PIN=(\w+)/);
 					const pin = match ? match[1] : null;
 					if (pin) {
-						const [person] = await db.select().from(schema.people).where(eq(schema.people.biometricId, pin));
+						const [person] = await db
+							.select()
+							.from(schema.people)
+							.where(eq(schema.people.biometricId, pin));
 						if (newStatus === 'SUCCESS' && person) {
 							await db.insert(schema.deviceCommands).values({
 								id: await nextCommandId(),
@@ -461,9 +576,16 @@ const server = http.createServer(async (req, res) => {
 								status: 'PENDING'
 							});
 							const method = cmd.commandString.includes('FID=111') ? 'face' : 'finger';
-							notifySvelte('enrollment', { personId: person.id, method, photoUrl: person.photoUrl });
+							notifySvelte('enrollment', {
+								personId: person.id,
+								method,
+								photoUrl: person.photoUrl
+							});
 						} else if (newStatus === 'FAILED' && person) {
-							notifySvelte('enrollment-failed', { personId: person.id, returnCode: returnCode || 'unknown' });
+							notifySvelte('enrollment-failed', {
+								personId: person.id,
+								returnCode: returnCode || 'unknown'
+							});
 						}
 					}
 				}

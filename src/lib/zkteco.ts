@@ -16,26 +16,28 @@ function parseDeviceTime(timeStr: string): Date {
 
 /** Device handshake response options */
 export function buildHandshakeResponse(sn: string): string {
-	return [
-		`GET OPTION FROM: ${sn}`,
-		'Stamp=0',
-		'OpStamp=0',
-		'PhotoStamp=0',
-		'ErrorDelay=30',
-		'Delay=2',
-		'TransInterval=1',
-		'TransFlag=TransData\tAttLog\tAttPhoto\tEnrollUser\tEnrollFP\tFACE\tUserPic\tBioPhoto\tChgUser',
-		'Realtime=1',
-		'Encrypt=0',
-		'BioPhotoFun=1',
-		'BioDataFun=1',
-		'VisilightFun=1',
-		'PostBackTmpFlag=1',
-		'DuplicatePunchTimer=1',
-		'MultiBioDataSupport=0:1:0:0:0:0:0:0:1:1',
-		'MultiBioPhotoSupport=0:0:0:0:0:0:0:0:0:1',
-		'PushOptions=UserPicURLFunOn,MultiBioDataSupport,MultiBioPhotoSupport'
-	].join('\n') + '\n';
+	return (
+		[
+			`GET OPTION FROM: ${sn}`,
+			'Stamp=0',
+			'OpStamp=0',
+			'PhotoStamp=0',
+			'ErrorDelay=30',
+			'Delay=2',
+			'TransInterval=1',
+			'TransFlag=TransData\tAttLog\tAttPhoto\tEnrollUser\tEnrollFP\tFACE\tUserPic\tBioPhoto\tChgUser',
+			'Realtime=1',
+			'Encrypt=0',
+			'BioPhotoFun=1',
+			'BioDataFun=1',
+			'VisilightFun=1',
+			'PostBackTmpFlag=1',
+			'DuplicatePunchTimer=1',
+			'MultiBioDataSupport=0:1:0:0:0:0:0:0:1:1',
+			'MultiBioPhotoSupport=0:0:0:0:0:0:0:0:0:1',
+			'PushOptions=UserPicURLFunOn,MultiBioDataSupport,MultiBioPhotoSupport'
+		].join('\n') + '\n'
+	);
 }
 
 export interface AttLogEntry {
@@ -86,7 +88,7 @@ export function toDateString(date: Date): string {
 /** ZKTeco FID constants for biometric enrollment */
 export const FID = {
 	FINGER: 0,
-	FACE: 111,
+	FACE: 111
 } as const;
 
 /** Common ZKTeco command builders */
@@ -128,20 +130,25 @@ export const Commands = {
 /** Map ZKTeco verify code to human-readable method */
 export function verifyCodeToMethod(verify: number): string | null {
 	switch (verify) {
-		case 0: return 'password';
-		case 1: return 'finger';
-		case 2: return 'card';
-		case 15: return 'face';
-		default: return null;
+		case 0:
+			return 'password';
+		case 1:
+			return 'finger';
+		case 2:
+			return 'card';
+		case 15:
+			return 'face';
+		default:
+			return null;
 	}
 }
 
 /** Enrollment operation type mappings */
 export const ENROLLMENT_OPS: Record<string, string> = {
-	'EnrollFP': 'finger',
-	'EnrollFinger': 'finger',
-	'EnrollFace': 'face',
-	'EnrollCard': 'card',
+	EnrollFP: 'finger',
+	EnrollFinger: 'finger',
+	EnrollFace: 'face',
+	EnrollCard: 'card'
 };
 
 export interface OperLogEntry {

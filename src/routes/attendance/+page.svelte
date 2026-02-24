@@ -22,7 +22,10 @@
 		Fingerprint,
 		CreditCard,
 		History,
-		ArrowLeft
+		ArrowLeft,
+		Filter,
+		Shield,
+		MapPin
 	} from 'lucide-svelte';
 	import logo from '$lib/assets/kr_logo.svg';
 	import { goto } from '$app/navigation';
@@ -32,11 +35,18 @@
 	import { clsx } from 'clsx';
 	import { slide } from 'svelte/transition';
 	import { sineInOut } from 'svelte/easing';
-	import { cn, getCategoryLevelClass, statusBadgeClasses, appToast } from '$lib/utils';
+	import {
+		cn,
+		getCategoryLevelClass,
+		getCategoryBadgeClass,
+		statusBadgeClasses,
+		appToast
+	} from '$lib/utils';
 	import type { PageData, ActionData } from './$types';
 	import CheckInDialog from '$lib/components/CheckInDialog.svelte';
 	import RegisterDialog from '../people/RegisterDialog.svelte';
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
+	import Pagination from '$lib/components/ui/Pagination.svelte';
 	import {
 		CATEGORIES,
 		ROOT_CATEGORIES,
@@ -60,41 +70,39 @@
 
 	let searchQuery = $state('');
 	let selectedCategoryId = $state('');
+	let selectedLocation = $state('');
 	let isCheckInOpen = $state(false);
-	    	let isRegisterOpen = $state(false);
-	    	let isPreparingPrint = $state(false);
-	    	let confirmCheckOutOpen = $state(false);
-	    	let checkOutFormElement = $state<HTMLFormElement | null>(null);
-	    	let previousLimit = $state(20);
-	    			let debounceTimer: any;
-	    			let isPrintConfirmOpen = $state(false);
-	    		
-	    			$effect(() => {
-	    				return () => {
-	    					clearTimeout(debounceTimer);
-	    				};
-	    			});
-	    		
-	    			$effect(() => {
-	    				searchQuery = data.filters.query;	    		selectedCategoryId = data.filters.categoryId;
-	    	});
-	    
-	    	function triggerCheckOut(form: HTMLFormElement) {
-	    		checkOutFormElement = form;
-	    		confirmCheckOutOpen = true;
-	    	}
-	    
-	    	$effect(() => {		if (page.url.searchParams.has('print')) {
+	let isRegisterOpen = $state(false);
+	let isPreparingPrint = $state(false);
+	let confirmCheckOutOpen = $state(false);
+	let checkOutFormElement = $state<HTMLFormElement | null>(null);
+	let debounceTimer: any;
+	let isPrintConfirmOpen = $state(false);
+
+	$effect(() => {
+		return () => {
+			clearTimeout(debounceTimer);
+		};
+	});
+
+	$effect(() => {
+		searchQuery = data.filters.query;
+		selectedCategoryId = data.filters.categoryId;
+		selectedLocation = data.filters.location || '';
+	});
+
+	function triggerCheckOut(form: HTMLFormElement) {
+		checkOutFormElement = form;
+		confirmCheckOutOpen = true;
+	}
+
+	$effect(() => {
+		if (page.url.searchParams.has('print')) {
 			isPreparingPrint = true;
 			const timer = setTimeout(() => {
 				window.print();
 				isPreparingPrint = false;
-
-				// Cleanup: remove print param and restore limit
-				const url = new URL(page.url);
-				url.searchParams.delete('print');
-				url.searchParams.set('limit', previousLimit.toString());
-				goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
+				window.close();
 			}, 1500);
 			return () => clearTimeout(timer);
 		}
@@ -107,6 +115,9 @@
 
 		if (selectedCategoryId) url.searchParams.set('category', selectedCategoryId);
 		else url.searchParams.delete('category');
+
+		if (selectedLocation) url.searchParams.set('location', selectedLocation);
+		else url.searchParams.delete('location');
 
 		url.searchParams.set('page', '1');
 		goto(url.toString(), { keepFocus: true, noScroll: true });
@@ -174,11 +185,17 @@
 		applyFilters();
 	}
 
-	const hasActiveFilters = $derived(!!searchQuery || !!selectedCategoryId);
+	function changeLocation(loc: string) {
+		selectedLocation = loc;
+		applyFilters();
+	}
+
+	const hasActiveFilters = $derived(!!searchQuery || !!selectedCategoryId || !!selectedLocation);
 
 	function clearFilters() {
 		searchQuery = '';
 		selectedCategoryId = '';
+		selectedLocation = '';
 		applyFilters();
 	}
 
@@ -191,43 +208,22 @@
 	}
 
 	function printEntryLog() {
-		previousLimit = data.pagination.limit;
 		const url = new URL(page.url);
 		url.searchParams.set('limit', '5000');
 		url.searchParams.set('page', '1');
 		url.searchParams.set('print', '1');
-		goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
+		window.open(url.toString(), '_blank');
 	}
 
-	function goToPage(p: number) {
-		const url = new URL(page.url);
-		url.searchParams.set('page', p.toString());
-		goto(url.toString(), { keepFocus: true, noScroll: true });
+	function formatDuration(seconds: number) {
+		if (!seconds || seconds < 0) return '0m';
+		const hours = Math.floor(seconds / 3600);
+		const minutes = Math.floor((seconds % 3600) / 60);
+		if (hours > 0) return `${hours}h ${minutes}m`;
+		return `${minutes}m`;
 	}
 
-	function getPageRange(current: number, total: number) {
-		const delta = 1;
-		const range = [];
-		const rangeWithDots: (number | string)[] = [];
-		let l;
-		for (let i = 1; i <= total; i++) {
-			if (i == 1 || i == total || (i >= current - delta && i <= current + delta)) {
-				range.push(i);
-			}
-		}
-		for (let i of range) {
-			if (l) {
-				if (i - l === 2) {
-					rangeWithDots.push(l + 1);
-				} else if (i - l !== 1) {
-					rangeWithDots.push('...');
-				}
-			}
-			rangeWithDots.push(i);
-			l = i;
-		}
-		return rangeWithDots;
-	}
+	let showMobileFilters = $state(false);
 </script>
 
 <svelte:head>
@@ -281,6 +277,12 @@
 					>Entry Time</th
 				>
 				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
+					>{i18n.t('location')}</th
+				>
+				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
+					>Duration</th
+				>
+				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
 					>Purpose</th
 				>
 			</tr>
@@ -294,6 +296,13 @@
 					<td style="border: 1px solid #ddd; padding: 8px;">{log.category.name}</td>
 					<td style="border: 1px solid #ddd; padding: 8px;">{log.person.company || '-'}</td>
 					<td style="border: 1px solid #ddd; padding: 8px;">{format(log.entryTime, 'hh:mm a')}</td>
+					<td
+						style="border: 1px solid #ddd; padding: 8px; text-transform: uppercase; font-weight: 700;"
+						>{log.location || '-'}</td
+					>
+					<td style="border: 1px solid #ddd; padding: 8px;"
+						>{formatDuration(log.durationSeconds)}</td
+					>
 					<td style="border: 1px solid #ddd; padding: 8px;">{log.purpose || '-'}</td>
 				</tr>
 			{/each}
@@ -319,90 +328,219 @@
 <!-- Screen view -->
 <div class="no-print pb-20">
 	<!-- Sticky Top Bar for Filters -->
-	<div
-		class="sticky-filter-bar"
-	>
-		<div class="content-container flex flex-wrap items-center justify-between gap-4">
-			<!-- Search Section - Left -->
-			<div class="group relative max-w-md flex-1">
-				<div
-					class="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500"
-				>
-					<Search size={20} />
-				</div>
-				<Input
-					bind:value={searchQuery}
-					oninput={handleSearchInput}
-					placeholder={i18n.t('searchPeoplePlaceholder')}
-					class="h-12 w-full rounded-2xl border-2 border-slate-300 bg-white pr-12 pl-12 text-base font-bold shadow-sm transition-all focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/30"
-				/>
-				{#if searchQuery}
-					<button
-						class="absolute top-1/2 right-4 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100"
-						onclick={() => {
-							searchQuery = '';
-							applyFilters();
-						}}
-					>
-						<X size={16} />
-					</button>
-				{/if}
-			</div>
-
-			<!-- Actions - Right -->
-			<div class="flex items-center gap-2">
-				<div class="flex h-8 items-center gap-2 border-r-2 border-slate-100 pr-4">
-					<span class="text-[10px] font-black tracking-widest text-slate-400 uppercase"
-						>{i18n.t('entryLog')}</span
-					>
-					<Badge class="border-primary-200 bg-primary-100 text-xs font-black text-primary-700">
-						{data.pagination.totalCount} inside
-					</Badge>
-				</div>
-
-				<div class="flex items-center gap-2">
-					<Button
-						variant="outline"
-						class="h-12 cursor-pointer gap-2 rounded-2xl border-2 border-slate-200 px-6 font-black transition-all hover:border-primary-300 hover:bg-primary-50"
-						onclick={() => goto('/history')}
-					>
-						<History size={18} />
-						<span>{i18n.t('history')}</span>
-					</Button>
-
-					<Button
-						variant="outline"
-						class="h-12 cursor-pointer gap-2 rounded-2xl border-2 border-slate-200 px-6 font-black transition-all hover:border-primary-300 hover:bg-primary-50"
-						onclick={confirmPrint}
-					>
-						<Printer size={18} />
-						<span>Print Full Log</span>
-					</Button>
-
-					{#if hasActiveFilters}
-						<Button
-							variant="ghost"
-							class="h-12 cursor-pointer gap-2 rounded-2xl border-2 border-transparent px-6 font-black text-rose-500 transition-all hover:border-rose-100 hover:bg-rose-50 hover:text-rose-600"
-							onclick={clearFilters}
+	<div class="sticky-filter-bar px-4 md:px-0">
+		<div class="content-container">
+			<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+				<!-- Top Row: Search & Stats -->
+				<div class="flex flex-1 items-center gap-3">
+					<div class="group relative flex-1 lg:max-w-md">
+						<div
+							class="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500"
 						>
-							<RotateCcw size={18} />
-							Reset
+							<Search size={18} />
+						</div>
+						<Input
+							bind:value={searchQuery}
+							oninput={handleSearchInput}
+							placeholder={i18n.t('searchPeoplePlaceholder')}
+							class="h-11 w-full rounded-2xl border-2 border-slate-300 bg-white pr-10 pl-11 text-sm font-bold shadow-sm transition-all focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/30 lg:h-12 lg:text-base"
+						/>
+						{#if searchQuery}
+							<button
+								class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100"
+								onclick={() => {
+									searchQuery = '';
+									applyFilters();
+								}}
+							>
+								<X size={14} />
+							</button>
+						{/if}
+					</div>
+
+					<!-- Mobile Info Badge -->
+					<div class="flex items-center gap-2 rounded-2xl bg-slate-100 px-3 py-2 lg:hidden">
+						<span class="text-[9px] font-black tracking-widest text-slate-400 capitalize"
+							>Inside</span
+						>
+						<span class="text-xs font-black text-primary-700">{data.pagination.totalCount}</span>
+					</div>
+				</div>
+
+				<!-- Actions Row: Buttons -->
+				<div
+					class="flex items-center justify-between gap-2 overflow-x-auto pb-1 lg:justify-end lg:overflow-visible lg:pb-0"
+				>
+					<!-- Left Side (Mobile View) -->
+					<div class="flex items-center gap-2 lg:hidden">
+						<Button
+							variant="outline"
+							size="sm"
+							class={cn(
+								'h-10 rounded-xl border-2 font-black transition-all',
+								showMobileFilters
+									? 'border-primary-500 bg-primary-50 text-primary-600'
+									: 'border-slate-200'
+							)}
+							onclick={() => (showMobileFilters = !showMobileFilters)}
+						>
+							<Filter size={16} class="mr-1.5" />
+							Filters
 						</Button>
-					{/if}
+					</div>
+
+					<!-- Desktop/Standard Actions -->
+					<div class="flex items-center gap-2">
+						<!-- Desktop Only Stats -->
+						<div
+							class="mr-2 hidden h-8 items-center gap-2 border-r-2 border-slate-100 pr-4 lg:flex"
+						>
+							<span class="text-[10px] font-black tracking-widest text-slate-400 capitalize"
+								>{i18n.t('entryLog')}</span
+							>
+							<Badge class="border-primary-200 bg-primary-100 text-xs font-black text-primary-700">
+								{data.pagination.totalCount} inside
+							</Badge>
+						</div>
+
+						<Button
+							variant="outline"
+							class="h-10 shrink-0 gap-2 rounded-xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 lg:h-12 lg:rounded-2xl lg:px-6"
+							onclick={() => goto('/history')}
+						>
+							<History size={18} />
+							<span class="hidden sm:inline">{i18n.t('history')}</span>
+						</Button>
+
+						<Button
+							variant="outline"
+							class="h-10 shrink-0 gap-2 rounded-xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 lg:h-12 lg:rounded-2xl lg:px-6"
+							onclick={confirmPrint}
+						>
+							<Printer size={18} />
+							<span class="hidden sm:inline">Print Log</span>
+						</Button>
+
+						{#if hasActiveFilters}
+							<Button
+								variant="ghost"
+								class="h-10 shrink-0 gap-2 rounded-xl border-2 border-transparent px-4 font-black text-rose-500 transition-all hover:border-rose-100 hover:bg-rose-50 hover:text-rose-600 lg:h-12 lg:rounded-2xl lg:px-6"
+								onclick={clearFilters}
+							>
+								<RotateCcw size={18} />
+								<span class="hidden sm:inline">Reset</span>
+							</Button>
+						{/if}
+					</div>
 				</div>
 			</div>
+
+			<!-- Mobile Horizontal Category Scroll -->
+			{#if showMobileFilters}
+				<div class="mt-4 lg:hidden" transition:slide>
+					<div class="custom-scrollbar flex gap-2 overflow-x-auto pb-2">
+						<button
+							class={cn(
+								'shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+								selectedCategoryId === ''
+									? 'bg-primary-600 text-white shadow-md'
+									: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+							)}
+							onclick={() => changeCategory('')}
+						>
+							{i18n.t('all')}
+						</button>
+						{#each ROOT_CATEGORIES as cat (cat.id)}
+							<button
+								class={cn(
+									'shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+									activeRootCategoryId() === cat.id
+										? 'bg-primary-600 text-white shadow-md'
+										: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+								)}
+								onclick={() => changeCategory(cat.id)}
+							>
+								{i18n.t(cat.slug as any) || cat.name}
+							</button>
+						{/each}
+					</div>
+
+					{#if activeRootCategoryId() && availableSubCategories().length > 0}
+						<div class="mt-2 flex gap-2 overflow-x-auto pb-2 pl-2">
+							<div class="size-2 shrink-0 self-center rounded-full bg-primary-200"></div>
+							{#each availableSubCategories() as subCat (subCat.id)}
+								<button
+									class={cn(
+										'shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+										selectedCategoryId === subCat.id
+											? 'border-primary-600 bg-primary-50 text-primary-700'
+											: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200'
+									)}
+									onclick={() => changeCategory(subCat.id)}
+								>
+									{i18n.t(subCat.slug as any) || subCat.name}
+								</button>
+							{/each}
+						</div>
+					{/if}
+
+					<!-- Mobile Location Toggle -->
+					<div class="mt-4 space-y-2">
+						<p class="ml-1 text-[9px] font-black tracking-widest text-slate-400 uppercase">
+							{i18n.t('location')}
+						</p>
+						<div
+							class="flex w-fit items-center gap-1 rounded-2xl border-2 border-slate-100 bg-white p-1 shadow-sm"
+						>
+							<button
+								class={cn(
+									'rounded-xl px-4 py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
+									selectedLocation === ''
+										? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
+										: 'text-slate-500 hover:bg-slate-50'
+								)}
+								onclick={() => changeLocation('')}
+							>
+								{i18n.t('all')}
+							</button>
+							<button
+								class={cn(
+									'rounded-xl px-4 py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
+									selectedLocation === 'ship'
+										? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
+										: 'text-slate-500 hover:bg-slate-50'
+								)}
+								onclick={() => changeLocation('ship')}
+							>
+								Ship
+							</button>
+							<button
+								class={cn(
+									'rounded-xl px-4 py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
+									selectedLocation === 'yard'
+										? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
+										: 'text-slate-500 hover:bg-slate-50'
+								)}
+								onclick={() => changeLocation('yard')}
+							>
+								Yard
+							</button>
+						</div>
+					</div>
+				</div>
+			{/if}
 		</div>
 	</div>
 
 	<!-- Main Content Area -->
-	<div class="content-container flex flex-col items-start gap-8 md:flex-row">
-		<!-- Sidebar - Sticky -->
+	<div class="content-container flex flex-col gap-8 px-4 md:px-0 lg:flex-row">
+		<!-- Sidebar - Desktop Only -->
 		<aside
-			class="custom-scrollbar max-h-[calc(100vh-10rem)] w-full shrink-0 space-y-6 overflow-y-auto pr-2 pb-10 md:sticky md:top-36 md:w-64"
+			class="custom-scrollbar hidden max-h-[calc(100vh-10rem)] w-full shrink-0 space-y-6 overflow-y-auto pr-2 pb-10 lg:block lg:w-64"
 		>
 			<!-- Category Filter -->
 			<div class="space-y-3">
-				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+				<p class="text-[10px] font-black tracking-widest text-slate-400 capitalize">
 					{i18n.t('category')}
 				</p>
 				<div class="flex flex-col gap-1">
@@ -492,24 +630,85 @@
 					{/each}
 				</div>
 			</div>
+
+			<!-- Location Filter -->
+			<div class="space-y-3">
+				<p class="text-[10px] font-black tracking-widest text-slate-400 capitalize">
+					{i18n.t('location')}
+				</p>
+				<div class="flex flex-col gap-1">
+					<Button
+						variant={selectedLocation === '' ? 'secondary' : 'ghost'}
+						class={cn(
+							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+							selectedLocation === ''
+								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+								: 'text-slate-600'
+						)}
+						onclick={() => changeLocation('')}
+					>
+						<div class="flex items-center gap-2">
+							{#if selectedLocation === ''}
+								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+							{/if}
+							{i18n.t('all')}
+						</div>
+					</Button>
+					<Button
+						variant={selectedLocation === 'ship' ? 'secondary' : 'ghost'}
+						class={cn(
+							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+							selectedLocation === 'ship'
+								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+								: 'text-slate-600'
+						)}
+						onclick={() => changeLocation('ship')}
+					>
+						<div class="flex items-center gap-2">
+							{#if selectedLocation === 'ship'}
+								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+							{/if}
+							Ship
+						</div>
+					</Button>
+					<Button
+						variant={selectedLocation === 'yard' ? 'secondary' : 'ghost'}
+						class={cn(
+							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+							selectedLocation === 'yard'
+								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+								: 'text-slate-600'
+						)}
+						onclick={() => changeLocation('yard')}
+					>
+						<div class="flex items-center gap-2">
+							{#if selectedLocation === 'yard'}
+								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+							{/if}
+							Yard
+						</div>
+					</Button>
+				</div>
+			</div>
 		</aside>
 
 		<!-- Main Content Area -->
-		<main class="min-w-0 flex-1 space-y-6">
+		<main class="w-full min-w-0 flex-1 space-y-6">
 			<!-- List Area (Natural Scroll) -->
-			<div class="space-y-4">
+			<div class="space-y-4 pb-24 lg:pb-0">
 				<div class="grid grid-cols-1 gap-4">
 					{#each data.logs as log (log.id)}
 						<Card.Root
 							class="overflow-hidden border-l-4 border-l-emerald-500 bg-white transition-shadow hover:shadow-lg"
 						>
-							<Card.Content class="p-5 md:p-6">
+							<Card.Content class="p-4 sm:p-5 md:p-6">
 								<div
-									class="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center"
+									class="flex flex-col items-start gap-4 xl:flex-row xl:items-center xl:justify-between"
 								>
-									<div class="flex min-w-0 items-center gap-5">
+									<div class="flex w-full min-w-0 items-center gap-4 md:gap-5">
+										<!-- Avatar -->
 										<div
-											class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-slate-100 bg-white shadow-sm"
+											class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-100 bg-white shadow-sm md:size-14 md:rounded-2xl"
 										>
 											{#if log.person.photoUrl}
 												<img
@@ -518,26 +717,38 @@
 													class="size-full object-cover"
 												/>
 											{:else}
-												<div class="flex size-full items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 text-lg font-black text-white">
+												<div
+													class="flex size-full items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 text-base font-black text-white md:text-lg"
+												>
 													{log.person.name.trim().split(/\s+/).length > 1
-														? log.person.name.trim().split(/\s+/).slice(0, 2).map((n: string) => [...n][0]).join('')
-														: [...log.person.name.trim()][0] ?? '?'}
+														? log.person.name
+																.trim()
+																.split(/\s+/)
+																.slice(0, 2)
+																.map((n: string) => [...n][0])
+																.join('')
+														: ([...log.person.name.trim()][0] ?? '?')}
 												</div>
 											{/if}
 										</div>
-										<div class="min-w-0">
-											<div class="flex flex-wrap items-center gap-3">
-												<a href="/people/{log.person.id}" class="truncate text-lg leading-tight font-black text-slate-900 hover:text-primary-600 transition-colors">
+
+										<!-- Main Info -->
+										<div class="min-w-0 flex-1">
+											<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+												<a
+													href="/people/{log.person.id}"
+													class="truncate text-base leading-tight font-black text-slate-900 transition-colors hover:text-primary-600 sm:text-lg"
+												>
 													{log.person.name}
 												</a>
 
-												<div class="flex gap-1.5">
-													{#each getCategoryPath(log.person.categoryId) as cat, i (cat.id)}
+												<div class="flex flex-wrap gap-1">
+													{#each getCategoryPath(log.person.categoryId).slice(-2) as cat, i (cat.id)}
 														<Badge
 															variant="outline"
 															class={cn(
-																'h-6 px-2 text-[10px] font-black tracking-wider uppercase',
-																getCategoryLevelClass(i)
+																'h-5 px-1.5 text-[8px] font-black tracking-wider capitalize sm:h-6 sm:px-2 sm:text-[10px]',
+																getCategoryBadgeClass(cat.slug)
 															)}
 														>
 															{i18n.t(cat.slug as any) || cat.name}
@@ -545,54 +756,112 @@
 													{/each}
 												</div>
 											</div>
-											<p class="mt-1 text-sm font-bold text-slate-500">
-												{log.person.codeNo || 'N/A'} • {log.person.company || 'Private'}
+											<p class="mt-0.5 text-xs font-bold text-slate-500 sm:text-sm">
+												<span class="text-primary-600/70">#{log.person.codeNo || 'N/A'}</span>
+												<span class="mx-1.5 opacity-30">|</span>
+												<span class="truncate">{log.person.company || 'Private'}</span>
 											</p>
 											{#if !isEmployeeView && log.purpose}
 												<p
-													class="mt-2 flex items-center gap-2 text-sm font-medium text-primary-600"
+													class="mt-2 flex items-center gap-1.5 text-xs font-medium text-slate-600"
 												>
-													<span class="text-[10px] font-black text-slate-400 uppercase"
+													<span
+														class="text-[9px] font-black text-slate-400 capitalize sm:text-[10px]"
 														>Purpose:</span
 													>
-													{log.purpose}
+													<span class="truncate italic opacity-80">{log.purpose}</span>
 												</p>
 											{/if}
 										</div>
 									</div>
 
-									<div class="flex w-full flex-wrap items-center gap-8 md:w-auto md:gap-16">
+									<!-- Stats Row - Dynamic Layout -->
+									<div
+										class="grid w-full grid-cols-2 gap-4 border-t border-slate-50 pt-4 xl:flex xl:w-auto xl:items-center xl:gap-10 xl:border-none xl:pt-0 2xl:gap-16"
+									>
 										<div class="space-y-1">
 											<p
-												class="text-[10px] leading-none font-black tracking-widest text-slate-400 uppercase"
+												class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
+											>
+												{i18n.t('location')}
+											</p>
+											<div
+												class="flex items-center gap-1.5 text-sm font-black whitespace-nowrap text-slate-900 uppercase sm:text-base md:gap-2"
+											>
+												<div
+													class={cn(
+														'rounded-lg p-1 md:p-1.5',
+														log.location === 'ship'
+															? 'bg-blue-100 text-blue-600'
+															: 'bg-amber-100 text-amber-600'
+													)}
+												>
+													<MapPin size={14} />
+												</div>
+												<span>{log.location || 'N/A'}</span>
+											</div>
+										</div>
+
+										<div class="space-y-1">
+											<p
+												class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
 											>
 												{i18n.t('entryTime')}
 											</p>
-											<div class="flex items-center gap-2 text-base font-black text-slate-900">
-												<div class="rounded-lg bg-primary-100 p-1.5 text-primary-600">
-													<Clock size={16} />
+											<div
+												class="flex items-center gap-1.5 text-sm font-black whitespace-nowrap text-slate-900 sm:text-base md:gap-2"
+											>
+												<div class="rounded-lg bg-primary-100 p-1 text-primary-600 md:p-1.5">
+													<Clock size={14} />
 												</div>
 												<span>{format(log.entryTime, 'hh:mm a')}</span>
 											</div>
 										</div>
 
+										<div class="space-y-1">
+											<p
+												class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
+											>
+												Inside For
+											</p>
+											<div
+												class="flex items-center gap-1.5 text-sm font-black whitespace-nowrap text-emerald-600 sm:text-base md:gap-2"
+											>
+												<div class="rounded-lg bg-emerald-100 p-1 md:p-1.5">
+													<Clock size={14} />
+												</div>
+												<span>{formatDuration(log.durationSeconds)}</span>
+											</div>
+										</div>
+
 										{#if log.verifyMethod}
-											<div class="space-y-1">
+											<div class="col-span-1 space-y-1">
 												<p
-													class="text-[10px] leading-none font-black tracking-widest text-slate-400 uppercase"
+													class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
 												>
 													Method
 												</p>
-												<div class="flex items-center gap-2 text-sm font-black text-slate-700">
-													<div class={cn('rounded-lg p-1.5', log.verifyMethod === 'face' ? 'bg-blue-100 text-blue-600' : log.verifyMethod === 'finger' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500')}>
+												<div
+													class="flex items-center gap-1.5 text-xs font-black text-slate-700 sm:text-sm md:gap-2"
+												>
+													<div
+														class={cn(
+															'rounded-lg p-1 md:p-1.5',
+															log.verifyMethod === 'face'
+																? 'bg-blue-100 text-blue-600'
+																: log.verifyMethod === 'finger'
+																	? 'bg-amber-100 text-amber-600'
+																	: 'bg-slate-100 text-slate-500'
+														)}
+													>
 														{#if log.verifyMethod === 'face'}
-															<Scan size={16} />
+															<Scan size={14} />
 														{:else if log.verifyMethod === 'finger'}
-															<Fingerprint size={16} />
+															<Fingerprint size={14} />
 														{:else if log.verifyMethod === 'card'}
-															<CreditCard size={16} />
+															<CreditCard size={14} />
 														{:else}
-															<Users size={16} />
+															<Users size={14} />
 														{/if}
 													</div>
 													<span class="capitalize">{log.verifyMethod}</span>
@@ -601,15 +870,23 @@
 										{/if}
 
 										{#if data.user?.permissions.includes('people.create')}
-											<form method="POST" action="?/checkOut" use:enhance class="w-full md:w-auto">
+											<form
+												method="POST"
+												action="?/checkOut"
+												use:enhance
+												class="col-span-2 xl:col-span-1 xl:w-auto"
+											>
 												<input type="hidden" name="logId" value={log.id} />
 												<Button
 													type="button"
 													variant="outline"
-													class="h-12 w-full cursor-pointer gap-2 border-2 border-rose-100 px-6 font-black text-rose-600 shadow-sm hover:bg-rose-50 hover:text-rose-700 md:w-auto"
-													onclick={(e) => triggerCheckOut((e.currentTarget as HTMLButtonElement).form as HTMLFormElement)}
+													class="h-11 w-full cursor-pointer gap-2 border-2 border-rose-100 px-4 font-black text-rose-600 shadow-sm transition-all hover:bg-rose-50 hover:text-rose-700 md:h-12 xl:w-auto xl:px-6"
+													onclick={(e) =>
+														triggerCheckOut(
+															(e.currentTarget as HTMLButtonElement).form as HTMLFormElement
+														)}
 												>
-													<CheckCircle2 size={20} />
+													<CheckCircle2 size={18} />
 													{i18n.t('checkOut')}
 												</Button>
 											</form>
@@ -620,16 +897,19 @@
 						</Card.Root>
 					{:else}
 						<div
-							class="py-24 text-center space-y-6 bg-white border-2 border-dashed border-slate-200 rounded-3xl"
+							class="py-16 text-center space-y-6 bg-white border-2 border-dashed border-slate-200 rounded-3xl lg:py-24"
 						>
 							<div
-								class="size-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-300"
+								class="size-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-300 md:size-24"
 							>
-								<Users size={48} />
+								<Users size={32} class="md:hidden" />
+								<Users size={48} class="hidden md:block" />
 							</div>
-							<div class="space-y-2">
-								<p class="text-xl font-black text-slate-600">{i18n.t('noResults')}</p>
-								<p class="text-slate-400 text-sm font-bold uppercase tracking-widest">
+							<div class="space-y-2 px-6">
+								<p class="text-lg font-black text-slate-600 md:text-xl">{i18n.t('noResults')}</p>
+								<p
+									class="text-slate-400 text-[10px] font-bold uppercase tracking-widest md:text-sm"
+								>
 									No one currently on premises matches your criteria
 								</p>
 							</div>
@@ -637,95 +917,8 @@
 					{/each}
 				</div>
 
-				<!-- Pagination (Improved UI) -->
-				<div
-					class="mt-6 flex flex-col items-center justify-between gap-6 border-t border-slate-200 px-4 py-8 lg:flex-row"
-				>
-					<!-- Left: Info -->
-					<div class="order-2 text-sm font-bold text-slate-400 lg:order-1">
-						Showing <span class="text-slate-900"
-							>{(data.pagination.page - 1) * data.pagination.limit + 1}</span
-						>
-						to
-						<span class="text-slate-900"
-							>{Math.min(
-								data.pagination.page * data.pagination.limit,
-								data.pagination.totalCount
-							)}</span
-						>
-						of <span class="text-slate-900">{data.pagination.totalCount}</span> results
-					</div>
-
-					<!-- Center: Page Numbers -->
-					{#if data.pagination.totalPages > 1}
-						<div class="order-1 flex items-center gap-1 lg:order-2">
-							<Button
-								variant="ghost"
-								size="sm"
-								class="h-10 cursor-pointer gap-1 rounded-xl px-3 font-bold"
-								disabled={data.pagination.page === 1}
-								onclick={() => goToPage(data.pagination.page - 1)}
-							>
-								<ChevronLeft size={16} />
-								<span class="hidden sm:inline">Prev</span>
-							</Button>
-
-							<div class="mx-2 flex items-center gap-1">
-								{#each getPageRange(data.pagination.page, data.pagination.totalPages) as p (p)}
-									{#if p === '...'}
-										<span class="px-2 text-slate-300">...</span>
-									{:else}
-										<Button
-											variant={data.pagination.page === p ? 'default' : 'ghost'}
-											size="sm"
-											class={cn(
-												'h-10 w-10 cursor-pointer rounded-xl text-xs font-black transition-all',
-												data.pagination.page === p
-													? 'scale-110 shadow-md'
-													: 'text-slate-500 hover:bg-slate-100'
-											)}
-											onclick={() => goToPage(p as number)}
-										>
-											{p}
-										</Button>
-									{/if}
-								{/each}
-							</div>
-
-							<Button
-								variant="ghost"
-								size="sm"
-								class="h-10 cursor-pointer gap-1 rounded-xl px-3 font-bold"
-								disabled={data.pagination.page === data.pagination.totalPages}
-								onclick={() => goToPage(data.pagination.page + 1)}
-							>
-								<span class="hidden sm:inline">Next</span>
-								<ChevronRight size={16} />
-							</Button>
-						</div>
-					{/if}
-
-					<!-- Right: Row Count -->
-					<div class="order-3 flex items-center gap-3">
-						<span class="text-[10px] font-black tracking-widest text-slate-400 uppercase"
-							>Per Page</span
-						>
-						<select
-							class="cursor-pointer rounded-xl border-2 border-slate-100 bg-white px-3 py-2 text-xs font-black shadow-sm transition-colors hover:border-slate-200 focus:border-primary-500 focus:outline-none"
-							value={data.pagination.limit}
-							onchange={(e) => {
-								const url = new URL(page.url);
-								url.searchParams.set('limit', (e.currentTarget as HTMLSelectElement).value);
-								url.searchParams.set('page', '1');
-								goto(url.toString(), { keepFocus: true, noScroll: true });
-							}}
-						>
-							{#each [10, 20, 50, 100] as limit}
-								<option value={limit}>{limit}</option>
-							{/each}
-						</select>
-					</div>
-				</div>
+				<!-- Pagination -->
+				<Pagination {...data.pagination} />
 			</div>
 		</main>
 	</div>
@@ -735,19 +928,19 @@
 		<div class="fixed right-5 bottom-6 z-40 flex flex-col items-end gap-3 sm:right-8 sm:bottom-8">
 			<Button
 				variant="outline"
-				class="h-14 cursor-pointer gap-2.5 rounded-full border border-slate-200 bg-white/90 px-6 text-sm font-bold text-slate-600 shadow-lg backdrop-blur-sm transition-all duration-200 hover:border-slate-300 hover:bg-white hover:shadow-xl active:scale-[0.97]"
+				class="h-12 cursor-pointer gap-2.5 rounded-full border border-slate-200 bg-white/95 px-5 text-xs font-bold text-slate-600 shadow-lg backdrop-blur-sm transition-all duration-200 hover:border-slate-300 hover:bg-white hover:shadow-xl active:scale-[0.97] md:h-14 md:px-6 md:text-sm"
 				onclick={() => (isRegisterOpen = true)}
 			>
-				<PlusCircle size={20} />
+				<PlusCircle size={18} />
 				{i18n.t('register')}
 			</Button>
 
 			<Button
 				variant="default"
-				class="h-14 cursor-pointer gap-2.5 rounded-full bg-primary-600 px-6 text-sm font-bold text-white shadow-lg shadow-primary-600/25 transition-all duration-200 hover:bg-primary-700 hover:shadow-xl hover:shadow-primary-600/30 active:scale-[0.97]"
+				class="h-12 cursor-pointer gap-2.5 rounded-full bg-primary-600 px-5 text-xs font-bold text-white shadow-lg shadow-primary-600/25 transition-all duration-200 hover:bg-primary-700 hover:shadow-xl hover:shadow-primary-600/30 active:scale-[0.97] md:h-14 md:px-6 md:text-sm"
 				onclick={() => (isCheckInOpen = true)}
 			>
-				<PlayCircle size={20} />
+				<PlayCircle size={18} />
 				{i18n.t('checkIn')}
 			</Button>
 		</div>
@@ -758,19 +951,20 @@
 <RegisterDialog bind:open={isRegisterOpen} />
 
 <ConfirmModal
-    bind:open={isPrintConfirmOpen}
-    title="Large Report Warning"
-    message="This report contains {data.pagination.totalCount} records. Printing more than 2,000 records may slow down your browser or take a long time to load. Are you sure you want to proceed?"
-    confirmText="Print Anyway"
-    cancelText="Cancel"
-    variant="warning"
-    onconfirm={printEntryLog}
+	bind:open={isPrintConfirmOpen}
+	title="Large Report Warning"
+	message="This report contains {data.pagination
+		.totalCount} records. Printing more than 2,000 records may slow down your browser or take a long time to load. Are you sure you want to proceed?"
+	confirmText="Print Anyway"
+	cancelText="Cancel"
+	variant="warning"
+	onconfirm={printEntryLog}
 />
 
 <ConfirmModal
-    bind:open={confirmCheckOutOpen}
-    title="Confirm Check-Out"
-    message="Are you sure you want to check out this person?"
-    confirmText="Confirm"
-    onconfirm={() => checkOutFormElement?.requestSubmit()}
+	bind:open={confirmCheckOutOpen}
+	title="Confirm Check-Out"
+	message="Are you sure you want to check out this person?"
+	confirmText="Confirm"
+	onconfirm={() => checkOutFormElement?.requestSubmit()}
 />

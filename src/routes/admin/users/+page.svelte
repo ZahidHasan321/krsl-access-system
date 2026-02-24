@@ -10,7 +10,21 @@
 	import { i18n } from '$lib/i18n.svelte';
 	import { clsx } from 'clsx';
 	import { format } from 'date-fns';
-	import { Calendar, Eye, EyeOff, Loader2, Mail, Phone, Shield, Trash2, User, UserPlus, Users, Pencil } from 'lucide-svelte';
+	import {
+		Calendar,
+		Eye,
+		EyeOff,
+		Loader2,
+		Mail,
+		Phone,
+		Shield,
+		ShieldCheck,
+		Trash2,
+		User,
+		UserPlus,
+		Users,
+		Pencil
+	} from 'lucide-svelte';
 	import { appToast } from '$lib/utils';
 	import { ROLES } from '$lib/constants/roles';
 	import type { ActionData, PageData } from './$types';
@@ -20,10 +34,16 @@
 	let isCreateDialogOpen = $state(false);
 	let isEditDialogOpen = $state(false);
 	let confirmDeleteOpen = $state(false);
-	
+
 	let userToDelete = $state<{ id: string; username: string } | null>(null);
-	let editingUser = $state<{ id: string; username: string; name: string | null; contact: string | null; roleId: string } | null>(null);
-	
+	let editingUser = $state<{
+		id: string;
+		username: string;
+		name: string | null;
+		contact: string | null;
+		roleId: string;
+	} | null>(null);
+
 	let deleteFormElement = $state<HTMLFormElement | null>(null);
 	let showPassword = $state(false);
 	let isSubmitting = $state(false);
@@ -72,16 +92,18 @@
 	});
 </script>
 
-<div class="space-y-8 pb-20">
-	<div class="flex items-center justify-between">
+<div class="space-y-8 px-4 pb-20 md:px-0">
+	<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 		<div>
-			<h1 class="text-3xl font-black tracking-tight text-slate-900">{i18n.t('userManagement')}</h1>
-			<p class="mt-1 text-sm font-bold tracking-widest text-slate-500 uppercase">
+			<h1 class="text-3xl font-black tracking-tight text-slate-900 capitalize">
+				{i18n.t('userManagement')}
+			</h1>
+			<p class="mt-1 text-sm font-bold tracking-widest text-slate-500 capitalize">
 				{data.users.length} System Users
 			</p>
 		</div>
 		<Button
-			class="h-11 gap-2 px-6 font-black shadow-lg"
+			class="h-11 shrink-0 gap-2 rounded-xl px-6 font-black shadow-lg sm:h-12 sm:rounded-2xl"
 			onclick={() => (isCreateDialogOpen = true)}
 		>
 			<UserPlus size={20} />
@@ -91,35 +113,43 @@
 
 	<div class="grid grid-cols-1 gap-4">
 		{#each data.users as u (u.id)}
-			<Card.Root class="group overflow-hidden border-2 border-slate-100">
-				<Card.Content class="p-6">
-					<div class="flex flex-col justify-between gap-6 md:flex-row md:items-center">
-						<div class="flex items-center gap-4">
+			<Card.Root class="group overflow-hidden border-2 border-slate-100 bg-white">
+				<Card.Content class="p-4 sm:p-6">
+					<div class="flex flex-col gap-4 sm:gap-6 md:flex-row md:items-center md:justify-between">
+						<div class="flex items-start gap-4">
 							<div
-								class="flex size-14 items-center justify-center rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-400 transition-all group-hover:border-primary-100 group-hover:bg-primary-50 group-hover:text-primary-600"
+								class="flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-slate-50 text-slate-400 transition-all group-hover:border-primary-100 group-hover:bg-primary-50 group-hover:text-primary-600 sm:size-14 sm:rounded-2xl"
 							>
-								<Users size={24} />
+								<Users size={22} />
 							</div>
-							<div>
-								<div class="flex items-center gap-3">
-									<h3 class="text-lg leading-tight font-black text-slate-900">{u.username}</h3>
+							<div class="min-w-0 flex-1">
+								<div class="flex flex-wrap items-center gap-2 sm:gap-3">
+									<h3 class="truncate text-base leading-tight font-black text-slate-900 sm:text-lg">
+										{u.username}
+									</h3>
 									<Badge
 										variant="outline"
 										class={clsx(
-											'text-[10px] font-bold tracking-widest uppercase',
+											'px-2 py-0.5 text-[9px] font-black tracking-wider capitalize shadow-sm',
 											u.roleId === ROLES.ADMIN
-												? 'border-rose-200 bg-rose-100 text-rose-700'
-												: 'border-blue-200 bg-blue-100 text-blue-700'
+												? 'border-rose-200 bg-rose-50 text-rose-700'
+												: 'border-indigo-200 bg-indigo-50 text-indigo-700'
 										)}
 									>
-										<Shield size={12} class="mr-1 opacity-50" />
+										{#if u.roleId === ROLES.ADMIN}
+											<Shield size={12} class="mr-1.5 opacity-70" />
+										{:else}
+											<ShieldCheck size={12} class="mr-1.5 opacity-70" />
+										{/if}
 										{data.roles.find((r) => r.id === u.roleId)?.name || u.roleId}
 									</Badge>
 								</div>
-								
-								<div class="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-xs font-bold tracking-tight text-slate-500 uppercase sm:grid-cols-2">
+
+								<div
+									class="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-[11px] font-bold tracking-tight text-slate-500 capitalize sm:grid-cols-2 sm:text-xs"
+								>
 									{#if u.name}
-										<span class="flex items-center gap-1.5">
+										<span class="flex items-center gap-1.5 truncate">
 											<User size={14} class="opacity-50" />
 											{u.name}
 										</span>
@@ -130,7 +160,7 @@
 											{u.contact}
 										</span>
 									{/if}
-									<span class="flex items-center gap-1.5">
+									<span class="flex items-center gap-1.5 truncate">
 										<Mail size={14} class="opacity-50" />
 										{u.username}
 									</span>
@@ -142,27 +172,36 @@
 							</div>
 						</div>
 
-						<div class="flex items-center gap-2 border-t pt-4 md:border-t-0 md:pt-0">
+						<div
+							class="flex items-center gap-2 border-t border-slate-50 pt-3 md:border-t-0 md:pt-0"
+						>
 							{#if canEdit(u)}
 								<Button
 									type="button"
 									variant="ghost"
 									size="icon"
-									class="size-10 rounded-xl border-2 border-transparent text-slate-400 hover:border-slate-100 hover:bg-slate-50 hover:text-primary-600"
+									class="h-10 w-full rounded-xl border-2 border-transparent text-slate-400 transition-all hover:border-slate-100 hover:bg-slate-50 hover:text-primary-600 sm:w-10"
 									onclick={() => openEdit(u)}
 								>
 									<Pencil size={18} />
+									<span class="ml-2 font-bold sm:hidden">Edit User</span>
 								</Button>
 							{/if}
 
 							{#if canDelete(u)}
-								<form method="POST" action="?/deleteUser" use:enhance bind:this={deleteFormElement}>
+								<form
+									method="POST"
+									action="?/deleteUser"
+									use:enhance
+									bind:this={deleteFormElement}
+									class="w-full sm:w-auto"
+								>
 									<input type="hidden" name="id" value={u.id} />
 									<Button
 										type="button"
 										variant="ghost"
 										size="icon"
-										class="size-10 rounded-xl border-2 border-transparent text-rose-500 hover:border-rose-100 hover:bg-rose-50 hover:text-rose-700"
+										class="h-10 w-full rounded-xl border-2 border-transparent text-rose-500 transition-all hover:border-rose-100 hover:bg-rose-50 hover:text-rose-700 sm:w-10"
 										onclick={(e: MouseEvent) =>
 											triggerDelete(
 												u,
@@ -170,6 +209,7 @@
 											)}
 									>
 										<Trash2 size={18} />
+										<span class="ml-2 font-bold sm:hidden">Delete</span>
 									</Button>
 								</form>
 							{/if}
@@ -196,30 +236,35 @@
 		<Dialog.Header>
 			<Dialog.Title class="text-2xl font-black">Create User</Dialog.Title>
 		</Dialog.Header>
-		<form method="POST" action="?/createUser" use:enhance={() => {
-			isSubmitting = true;
-			return async ({ update, result }) => {
-				await update();
-				isSubmitting = false;
-				if (result.type === 'success') {
-					isCreateDialogOpen = false;
-					appToast.success('User created successfully');
-				}
-			};
-		}} class="space-y-4 pt-4">
+		<form
+			method="POST"
+			action="?/createUser"
+			use:enhance={() => {
+				isSubmitting = true;
+				return async ({ update, result }) => {
+					await update();
+					isSubmitting = false;
+					if (result.type === 'success') {
+						isCreateDialogOpen = false;
+						appToast.success('User created successfully');
+					}
+				};
+			}}
+			class="space-y-4 pt-4"
+		>
 			<div class="grid grid-cols-2 gap-4">
 				<div class="space-y-2">
-					<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">Name</Label>
+					<Label class="text-xs font-bold tracking-widest text-slate-500 capitalize">Name</Label>
 					<Input name="name" placeholder="Full Name" class="h-11 border-2" />
 				</div>
 				<div class="space-y-2">
-					<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">Contact</Label>
+					<Label class="text-xs font-bold tracking-widest text-slate-500 capitalize">Contact</Label>
 					<Input name="contact" placeholder="Phone/Mobile" class="h-11 border-2" />
 				</div>
 			</div>
 
 			<div class="space-y-2">
-				<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">Username</Label>
+				<Label class="text-xs font-bold tracking-widest text-slate-500 capitalize">Username</Label>
 				<Input
 					name="username"
 					required
@@ -231,7 +276,7 @@
 			</div>
 
 			<div class="space-y-2">
-				<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">Password</Label>
+				<Label class="text-xs font-bold tracking-widest text-slate-500 capitalize">Password</Label>
 				<div class="relative">
 					<Input
 						name="password"
@@ -243,7 +288,7 @@
 					/>
 					<button
 						type="button"
-						class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+						class="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
 						onclick={() => (showPassword = !showPassword)}
 						tabindex={-1}
 					>
@@ -258,10 +303,12 @@
 			</div>
 
 			<div class="space-y-2">
-				<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">Assign Role</Label>
+				<Label class="text-xs font-bold tracking-widest text-slate-500 capitalize"
+					>Assign Role</Label
+				>
 				<select
 					name="roleId"
-					class="h-11 w-full rounded-xl border-2 border-slate-200 px-4 text-sm font-bold outline-none focus:border-primary-500 focus:ring-primary-500 bg-white"
+					class="h-11 w-full rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-bold outline-none focus:border-primary-500 focus:ring-primary-500"
 				>
 					{#each data.roles as r}
 						<option value={r.id}>{r.name}</option>
@@ -278,7 +325,11 @@
 				>
 					Cancel
 				</Button>
-				<Button type="submit" class="h-12 flex-1 gap-2 text-base font-black" disabled={isSubmitting}>
+				<Button
+					type="submit"
+					class="h-12 flex-1 gap-2 text-base font-black"
+					disabled={isSubmitting}
+				>
 					{#if isSubmitting}
 						<Loader2 class="animate-spin" size={20} />
 						Creating...
@@ -299,27 +350,43 @@
 			<Dialog.Title class="text-2xl font-black">Edit User</Dialog.Title>
 		</Dialog.Header>
 		{#if editingUser}
-			<form method="POST" action="?/updateUser" use:enhance={() => {
-				isSubmitting = true;
-				return async ({ update, result }) => {
-					await update();
-					isSubmitting = false;
-					if (result.type === 'success') {
-						isEditDialogOpen = false;
-						appToast.success('User updated successfully');
-					}
-				};
-			}} class="space-y-4 pt-4">
+			<form
+				method="POST"
+				action="?/updateUser"
+				use:enhance={() => {
+					isSubmitting = true;
+					return async ({ update, result }) => {
+						await update();
+						isSubmitting = false;
+						if (result.type === 'success') {
+							isEditDialogOpen = false;
+							appToast.success('User updated successfully');
+						}
+					};
+				}}
+				class="space-y-4 pt-4"
+			>
 				<input type="hidden" name="userId" value={editingUser.id} />
 
 				<div class="grid grid-cols-2 gap-4">
 					<div class="space-y-2">
 						<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">Name</Label>
-						<Input name="name" value={editingUser.name} placeholder="Full Name" class="h-11 border-2" />
+						<Input
+							name="name"
+							value={editingUser.name}
+							placeholder="Full Name"
+							class="h-11 border-2"
+						/>
 					</div>
 					<div class="space-y-2">
-						<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">Contact</Label>
-						<Input name="contact" value={editingUser.contact} placeholder="Phone/Mobile" class="h-11 border-2" />
+						<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">Contact</Label
+						>
+						<Input
+							name="contact"
+							value={editingUser.contact}
+							placeholder="Phone/Mobile"
+							class="h-11 border-2"
+						/>
 					</div>
 				</div>
 
@@ -333,21 +400,24 @@
 						maxlength={31}
 						placeholder="Enter username"
 						class="h-11 border-2"
-						disabled={data.isMaster && editingUser.username === data.users.find(u => u.isMaster)?.username} 
+						disabled={data.isMaster &&
+							editingUser.username === data.users.find((u) => u.isMaster)?.username}
 					/>
 					<!-- Note: For Master self, we disable username input. 
 					     Wait, `editingUser.username` check against Master username might be tricky if I don't have isMaster flag on editingUser directly.
 						 But `data.users` has `isMaster` flag.
 						 Better: check if this user is Master user.
 					-->
-					{#if data.isMaster && data.users.find(u => u.id === editingUser?.id)?.isMaster}
+					{#if data.isMaster && data.users.find((u) => u.id === editingUser?.id)?.isMaster}
 						<p class="text-xs text-amber-600">Master username cannot be changed.</p>
 					{/if}
 				</div>
 
 				<div class="space-y-2">
 					<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">
-						Password <span class="text-slate-400 font-normal normal-case">(Leave blank to keep current)</span>
+						Password <span class="font-normal text-slate-400 normal-case"
+							>(Leave blank to keep current)</span
+						>
 					</Label>
 					<div class="relative">
 						<Input
@@ -356,11 +426,11 @@
 							minlength={8}
 							placeholder="••••••••"
 							class="h-11 border-2 pr-12"
-							disabled={data.isMaster && data.users.find(u => u.id === editingUser?.id)?.isMaster}
+							disabled={data.isMaster && data.users.find((u) => u.id === editingUser?.id)?.isMaster}
 						/>
 						<button
 							type="button"
-							class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+							class="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
 							onclick={() => (showPassword = !showPassword)}
 							tabindex={-1}
 						>
@@ -371,8 +441,10 @@
 							{/if}
 						</button>
 					</div>
-					{#if !(data.isMaster && data.users.find(u => u.id === editingUser?.id)?.isMaster)}
-						<p class="text-xs text-slate-400">At least 8 characters with both letters and numbers</p>
+					{#if !(data.isMaster && data.users.find((u) => u.id === editingUser?.id)?.isMaster)}
+						<p class="text-xs text-slate-400">
+							At least 8 characters with both letters and numbers
+						</p>
 					{/if}
 				</div>
 
@@ -380,9 +452,9 @@
 					<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">Role</Label>
 					<select
 						name="roleId"
-						class="h-11 w-full rounded-xl border-2 border-slate-200 px-4 text-sm font-bold outline-none focus:border-primary-500 focus:ring-primary-500 bg-white disabled:bg-slate-100 disabled:text-slate-400"
+						class="h-11 w-full rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-bold outline-none focus:border-primary-500 focus:ring-primary-500 disabled:bg-slate-100 disabled:text-slate-400"
 						value={editingUser.roleId}
-						disabled={data.isMaster && data.users.find(u => u.id === editingUser?.id)?.isMaster}
+						disabled={data.isMaster && data.users.find((u) => u.id === editingUser?.id)?.isMaster}
 					>
 						{#each data.roles as r}
 							<option value={r.id}>{r.name}</option>
@@ -399,7 +471,11 @@
 					>
 						Cancel
 					</Button>
-					<Button type="submit" class="h-12 flex-1 gap-2 text-base font-black" disabled={isSubmitting}>
+					<Button
+						type="submit"
+						class="h-12 flex-1 gap-2 text-base font-black"
+						disabled={isSubmitting}
+					>
 						{#if isSubmitting}
 							<Loader2 class="animate-spin" size={20} />
 							Saving...

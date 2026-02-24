@@ -184,6 +184,7 @@ export const actions: Actions = {
 			id: logId,
 			personId,
 			entryTime: now,
+			verifyMethod: 'manual',
 			status: 'on_premises',
 			purpose,
 			location,

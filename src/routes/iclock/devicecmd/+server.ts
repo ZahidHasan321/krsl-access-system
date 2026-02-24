@@ -77,7 +77,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						methods.push(method);
 						await db
 							.update(people)
-							.set({ enrolledMethods: JSON.stringify(methods) })
+							.set({ enrolledMethods: JSON.stringify(Array.from(new Set(methods))) })
 							.where(eq(people.id, person.id));
 					}
 

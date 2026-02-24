@@ -757,9 +757,11 @@
 												</div>
 											</div>
 											<p class="mt-0.5 text-xs font-bold text-slate-500 sm:text-sm">
-												<span class="text-primary-600/70">#{log.person.codeNo || 'N/A'}</span>
-												<span class="mx-1.5 opacity-30">|</span>
-												<span class="truncate">{log.person.company || 'Private'}</span>
+												<span class="text-primary-600/70">{log.person.codeNo ? `#${log.person.codeNo}` : ''}</span>
+												{#if log.person.codeNo && log.person.company}
+													<span class="mx-1.5 opacity-30">|</span>
+												{/if}
+												<span class="truncate">{log.person.company || ''}</span>
 											</p>
 											{#if !isEmployeeView && log.purpose}
 												<p
@@ -779,28 +781,30 @@
 									<div
 										class="grid w-full grid-cols-2 gap-4 border-t border-slate-50 pt-4 xl:flex xl:w-auto xl:items-center xl:gap-10 xl:border-none xl:pt-0 2xl:gap-16"
 									>
-										<div class="space-y-1">
-											<p
-												class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
-											>
-												{i18n.t('location')}
-											</p>
-											<div
-												class="flex items-center gap-1.5 text-sm font-black whitespace-nowrap text-slate-900 uppercase sm:text-base md:gap-2"
-											>
-												<div
-													class={cn(
-														'rounded-lg p-1 md:p-1.5',
-														log.location === 'ship'
-															? 'bg-blue-100 text-blue-600'
-															: 'bg-amber-100 text-amber-600'
-													)}
+										{#if log.location}
+											<div class="space-y-1">
+												<p
+													class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
 												>
-													<MapPin size={14} />
+													{i18n.t('location')}
+												</p>
+												<div
+													class="flex items-center gap-1.5 text-sm font-black whitespace-nowrap text-slate-900 uppercase sm:text-base md:gap-2"
+												>
+													<div
+														class={cn(
+															'rounded-lg p-1 md:p-1.5',
+															log.location === 'ship'
+																? 'bg-blue-100 text-blue-600'
+																: 'bg-amber-100 text-amber-600'
+														)}
+													>
+														<MapPin size={14} />
+													</div>
+													<span>{log.location}</span>
 												</div>
-												<span>{log.location || 'N/A'}</span>
 											</div>
-										</div>
+										{/if}
 
 										<div class="space-y-1">
 											<p
@@ -848,10 +852,12 @@
 														class={cn(
 															'rounded-lg p-1 md:p-1.5',
 															log.verifyMethod === 'face'
-																? 'bg-blue-100 text-blue-600'
+																? 'bg-violet-100 text-violet-600'
 																: log.verifyMethod === 'finger'
-																	? 'bg-amber-100 text-amber-600'
-																	: 'bg-slate-100 text-slate-500'
+																	? 'bg-emerald-100 text-emerald-600'
+																	: log.verifyMethod === 'manual'
+																		? 'bg-blue-100 text-blue-600'
+																		: 'bg-slate-100 text-slate-500'
 														)}
 													>
 														{#if log.verifyMethod === 'face'}
@@ -860,6 +866,8 @@
 															<Fingerprint size={14} />
 														{:else if log.verifyMethod === 'card'}
 															<CreditCard size={14} />
+														{:else if log.verifyMethod === 'manual'}
+															<Shield size={14} />
 														{:else}
 															<Users size={14} />
 														{/if}

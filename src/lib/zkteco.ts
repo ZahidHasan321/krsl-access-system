@@ -129,15 +129,18 @@ export const Commands = {
 
 /** Map ZKTeco verify code to human-readable method */
 export function verifyCodeToMethod(verify: number): string | null {
+	// Codes based on tested ZKTeco PUSH protocol
 	switch (verify) {
-		case 0:
-			return 'password';
 		case 1:
 			return 'finger';
-		case 2:
+		case 3:
+			return 'password';
+		case 4:
 			return 'card';
 		case 15:
 			return 'face';
+		case 21:
+			return 'finger_vein';
 		default:
 			return null;
 	}
@@ -147,8 +150,14 @@ export function verifyCodeToMethod(verify: number): string | null {
 export const ENROLLMENT_OPS: Record<string, string> = {
 	EnrollFP: 'finger',
 	EnrollFinger: 'finger',
+	'Enroll FP': 'finger',
 	EnrollFace: 'face',
-	EnrollCard: 'card'
+	'Enroll Face': 'face',
+	EnrollUser: 'face', // Often face on newer devices
+	EnrollCard: 'card',
+	'Enroll Card': 'card',
+	RegFace: 'face',
+	RegUser: 'face'
 };
 
 export interface OperLogEntry {

@@ -268,14 +268,18 @@ export const POST: RequestHandler = async ({ url, request }) => {
 					methods = [];
 				}
 
-				const method = fid === '111' || table === 'FACE' ? 'face' : 'finger';
-				console.log(`[ZK:BioData] Associating template as ${method} for ${person.name}`);
-
-				if (!methods.includes(method)) {
+				let method = fid === '111' || table === 'FACE' ? 'face' : 'finger';
+				
+				// Special case: If fid=0 but person already has 'face' and NO 'finger',
+				// and this is the ONLY template, don't add 'finger' yet. 
+				// This handles devices that send face as fid=0.
+				if (method === 'finger' && methods.includes('face') && !methods.includes('finger')) {
+					console.log(`[ZK:BioData] Skipping 'finger' addition for ${person.name} as they already have 'face' and fid=0 might be the face template.`);
+				} else if (!methods.includes(method)) {
 					methods.push(method);
 					await db
 						.update(people)
-						.set({ enrolledMethods: JSON.stringify(methods) })
+						.set({ enrolledMethods: JSON.stringify(Array.from(new Set(methods))) })
 						.where(eq(people.id, person.id));
 				}
 				notifyEnrollment({ personId: person.id, method });

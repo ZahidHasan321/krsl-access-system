@@ -742,18 +742,22 @@
 									</div>
 								</div>
 								<div class="grid grid-cols-2 gap-4 text-xs">
-									<div class="space-y-1">
-										<p class="text-[10px] font-bold tracking-widest text-slate-400 capitalize">
-											{i18n.t('codeNo')}
-										</p>
-										<p class="font-black text-slate-700">{person.codeNo || '-'}</p>
-									</div>
-									<div class="space-y-1">
-										<p class="text-[10px] font-bold tracking-widest text-slate-400 capitalize">
-											{i18n.t('company')}
-										</p>
-										<p class="truncate font-bold text-slate-600">{person.company || '-'}</p>
-									</div>
+									{#if person.codeNo}
+										<div class="space-y-1">
+											<p class="text-[10px] font-bold tracking-widest text-slate-400 capitalize">
+												{i18n.t('codeNo')}
+											</p>
+											<p class="font-black text-slate-700">{person.codeNo}</p>
+										</div>
+									{/if}
+									{#if person.company}
+										<div class="space-y-1">
+											<p class="text-[10px] font-bold tracking-widest text-slate-400 capitalize">
+												{i18n.t('company')}
+											</p>
+											<p class="truncate font-bold text-slate-600">{person.company}</p>
+										</div>
+									{/if}
 									<div
 										class="col-span-2 mt-1 flex items-center justify-between gap-4 border-t border-slate-50 pt-3"
 									>
@@ -840,7 +844,7 @@
 											</div>
 											<div class="flex items-center gap-2">
 												<span class="text-[10px] font-bold tracking-tight text-slate-400 uppercase">
-													{person.designation || 'N/A'}
+													{person.designation || '-'}
 												</span>
 												{#if parseEnrolledMethods(person.enrolledMethods).length > 0}
 													<div class="flex items-center gap-1">

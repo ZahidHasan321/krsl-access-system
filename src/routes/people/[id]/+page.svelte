@@ -271,47 +271,53 @@
 
 					<!-- Quick Info Grid -->
 					<div class="mt-4 grid grid-cols-1 gap-3">
-						<div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
-							<div
-								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600"
-							>
-								<IdCard size={20} />
+						{#if data.person.codeNo}
+							<div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+								<div
+									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600"
+								>
+									<IdCard size={20} />
+								</div>
+								<div class="min-w-0">
+									<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+										{i18n.t('codeNo')}
+									</p>
+									<p class="truncate font-bold text-slate-900">{data.person.codeNo}</p>
+								</div>
 							</div>
-							<div class="min-w-0">
-								<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-									{i18n.t('codeNo')}
-								</p>
-								<p class="truncate font-bold text-slate-900">{data.person.codeNo || 'N/A'}</p>
-							</div>
-						</div>
+						{/if}
 
-						<div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
-							<div
-								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600"
-							>
-								<Building2 size={20} />
+						{#if data.person.company}
+							<div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+								<div
+									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600"
+								>
+									<Building2 size={20} />
+								</div>
+								<div class="min-w-0">
+									<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+										{i18n.t('company')}
+									</p>
+									<p class="truncate font-bold text-slate-900">{data.person.company}</p>
+								</div>
 							</div>
-							<div class="min-w-0">
-								<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-									{i18n.t('company')}
-								</p>
-								<p class="truncate font-bold text-slate-900">{data.person.company || 'N/A'}</p>
-							</div>
-						</div>
+						{/if}
 
-						<div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
-							<div
-								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600"
-							>
-								<Phone size={20} />
+						{#if data.person.contactNo}
+							<div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+								<div
+									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600"
+								>
+									<Phone size={20} />
+								</div>
+								<div class="min-w-0">
+									<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+										{i18n.t('phone')}
+									</p>
+									<p class="truncate font-bold text-slate-900">{data.person.contactNo}</p>
+								</div>
 							</div>
-							<div class="min-w-0">
-								<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-									{i18n.t('phone')}
-								</p>
-								<p class="truncate font-bold text-slate-900">{data.person.contactNo || 'N/A'}</p>
-							</div>
-						</div>
+						{/if}
 
 						{#if data.person.designation}
 							<div
@@ -703,10 +709,12 @@
 														log.verifyMethod === 'finger'
 															? 'border-emerald-200 bg-emerald-50 text-emerald-600'
 															: log.verifyMethod === 'face'
-																? 'border-blue-200 bg-blue-50 text-blue-600'
+																? 'border-violet-200 bg-violet-50 text-violet-600'
 																: log.verifyMethod === 'card'
 																	? 'border-amber-200 bg-amber-50 text-amber-600'
-																	: 'border-slate-200 text-slate-500'
+																	: log.verifyMethod === 'manual'
+																		? 'border-blue-200 bg-blue-50 text-blue-600'
+																		: 'border-slate-200 text-slate-500'
 													)}
 												>
 													{log.verifyMethod}

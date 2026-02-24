@@ -370,7 +370,7 @@ const server = http.createServer(async (req, res) => {
 								methods.push(method);
 								await db
 									.update(schema.people)
-									.set({ enrolledMethods: JSON.stringify(methods) })
+									.set({ enrolledMethods: JSON.stringify(Array.from(new Set(methods))) })
 									.where(eq(schema.people.id, person.id));
 							}
 							// Always notify SvelteKit so the UI can close its waiting dialog
@@ -576,6 +576,22 @@ const server = http.createServer(async (req, res) => {
 								status: 'PENDING'
 							});
 							const method = cmd.commandString.includes('FID=111') ? 'face' : 'finger';
+
+							// Update enrolledMethods in DB
+							let methods: string[] = [];
+							try {
+								methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : [];
+							} catch {
+								methods = [];
+							}
+							if (!methods.includes(method)) {
+								methods.push(method);
+								await db
+									.update(schema.people)
+									.set({ enrolledMethods: JSON.stringify(Array.from(new Set(methods))) })
+									.where(eq(schema.people.id, person.id));
+							}
+
 							notifySvelte('enrollment', {
 								personId: person.id,
 								method,

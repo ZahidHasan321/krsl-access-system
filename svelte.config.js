@@ -13,7 +13,7 @@ const config = {
 			// Disabled because ZKTeco devices use POST with text/plain
 			// and don't send browser Origin headers — CSRF rejects them.
 			// This is safe for an internal single-company app behind nginx.
-			checkOrigin: false
+			trustedOrigins: ['*']
 		}
 	}
 };

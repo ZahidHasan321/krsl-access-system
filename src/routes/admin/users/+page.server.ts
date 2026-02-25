@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { user, roles, session } from '$lib/server/db/schema';
 import { fail } from '@sveltejs/kit';
-import { eq, ne, and } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { hash } from '@node-rs/argon2';
 import { encodeBase32LowerCase } from '@oslojs/encoding';
 import type { PageServerLoad, Actions } from './$types';

@@ -77,7 +77,7 @@
 			isLoadingMore = true;
 		}
 
-		const q = searchQuery;
+		const q = searchQuery.trim();
 		const catId = selectedCategoryId;
 		const limit = 50;
 
@@ -110,7 +110,7 @@
 
 	function handleSearch() {
 		clearTimeout(debounceTimer);
-		if (searchQuery.length === 0) {
+		if (searchQuery.trim().length === 0) {
 			performSearch(false);
 		} else {
 			debounceTimer = setTimeout(() => {

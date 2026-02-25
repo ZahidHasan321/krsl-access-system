@@ -62,8 +62,17 @@
 	};
 
 	let searchQuery = $state(data.filters.query || '');
+	let searchInputEl = $state<HTMLInputElement | null>(null);
 	let selectedCategoryId = $state(data.filters.categoryId || '');
 	let selectedLocation = $state(data.filters.location || '');
+
+	$effect(() => {
+		// Only sync from server if user is not currently focusing the input
+		if (data.filters.query !== searchQuery && document.activeElement !== searchInputEl) {
+			searchQuery = data.filters.query || '';
+		}
+	});
+
 	let isCheckInOpen = $state(false);
 	let isRegisterOpen = $state(false);
 	let isPreparingPrint = $state(false);
@@ -388,6 +397,7 @@
 							<Search size={18} />
 						</div>
 						<Input
+							bind:this={searchInputEl}
 							bind:value={searchQuery}
 							oninput={handleSearchInput}
 							placeholder={i18n.t('searchPeoplePlaceholder')}

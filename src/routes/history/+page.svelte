@@ -42,19 +42,13 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let searchQuery = $state('');
-	let startDate = $state('');
-	let endDate = $state('');
+	let searchQuery = $state(data.filters.query || '');
+	let startDate = $state(data.filters.startDate || '');
+	let endDate = $state(data.filters.endDate || '');
 	let isPreparingPrint = $state(false);
 	let previousLimit = $state(20);
 
 	let isPrintConfirmOpen = $state(false);
-
-	$effect(() => {
-		searchQuery = data.filters.query;
-		startDate = data.filters.startDate;
-		endDate = data.filters.endDate;
-	});
 
 	$effect(() => {
 		if (page.url.searchParams.has('print')) {

@@ -42,18 +42,22 @@
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let isCheckInOpen = $state(false);
-	let searchQuery = $state('');
-	let typeFilter = $state('all');
+	let searchQuery = $state(data.filters.query || '');
+	let searchInputEl = $state<HTMLInputElement | null>(null);
+	let typeFilter = $state(data.filters.typeFilter || 'all');
+
+	$effect(() => {
+		// Only sync from server if user is not currently focusing the input
+		if (data.filters.query !== searchQuery && document.activeElement !== searchInputEl) {
+			searchQuery = data.filters.query || '';
+		}
+	});
+
 	let debounceTimer: any;
 
 	let isPreparingPrint = $state(false);
 	let previousLimit = $state(20);
 	let isPrintConfirmOpen = $state(false);
-
-	$effect(() => {
-		searchQuery = data.filters.query;
-		typeFilter = data.filters.typeFilter;
-	});
 
 	$effect(() => {
 		if (page.url.searchParams.has('print')) {
@@ -278,6 +282,7 @@
 							<Search size={18} />
 						</div>
 						<Input
+							bind:this={searchInputEl}
 							bind:value={searchQuery}
 							oninput={handleSearchInput}
 							placeholder={i18n.t('searchVehiclesPlaceholder')}

@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { attendanceLogs, people, personCategories } from '$lib/server/db/schema';
-import { eq, and, desc, sql, gte, lte, or, like, count, inArray, type SQL } from 'drizzle-orm';
+import { eq, and, desc, sql, gte, lte, or, ilike, count, inArray, type SQL } from 'drizzle-orm';
 import { format, subDays } from 'date-fns';
 import { requirePermission } from '$lib/server/rbac';
 import { getFlatCategoryList } from '$lib/server/db/category-utils';
@@ -48,7 +48,7 @@ export const load: PageServerLoad = async (event) => {
 		event.url.searchParams.get('startDate') || format(subDays(new Date(), 30), 'yyyy-MM-dd');
 	const endDate = event.url.searchParams.get('endDate') || format(new Date(), 'yyyy-MM-dd');
 	const categoryId = event.url.searchParams.get('category') || '';
-	const query = event.url.searchParams.get('q') || '';
+	const query = (event.url.searchParams.get('q') || '').trim();
 	const page = parseInt(event.url.searchParams.get('page') || '1');
 	const limit = Math.min(100, Math.max(1, parseInt(event.url.searchParams.get('limit') || '20')));
 	const offset = (page - 1) * limit;
@@ -69,10 +69,13 @@ export const load: PageServerLoad = async (event) => {
 	if (query) {
 		whereClauses.push(
 			or(
-				like(people.name, `%${query}%`),
-				like(people.codeNo, `%${query}%`),
-				like(people.company, `%${query}%`),
-				like(people.contactNo, `%${query}%`)
+				sql`COALESCE(${people.name}, '') % ${query}`,
+				sql`COALESCE(${people.codeNo}, '') % ${query}`,
+				sql`COALESCE(${people.company}, '') % ${query}`,
+				ilike(people.name, `%${query}%`),
+				ilike(people.codeNo, `%${query}%`),
+				ilike(people.company, `%${query}%`),
+				ilike(people.contactNo, `%${query}%`)
 			)
 		);
 	}

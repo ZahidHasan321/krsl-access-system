@@ -1,12 +1,12 @@
 import { db } from '$lib/server/db';
 import { vehicles } from '$lib/server/db/schema';
-import { desc, like, or, and, eq, count, gte, lte, sql } from 'drizzle-orm';
+import { desc, ilike, or, and, eq, count, gte, lte, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 import { requirePermission } from '$lib/server/rbac';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	requirePermission(locals, 'vehicles.view');
-	const query = url.searchParams.get('q') || '';
+	const query = (url.searchParams.get('q') || '').trim();
 	const dateFrom = url.searchParams.get('from') || '';
 	const dateTo = url.searchParams.get('to') || '';
 	const typeFilter = url.searchParams.get('type') || 'all';
@@ -20,11 +20,14 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	if (query) {
 		baseConditions.push(
 			or(
-				like(vehicles.vehicleNumber, `%${query}%`),
-				like(vehicles.driverName, `%${query}%`),
-				like(vehicles.vendorName, `%${query}%`),
-				like(vehicles.cargoDescription, `%${query}%`),
-				like(vehicles.mobile, `%${query}%`)
+				sql`COALESCE(${vehicles.vehicleNumber}, '') % ${query}`,
+				sql`COALESCE(${vehicles.driverName}, '') % ${query}`,
+				sql`COALESCE(${vehicles.vendorName}, '') % ${query}`,
+				ilike(vehicles.vehicleNumber, `%${query}%`),
+				ilike(vehicles.driverName, `%${query}%`),
+				ilike(vehicles.vendorName, `%${query}%`),
+				ilike(vehicles.cargoDescription, `%${query}%`),
+				ilike(vehicles.mobile, `%${query}%`)
 			)!
 		);
 	}

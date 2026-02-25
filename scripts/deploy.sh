@@ -54,6 +54,9 @@ until docker compose exec -T postgres pg_isready -U krcrm -d krcrm > /dev/null 2
 done
 echo "    postgres is ready."
 
+echo "==> Enabling database extensions..."
+docker compose exec -T postgres psql -U krcrm -d krcrm -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+
 echo "==> Running database migrations..."
 docker compose exec -T app npx drizzle-kit migrate
 

@@ -24,12 +24,15 @@
 	} from 'lucide-svelte';
 	import { enhance } from '$app/forms';
 	import { fade, fly, slide } from 'svelte/transition';
+	import VirtualList from 'svelte-virtual-list';
 	import {
 		CATEGORIES,
 		ROOT_CATEGORIES,
 		getSubCategories,
 		getCategoryById
 	} from '$lib/constants/categories';
+
+	import { onMount, untrack } from 'svelte';
 
 	let { open = $bindable() } = $props<{
 		open: boolean;
@@ -38,15 +41,20 @@
 	let searchQuery = $state('');
 	let results = $state<any[]>([]);
 	let isSearching = $state(false);
+	let isLoadingMore = $state(false);
 	let selectedPerson = $state<any>(null);
 	let selectedCategoryId = $state('');
 	let purpose = $state('');
 	let location = $state<'ship' | 'yard' | ''>('');
 	let debounceTimer: ReturnType<typeof setTimeout>;
 
+	let start = $state(0);
+	let end = $state(0);
+	let offset = 0;
+	let hasMore = $state(true);
+
 	const needsPurpose = $derived(selectedPerson && selectedPerson.rootCategorySlug !== 'employee');
 
-	// Filter subcategories based on selected root category
 	const availableSubCategories = $derived(() => {
 		if (!selectedCategoryId) return [];
 		const isRoot = ROOT_CATEGORIES.some((c) => c.id === selectedCategoryId);
@@ -58,31 +66,57 @@
 
 	const selectedCategory = $derived(getCategoryById(selectedCategoryId));
 
-	async function handleSearch() {
-		if (searchQuery.length < 2) {
-			results = [];
-			isSearching = false;
-			return;
+	async function performSearch(append = false) {
+		if (isLoadingMore || (isSearching && append)) return;
+
+		if (!append) {
+			offset = 0;
+			hasMore = true;
+			isSearching = true;
+		} else {
+			isLoadingMore = true;
 		}
-		isSearching = true;
-		clearTimeout(debounceTimer);
-		debounceTimer = setTimeout(async () => {
-			try {
-				let url = `/api/search?q=${encodeURIComponent(searchQuery)}`;
-				if (selectedCategoryId) {
-					url += `&category=${selectedCategoryId}`;
-				}
-				const res = await fetch(url);
-				if (res.ok) {
-					const data = await res.json();
-					results = data.filter((r: any) => r.type === 'person');
-				}
-			} catch (err) {
-				console.error(err);
-			} finally {
-				isSearching = false;
+
+		const q = searchQuery;
+		const catId = selectedCategoryId;
+		const limit = 50;
+
+		try {
+			let url = `/api/search?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}&type=person`;
+			if (catId) {
+				url += `&category=${catId}`;
 			}
-		}, 300);
+			const res = await fetch(url);
+			if (res.ok) {
+				const data = await res.json();
+				const newResults = data.filter((r: any) => r.type === 'person');
+
+				if (append) {
+					results = [...results, ...newResults];
+				} else {
+					results = newResults;
+				}
+
+				offset += newResults.length;
+				hasMore = newResults.length >= limit;
+			}
+		} catch (err) {
+			console.error(err);
+		} finally {
+			isSearching = false;
+			isLoadingMore = false;
+		}
+	}
+
+	function handleSearch() {
+		clearTimeout(debounceTimer);
+		if (searchQuery.length === 0) {
+			performSearch(false);
+		} else {
+			debounceTimer = setTimeout(() => {
+				performSearch(false);
+			}, 300);
+		}
 	}
 
 	function selectPerson(person: any) {
@@ -96,41 +130,49 @@
 
 	function changeCategory(catId: string) {
 		selectedCategoryId = catId;
-		// Re-search with new category filter
-		if (searchQuery.length >= 2) {
-			handleSearch();
-		}
 	}
 
 	function clearCategory() {
 		selectedCategoryId = '';
-		if (searchQuery.length >= 2) {
-			handleSearch();
-		}
 	}
 
 	$effect(() => {
 		if (open === false) {
 			setTimeout(() => {
-				searchQuery = '';
-				results = [];
-				selectedPerson = null;
-				selectedCategoryId = '';
-				purpose = '';
-				location = '';
-				isSearching = false;
+				untrack(() => {
+					searchQuery = '';
+					results = [];
+					selectedPerson = null;
+					selectedCategoryId = '';
+					purpose = '';
+					location = '';
+					isSearching = false;
+					isLoadingMore = false;
+					offset = 0;
+					hasMore = true;
+				});
 			}, 300);
+		} else {
+			// Trigger search when query or category changes
+			const _q = searchQuery;
+			const _c = selectedCategoryId;
+			untrack(() => handleSearch());
 		}
 	});
 
-	// Re-search when query changes
 	$effect(() => {
-		if (searchQuery) {
-			handleSearch();
+		if (
+			end > 0 &&
+			results.length > 0 &&
+			end >= results.length - 10 &&
+			hasMore &&
+			!isLoadingMore &&
+			!isSearching
+		) {
+			untrack(() => performSearch(true));
 		}
 	});
 
-	// Helper for category colors
 	const colorMap: Record<string, string> = {
 		blue: 'border-blue-200 bg-blue-50 text-blue-700',
 		orange: 'border-orange-200 bg-orange-50 text-orange-700',
@@ -153,6 +195,8 @@
 		teal: 'border-teal-500 bg-teal-500 text-white',
 		green: 'border-green-500 bg-green-500 text-white'
 	};
+
+	const listHeight = $derived(results.length > 0 ? Math.min(400, results.length * 80) : 0);
 </script>
 
 <Dialog.Root bind:open>
@@ -164,11 +208,9 @@
 			</Dialog.Description>
 		</div>
 
-		<div class="flex-1 space-y-4 overflow-y-auto p-6">
+		<div class="min-h-0 flex-initial space-y-4 overflow-y-auto p-6">
 			{#if !selectedPerson}
-				<!-- Search & Category Section -->
 				<div class="space-y-4">
-					<!-- Search Input -->
 					<div class="relative">
 						<Search class="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400" size={18} />
 						<Input
@@ -187,7 +229,6 @@
 						{/if}
 					</div>
 
-					<!-- Category Selection -->
 					<div class="space-y-3">
 						<div class="flex items-center justify-between">
 							<Label class="text-[10px] font-bold tracking-widest text-slate-400 uppercase"
@@ -204,7 +245,6 @@
 							{/if}
 						</div>
 
-						<!-- Root Categories -->
 						<div class="grid grid-cols-3 gap-2">
 							{#each ROOT_CATEGORIES as cat}
 								{@const isActive =
@@ -227,7 +267,6 @@
 							{/each}
 						</div>
 
-						<!-- Subcategories -->
 						{#if availableSubCategories().length > 0}
 							<div class="pt-1" transition:slide={{ duration: 200 }}>
 								<div
@@ -254,11 +293,15 @@
 				</div>
 
 				<!-- Results -->
-				<div class="mt-4 max-h-[300px] min-h-[300px] space-y-2 overflow-y-auto pr-1">
-					{#if isSearching}
-						<div class="space-y-2">
+				<div
+					class="overflow-hidden rounded-2xl border-2 border-slate-100 bg-slate-50/30 shadow-inner"
+				>
+					{#if isSearching && results.length === 0}
+						<div class="space-y-2 p-4">
 							{#each Array(4) as _}
-								<div class="flex w-full items-center gap-3 rounded-xl border-2 border-slate-50 p-3">
+								<div
+									class="flex w-full items-center gap-3 rounded-xl border-2 border-slate-50 bg-white p-3"
+								>
 									<Skeleton class="size-10 shrink-0 rounded-full" />
 									<div class="flex-1 space-y-2">
 										<Skeleton class="h-4 w-[140px]" />
@@ -268,97 +311,102 @@
 							{/each}
 						</div>
 					{:else}
-						{#each results as person (person.id)}
-							<button
-								class="flex w-full cursor-pointer items-center gap-3 rounded-xl border-2 border-slate-100 p-3 text-left transition-all hover:border-primary-200 hover:bg-primary-50/50"
-								onclick={() => selectPerson(person)}
-								in:fly={{ y: 10, duration: 200 }}
+						<div class="relative">
+							<VirtualList
+								items={results}
+								height={listHeight}
+								bind:start
+								bind:end
+								let:item={person}
 							>
-								<div
-									class="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100"
-								>
-									{#if person.photoUrl}
-										<img
-											src={person.photoUrl}
-											alt={person.title}
-											class="size-full object-cover"
-											loading="lazy"
-										/>
-									{:else}
+								<div class="px-2 py-1.5">
+									<button
+										class="flex w-full cursor-pointer items-center gap-3 rounded-xl border-2 border-slate-100 bg-white p-3 text-left transition-all hover:border-primary-200 hover:bg-primary-50/50"
+										onclick={() => selectPerson(person)}
+									>
 										<div
-											class="flex size-full items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 text-xs font-black text-white"
+											class="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100"
 										>
-											{person.title.trim().split(/\s+/).length > 1
-												? person.title
-														.trim()
-														.split(/\s+/)
-														.slice(0, 2)
-														.map((n: string) => [...n][0])
-														.join('')
-												: ([...person.title.trim()][0] ?? '?')}
+											{#if person.photoUrl}
+												<img
+													src={person.photoUrl}
+													alt={person.title}
+													class="size-full object-cover"
+													loading="lazy"
+												/>
+											{:else}
+												<div
+													class="flex size-full items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 text-xs font-black text-white"
+												>
+													{person.title.trim().split(/\s+/).length > 1
+														? person.title
+																.trim()
+																.split(/\s+/)
+																.slice(0, 2)
+																.map((n: string) => [...n][0])
+																.join('')
+														: ([...person.title.trim()][0] ?? '?')}
+												</div>
+											{/if}
 										</div>
-									{/if}
+										<div class="min-w-0 flex-1">
+											<p class="truncate font-bold text-slate-900">{person.title}</p>
+											<div class="mt-0.5 flex items-center gap-1.5">
+												<Badge
+													variant="outline"
+													class={cn(
+														'h-4 px-1.5 text-[9px] font-bold tracking-wider uppercase',
+														getCategoryBadgeClass(person.rootCategorySlug)
+													)}
+												>
+													{person.category}
+												</Badge>
+												{#if person.codeNo}
+													<span class="truncate text-[10px] font-medium text-slate-400"
+														>{person.codeNo}</span
+													>
+												{/if}
+											</div>
+										</div>
+										<div class="flex shrink-0 flex-col items-end gap-1">
+											{#if person.status === 'on_premises'}
+												<Badge
+													class={cn(
+														'h-5 px-1.5 text-[9px] font-black uppercase',
+														statusBadgeClasses.on_premises
+													)}
+												>
+													{i18n.t('inside')}
+												</Badge>
+											{/if}
+											<ChevronRight size={14} class="text-slate-300" />
+										</div>
+									</button>
 								</div>
-								<div class="min-w-0 flex-1">
-									<p class="truncate font-bold text-slate-900">{person.title}</p>
-									<div class="mt-0.5 flex items-center gap-1.5">
-										<Badge
-											variant="outline"
-											class={cn(
-												'h-4 px-1.5 text-[9px] font-bold tracking-wider uppercase',
-												getCategoryBadgeClass(person.rootCategorySlug)
-											)}
-										>
-											{person.category}
-										</Badge>
-										{#if person.codeNo}
-											<span class="truncate text-[10px] font-medium text-slate-400"
-												>{person.codeNo}</span
-											>
-										{/if}
-									</div>
+							</VirtualList>
+							{#if isLoadingMore}
+								<div
+									class="absolute bottom-0 left-0 right-0 flex justify-center bg-gradient-to-t from-slate-50/80 to-transparent py-2"
+									transition:fade
+								>
+									<Loader2 class="animate-spin text-primary-500" size={20} />
 								</div>
-								<div class="flex shrink-0 flex-col items-end gap-1">
-									{#if person.status === 'on_premises'}
-										<Badge
-											class={cn(
-												'h-5 px-1.5 text-[9px] font-black uppercase',
-												statusBadgeClasses.on_premises
-											)}
-										>
-											{i18n.t('inside')}
-										</Badge>
-									{/if}
-									<ChevronRight size={14} class="text-slate-300" />
-								</div>
-							</button>
-						{:else}
-							{#if searchQuery.length >= 2}
-								<div class="py-12 text-center" in:fade>
+							{/if}
+
+							{#if results.length === 0 && !isSearching}
+								<div class="flex flex-col items-center justify-center py-8 text-center" in:fade>
 									<div
-										class="size-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300 mb-3 border-2 border-dashed border-slate-200"
+										class="mx-auto mb-3 flex size-16 items-center justify-center rounded-full border-2 border-dashed border-slate-200 bg-slate-50 text-slate-300"
 									>
 										<Users size={28} />
 									</div>
-									<p class="text-slate-400 font-bold">{i18n.t('noResults')}</p>
-									<p class="text-slate-300 text-[10px] uppercase font-black mt-1">
-										Try a different name or ID
-									</p>
-								</div>
-							{:else if searchQuery.length < 2}
-								<div class="py-12 text-center" in:fade>
-									<div
-										class="size-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300 mb-3 border-2 border-dashed border-slate-200"
-									>
-										<Search size={28} />
-									</div>
-									<p class="text-slate-400 font-bold">Search for a person</p>
-									<p class="text-slate-300 text-[10px] uppercase font-black mt-1">
-										Type at least 2 characters
+									<p class="font-bold text-slate-400">{i18n.t('noResults')}</p>
+									<p class="mt-1 text-[10px] font-black text-slate-300 uppercase">
+										{searchQuery ? 'Try a different name or ID' : 'Select a category or search'}
 									</p>
 								</div>
 							{/if}
-						{/each}
+						</div>
 					{/if}
 				</div>
 			{:else}
@@ -476,19 +524,6 @@
 									type="button"
 									class={cn(
 										'flex h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
-										location === 'ship'
-											? 'scale-[1.02] border-primary-500 bg-primary-500 text-white shadow-lg shadow-primary-500/20'
-											: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200 hover:bg-slate-50'
-									)}
-									onclick={() => (location = 'ship')}
-								>
-									<Ship size={24} strokeWidth={location === 'ship' ? 3 : 2} />
-									Ship
-								</button>
-								<button
-									type="button"
-									class={cn(
-										'flex h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
 										location === 'yard'
 											? 'scale-[1.02] border-primary-500 bg-primary-500 text-white shadow-lg shadow-primary-500/20'
 											: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200 hover:bg-slate-50'
@@ -498,7 +533,25 @@
 									<Warehouse size={24} strokeWidth={location === 'yard' ? 3 : 2} />
 									Yard
 								</button>
+								<button
+									type="button"
+									class={cn(
+										'flex h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
+										location === 'ship'
+											? 'scale-[1.02] border-primary-500 bg-primary-500 text-white shadow-lg shadow-primary-500/20'
+											: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200 hover:bg-slate-50'
+									)}
+									onclick={() => (location = 'ship')}
+								>
+									<Ship size={24} strokeWidth={location === 'ship' ? 3 : 2} />
+									Ship
+								</button>
 							</div>
+							{#if !location}
+								<p class="animate-pulse text-[10px] font-bold text-rose-500">
+									Please select a location to proceed
+								</p>
+							{/if}
 						</div>
 
 						{#if needsPurpose}

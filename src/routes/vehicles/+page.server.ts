@@ -24,6 +24,9 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	if (query) {
 		conditions.push(
 			or(
+				sql`${vehicles.vehicleNumber} % ${query}`,
+				sql`${vehicles.driverName} % ${query}`,
+				sql`${vehicles.vendorName} % ${query}`,
 				like(vehicles.vehicleNumber, `%${query}%`),
 				like(vehicles.driverName, `%${query}%`),
 				like(vehicles.vendorName, `%${query}%`),

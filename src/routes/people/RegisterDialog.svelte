@@ -19,7 +19,9 @@
 		Wifi,
 		WifiOff,
 		Loader2,
-		AlertTriangle
+		AlertTriangle,
+		Ship,
+		Warehouse
 	} from 'lucide-svelte';
 	import { enhance } from '$app/forms';
 	import { appToast } from '$lib/utils';
@@ -33,6 +35,7 @@
 	} from '$lib/constants/categories';
 	import EnrollmentPanel from './EnrollmentPanel.svelte';
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
+	import DesignationCombobox from '$lib/components/ui/designation-combobox.svelte';
 	import { onMount } from 'svelte';
 
 	let { open = $bindable() } = $props<{ open: boolean }>();
@@ -65,8 +68,10 @@
 
 	let isTrained = $state(false);
 	let autoCheckIn = $state(true);
+	let location = $state<'ship' | 'yard' | ''>('');
 	let photoPreview = $state<string | null>(null);
 	let purpose = $state('');
+	let designationValue = $state('');
 	let showSummary = $state(false);
 	let enrolledMethod = $state<string | null>(null);
 
@@ -95,7 +100,9 @@
 	const isSubCategoryRequired = $derived(subCategories.length > 0);
 	const isSubCategorySelected = $derived(!!selectedSubCategoryId);
 	const canSubmit = $derived(
-		selectedRootCategoryId && (!isSubCategoryRequired || isSubCategorySelected)
+		selectedRootCategoryId &&
+			(!isSubCategoryRequired || isSubCategorySelected) &&
+			(!autoCheckIn || !!location)
 	);
 
 	function handlePhotoChange(e: Event) {
@@ -134,8 +141,10 @@
 		selectedSubCategoryId = '';
 		isTrained = false;
 		autoCheckIn = true;
+		location = '';
 		photoPreview = null;
 		purpose = '';
+		designationValue = '';
 		registeredPerson = null;
 		showSummary = false;
 		enrolledMethod = null;
@@ -268,6 +277,11 @@
 											<Badge
 												class="border-emerald-200 bg-emerald-100 text-[10px] font-bold text-emerald-700 uppercase"
 												>Trained</Badge
+											>
+										{:else}
+											<Badge
+												class="border-rose-200 bg-rose-100 text-[10px] font-bold text-rose-700 uppercase"
+												>Pending</Badge
 											>
 										{/if}
 									</div>
@@ -500,6 +514,7 @@
 						<input type="hidden" name="categoryId" value={finalCategoryId} />
 						<input type="hidden" name="isTrained" value={isTrained ? 'true' : 'false'} />
 						<input type="hidden" name="autoCheckIn" value={autoCheckIn ? 'true' : 'false'} />
+						<input type="hidden" name="location" value={location} />
 						<input type="hidden" name="purpose" value={purpose} />
 
 						<div
@@ -597,10 +612,9 @@
 									class="text-[10px] font-bold tracking-widest text-slate-500 uppercase"
 									>{i18n.t('designation')}</Label
 								>
-								<Input
-									id="reg-designation"
+								<DesignationCombobox
 									name="designation"
-									class="h-11 border-2"
+									bind:value={designationValue}
 									placeholder="Job title"
 								/>
 							</div>
@@ -655,19 +669,60 @@
 							</button>
 						</div>
 
-						{#if autoCheckIn && needsPurpose}
-							<div class="space-y-2" transition:slide>
-								<Label
-									for="reg-purpose"
-									class="text-[10px] font-black tracking-widest text-primary-700 uppercase"
-									>{i18n.t('purpose')}</Label
-								>
-								<Input
-									id="reg-purpose"
-									bind:value={purpose}
-									placeholder="Reason for visit (Optional)"
-									class="h-11 border-2 bg-white"
-								/>
+						{#if autoCheckIn}
+							<div
+								class="space-y-4 rounded-2xl border-2 border-primary-100 bg-primary-50/30 p-4"
+								transition:slide
+							>
+								<div class="space-y-2">
+									<Label class="text-[10px] font-black tracking-widest text-primary-700 uppercase"
+										>Check-In Location <span class="text-rose-500">*</span></Label
+									>
+									<div class="grid grid-cols-2 gap-3">
+										<button
+											type="button"
+											class={cn(
+												'flex h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
+												location === 'yard'
+													? 'border-primary-500 bg-primary-500 text-white shadow-md'
+													: 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+											)}
+											onclick={() => (location = 'yard')}
+										>
+											<Warehouse size={18} strokeWidth={location === 'yard' ? 3 : 2} />
+											Yard
+										</button>
+										<button
+											type="button"
+											class={cn(
+												'flex h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
+												location === 'ship'
+													? 'border-primary-500 bg-primary-500 text-white shadow-md'
+													: 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+											)}
+											onclick={() => (location = 'ship')}
+										>
+											<Ship size={18} strokeWidth={location === 'ship' ? 3 : 2} />
+											Ship
+										</button>
+									</div>
+								</div>
+
+								{#if needsPurpose}
+									<div class="space-y-2">
+										<Label
+											for="reg-purpose"
+											class="text-[10px] font-black tracking-widest text-primary-700 uppercase"
+											>{i18n.t('purpose')} (Optional)</Label
+										>
+										<Input
+											id="reg-purpose"
+											bind:value={purpose}
+											placeholder="Reason for visit"
+											class="h-11 border-2 bg-white"
+										/>
+									</div>
+								{/if}
 							</div>
 						{/if}
 

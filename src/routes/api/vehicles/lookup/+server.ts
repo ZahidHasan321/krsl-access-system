@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { vehicles } from '$lib/server/db/schema';
-import { eq, desc, like } from 'drizzle-orm';
+import { eq, desc, like, or, sql } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -24,11 +24,17 @@ export const GET: RequestHandler = async ({ url }) => {
 			entryTime: vehicles.entryTime,
 			exitTime: vehicles.exitTime,
 			status: vehicles.status,
-			date: vehicles.date
+			date: vehicles.date,
+			rank: sql<number>`similarity(${vehicles.vehicleNumber}, ${vehicleNumber})`.as('rank')
 		})
 		.from(vehicles)
-		.where(like(vehicles.vehicleNumber, `%${vehicleNumber}%`))
-		.orderBy(desc(vehicles.entryTime))
+		.where(
+			or(
+				sql`${vehicles.vehicleNumber} % ${vehicleNumber}`,
+				like(vehicles.vehicleNumber, `%${vehicleNumber}%`)
+			)
+		)
+		.orderBy(desc(sql`rank`), desc(vehicles.entryTime))
 		.limit(10);
 
 	// Check if there's an exact match currently on premises

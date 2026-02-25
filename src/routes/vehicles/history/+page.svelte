@@ -118,12 +118,11 @@
 	}
 
 	function printHistory() {
-		previousLimit = data.pagination.limit;
 		const url = new URL(page.url);
 		url.searchParams.set('limit', '5000');
 		url.searchParams.set('page', '1');
 		url.searchParams.set('print', '1');
-		goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
+		goto(url.toString(), { keepFocus: true, noScroll: true });
 	}
 
 	const hasActiveFilters = $derived(
@@ -310,11 +309,11 @@
 				<div class="flex items-center gap-2">
 					<Button
 						variant="outline"
-						class="h-12 cursor-pointer gap-2 rounded-2xl border-2 border-slate-200 px-6 font-black transition-all hover:border-primary-300 hover:bg-primary-50"
-						onclick={confirmPrint}
+						class="h-12 cursor-pointer gap-2 rounded-2xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 md:px-6"
+						onclick={() => window.print()}
 					>
 						<Printer size={18} />
-						<span>Print Report</span>
+						<span class="hidden sm:inline">Print Report</span>
 					</Button>
 
 					{#if hasActiveFilters}

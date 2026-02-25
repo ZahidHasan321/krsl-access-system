@@ -11,6 +11,7 @@
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
 	import * as Select from '$lib/components/ui/select';
 	import EnrollmentPanel from '../EnrollmentPanel.svelte';
+	import DesignationCombobox from '$lib/components/ui/designation-combobox.svelte';
 	import {
 		ChevronLeft,
 		User,
@@ -37,7 +38,9 @@
 		ScanFace,
 		CreditCard,
 		Radio,
-		Loader2
+		Loader2,
+		Ship,
+		Warehouse
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import { format, parseISO } from 'date-fns';
@@ -53,7 +56,6 @@
 	let confirmCheckInOpen = $state(false);
 	let confirmCheckOutOpen = $state(false);
 	let deleteFormElement = $state<HTMLFormElement | null>(null);
-	let checkInFormElement = $state<HTMLFormElement | null>(null);
 	let checkOutFormElement = $state<HTMLFormElement | null>(null);
 	let isImageViewerOpen = $state(false);
 	let isEnrollOpen = $state(false);
@@ -161,8 +163,14 @@
 		confirmDeleteOpen = true;
 	}
 
-	function triggerCheckIn(form: HTMLFormElement) {
-		checkInFormElement = form;
+	let checkInLocation = $state<'ship' | 'yard' | ''>('');
+	let checkInPurpose = $state('');
+	const needsPurpose = $derived(data.rootCategorySlug !== 'employee');
+	const canCheckIn = $derived(!!checkInLocation);
+
+	function triggerCheckIn() {
+		checkInLocation = '';
+		checkInPurpose = '';
 		confirmCheckInOpen = true;
 	}
 
@@ -442,7 +450,7 @@
 								</div>
 								<div>
 									<p class="text-xs font-black tracking-wider text-rose-800 uppercase">
-										Not Trained
+										Pending
 									</p>
 									<p class="text-[10px] font-bold text-rose-600">Requires certification</p>
 								</div>
@@ -572,23 +580,14 @@
 								</form>
 							{/if}
 						{:else if data.user?.permissions.includes('people.create')}
-							<form
-								method="POST"
-								action="/attendance?/checkIn"
-								use:enhance
-								class="w-full md:w-auto"
-								bind:this={checkInFormElement}
+							<Button
+								type="button"
+								class="h-11 w-full gap-2 px-8 font-bold shadow-lg"
+								onclick={triggerCheckIn}
 							>
-								<input type="hidden" name="personId" value={data.person.id} />
-								<Button
-									type="button"
-									class="h-11 w-full gap-2 px-8 font-bold shadow-lg"
-									onclick={() => triggerCheckIn(checkInFormElement!)}
-								>
-									<PlayCircle size={18} />
-									{i18n.t('checkIn')}
-								</Button>
-							</form>
+								<PlayCircle size={18} />
+								{i18n.t('checkIn')}
+							</Button>
 						{/if}
 					</div>
 				</div>
@@ -980,11 +979,10 @@
 							class="text-[10px] font-bold tracking-widest text-slate-500 uppercase"
 							>{i18n.t('designation')}</Label
 						>
-						<Input
-							id="edit-designation"
+						<DesignationCombobox
 							name="designation"
 							bind:value={editDesignation}
-							class="h-11 border-2"
+							placeholder="Job title"
 						/>
 					</div>
 				</div>
@@ -1039,13 +1037,117 @@
 	onconfirm={() => deleteFormElement?.requestSubmit()}
 />
 
-<ConfirmModal
-	bind:open={confirmCheckInOpen}
-	title="Confirm Check-In"
-	message="Are you sure you want to check in {data.person.name}?"
-	confirmText="Confirm"
-	onconfirm={() => checkInFormElement?.requestSubmit()}
-/>
+<Dialog.Root bind:open={confirmCheckInOpen}>
+	<Dialog.Content class="overflow-hidden p-0 sm:max-w-[500px]">
+		<div class="border-b bg-slate-50 p-6">
+			<Dialog.Title class="text-xl font-black">Manual Check-In</Dialog.Title>
+			<Dialog.Description class="text-xs font-bold tracking-widest text-slate-500 uppercase">
+				Confirm entry for {data.person.name}
+			</Dialog.Description>
+		</div>
+
+		<div class="space-y-6 p-6">
+			{#if data.person.isTrained === false}
+				<div class="flex items-start gap-3 rounded-xl border-2 border-rose-100 bg-rose-50 p-4">
+					<AlertCircle size={20} class="mt-0.5 shrink-0 text-rose-600" />
+					<div>
+						<p class="text-sm font-black tracking-tight text-rose-700 uppercase">Safety Warning</p>
+						<p class="mt-0.5 text-xs font-bold text-rose-600">
+							This person has not completed mandatory safety training.
+						</p>
+					</div>
+				</div>
+			{/if}
+
+			<form
+				method="POST"
+				action="/attendance?/checkIn"
+				use:enhance={() => {
+					return async ({ result }) => {
+						if (result.type === 'success') {
+							confirmCheckInOpen = false;
+							await invalidateAll();
+						}
+					};
+				}}
+				class="space-y-6"
+			>
+				<input type="hidden" name="personId" value={data.person.id} />
+				<input type="hidden" name="location" value={checkInLocation} />
+				<input type="hidden" name="purpose" value={checkInPurpose} />
+
+				<div class="space-y-2">
+					<Label class="text-[10px] font-black tracking-widest text-slate-400 uppercase"
+						>Assignment Location <span class="text-rose-500">*</span></Label
+					>
+					<div class="grid grid-cols-2 gap-3">
+						<button
+							type="button"
+							class={cn(
+								'flex h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
+								checkInLocation === 'yard'
+									? 'scale-[1.02] border-primary-500 bg-primary-500 text-white shadow-lg'
+									: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200'
+							)}
+							onclick={() => (checkInLocation = 'yard')}
+						>
+							<Warehouse size={24} strokeWidth={checkInLocation === 'yard' ? 3 : 2} />
+							Yard
+						</button>
+						<button
+							type="button"
+							class={cn(
+								'flex h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
+								checkInLocation === 'ship'
+									? 'scale-[1.02] border-primary-500 bg-primary-500 text-white shadow-lg'
+									: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200'
+							)}
+							onclick={() => (checkInLocation = 'ship')}
+						>
+							<Ship size={24} strokeWidth={checkInLocation === 'ship' ? 3 : 2} />
+							Ship
+						</button>
+					</div>
+				</div>
+
+				{#if needsPurpose}
+					<div class="space-y-2">
+						<Label
+							for="person-checkin-purpose"
+							class="text-[10px] font-black tracking-widest text-primary-700 uppercase"
+							>{i18n.t('purpose')} (Optional)</Label
+						>
+						<Input
+							id="person-checkin-purpose"
+							bind:value={checkInPurpose}
+							placeholder="Reason for visit"
+							class="h-11 border-2 bg-white"
+						/>
+					</div>
+				{/if}
+
+				<div class="flex gap-3 pt-2">
+					<Button
+						type="button"
+						variant="outline"
+						class="h-12 flex-1 border-2 font-bold"
+						onclick={() => (confirmCheckInOpen = false)}
+					>
+						{i18n.t('cancel')}
+					</Button>
+					<Button
+						type="submit"
+						disabled={!canCheckIn}
+						class="h-12 flex-1 gap-2 font-black shadow-lg"
+					>
+						<PlayCircle size={18} />
+						{i18n.t('confirm')}
+					</Button>
+				</div>
+			</form>
+		</div>
+	</Dialog.Content>
+</Dialog.Root>
 
 <ConfirmModal
 	bind:open={confirmCheckOutOpen}

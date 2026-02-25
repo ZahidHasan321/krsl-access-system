@@ -27,6 +27,7 @@
 	import { cn, getCategoryLevelClass, appToast } from '$lib/utils';
 	import type { PageData, ActionData } from './$types';
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
+	import VirtualList from 'svelte-virtual-list';
 	import {
 		CATEGORIES,
 		ROOT_CATEGORIES,
@@ -77,31 +78,6 @@
 				(p.codeNo && p.codeNo.toLowerCase().includes(q)) ||
 				(p.company && p.company.toLowerCase().includes(q))
 		);
-	});
-
-	// Virtual scroll state for people list
-	const ITEM_HEIGHT = 40; // px per row
-	const CONTAINER_HEIGHT = 384; // max-h-[24rem] = 24 * 16 = 384px
-	let scrollTop = $state(0);
-	let peopleListEl = $state<HTMLDivElement | null>(null);
-
-	const virtualSlice = $derived.by(() => {
-		const total = genFilteredPeople.length;
-		const buffer = 5;
-		const startIdx = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - buffer);
-		const visibleCount = Math.ceil(CONTAINER_HEIGHT / ITEM_HEIGHT) + buffer * 2;
-		const endIdx = Math.min(total, startIdx + visibleCount);
-		return { startIdx, endIdx, totalHeight: total * ITEM_HEIGHT };
-	});
-
-	// Reset scroll when filter changes
-	$effect(() => {
-		// Track filter dependencies
-		genFilteredPeople.length;
-		if (peopleListEl) {
-			peopleListEl.scrollTop = 0;
-			scrollTop = 0;
-		}
 	});
 
 	// Editable entries (local state for inline editing)
@@ -447,10 +423,9 @@
 				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
 					>Location</th
 				>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Safety Trained</th
-				>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
+									<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
+										>Training Status</th
+									>				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
 					>{i18n.t('entryTime')}</th
 				>
 				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
@@ -480,7 +455,7 @@
 							? '#16a34a'
 							: '#dc2626'};"
 					>
-						{getIsTrained(entry) ? 'TRAINED' : 'TO BE VERIFIED'}
+						{getIsTrained(entry) ? 'Trained' : 'Pending'}
 					</td>
 					<td style="border: 1px solid #ddd; padding: 8px;">{getPrintEntryTime(entry)}</td>
 					<td style="border: 1px solid #ddd; padding: 8px;">{getPrintExitTime(entry)}</td>
@@ -722,17 +697,6 @@
 											<button
 												class={clsx(
 													'flex-1 rounded-xl border-2 py-2 text-xs font-black transition-all',
-													genLocation === 'ship'
-														? 'border-primary-600 bg-primary-600 text-white shadow-md shadow-primary-600/20'
-														: 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-												)}
-												onclick={() => (genLocation = 'ship')}
-											>
-												SHIP
-											</button>
-											<button
-												class={clsx(
-													'flex-1 rounded-xl border-2 py-2 text-xs font-black transition-all',
 													genLocation === 'yard'
 														? 'border-primary-600 bg-primary-600 text-white shadow-md shadow-primary-600/20'
 														: 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
@@ -740,6 +704,17 @@
 												onclick={() => (genLocation = 'yard')}
 											>
 												YARD
+											</button>
+											<button
+												class={clsx(
+													'flex-1 rounded-xl border-2 py-2 text-xs font-black transition-all',
+													genLocation === 'ship'
+														? 'border-primary-600 bg-primary-600 text-white shadow-md shadow-primary-600/20'
+														: 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+												)}
+												onclick={() => (genLocation = 'ship')}
+											>
+												SHIP
 											</button>
 										</div>
 										<p class="mt-2 text-[10px] font-bold text-slate-400">
@@ -812,62 +787,54 @@
 									</div>
 
 									<!-- Virtual list -->
-									<div
-										bind:this={peopleListEl}
-										onscroll={(e) => (scrollTop = (e.target as HTMLDivElement).scrollTop)}
-										class="max-h-[20rem] overflow-y-auto rounded-2xl border-2 border-slate-100 bg-white shadow-inner"
-									>
+									<div class="h-[20rem] overflow-hidden rounded-2xl border-2 border-slate-100 bg-white shadow-inner">
 										{#if genFilteredPeople.length > 0}
-											<div style="height: {virtualSlice.totalHeight}px; position: relative;">
-												{#each genFilteredPeople.slice(virtualSlice.startIdx, virtualSlice.endIdx) as person, i (person.id)}
-													{@const isSelected = selectedPersonIds.has(person.id)}
-													{@const isPresent = !!data.realLogMap[person.id]}
-													<button
+											<VirtualList items={genFilteredPeople} height="20rem" let:item={person}>
+												{@const isSelected = selectedPersonIds.has(person.id)}
+												{@const isPresent = !!data.realLogMap[person.id]}
+												<button
+													class={clsx(
+														'flex h-[40px] w-full cursor-pointer items-center gap-3 px-4 text-left text-xs transition-colors',
+														isSelected
+															? 'bg-primary-50/50 text-primary-700'
+															: 'text-slate-600 hover:bg-slate-50'
+													)}
+													onclick={() => togglePerson(person.id)}
+												>
+													<div
 														class={clsx(
-															'absolute inset-x-0 flex w-full cursor-pointer items-center gap-3 px-4 text-left text-xs transition-colors',
+															'flex size-4 shrink-0 items-center justify-center rounded border-2 transition-all',
 															isSelected
-																? 'bg-primary-50/50 text-primary-700'
-																: 'text-slate-600 hover:bg-slate-50'
+																? 'border-primary-600 bg-primary-600 shadow-sm'
+																: 'border-slate-200 bg-white'
 														)}
-														style="height: {ITEM_HEIGHT}px; top: {(virtualSlice.startIdx + i) *
-															ITEM_HEIGHT}px;"
-														onclick={() => togglePerson(person.id)}
 													>
-														<div
-															class={clsx(
-																'flex size-4 shrink-0 items-center justify-center rounded border-2 transition-all',
-																isSelected
-																	? 'border-primary-600 bg-primary-600 shadow-sm'
-																	: 'border-slate-200 bg-white'
-															)}
-														>
-															{#if isSelected}
-																<svg
-																	class="size-3 text-white"
-																	viewBox="0 0 12 12"
-																	fill="none"
-																	stroke="currentColor"
-																	stroke-width="3"
-																>
-																	<path d="M2 6l3 3 5-5" />
-																</svg>
-															{/if}
-														</div>
-														<span class={cn('truncate', isSelected ? 'font-black' : 'font-bold')}
-															>{person.name}</span
-														>
-														{#if isPresent}
-															<Badge
-																class="h-4 border-emerald-200 bg-emerald-100 px-1 text-[8px] font-black text-emerald-700"
-																>PRESENT</Badge
+														{#if isSelected}
+															<svg
+																class="size-3 text-white"
+																viewBox="0 0 12 12"
+																fill="none"
+																stroke="currentColor"
+																stroke-width="3"
 															>
+																<path d="M2 6l3 3 5-5" />
+															</svg>
 														{/if}
-														<span class="ml-auto shrink-0 text-[10px] font-medium text-slate-400"
-															>{person.codeNo || ''}</span
+													</div>
+													<span class={cn('truncate', isSelected ? 'font-black' : 'font-bold')}
+														>{person.name}</span
+													>
+													{#if isPresent}
+														<Badge
+															class="h-4 border-emerald-200 bg-emerald-100 px-1 text-[8px] font-black text-emerald-700"
+															>PRESENT</Badge
 														>
-													</button>
-												{/each}
-											</div>
+													{/if}
+													<span class="ml-auto shrink-0 text-[10px] font-medium text-slate-400"
+														>{person.codeNo || ''}</span
+													>
+												</button>
+											</VirtualList>
 										{:else}
 											<div class="flex flex-col items-center justify-center py-12 text-center">
 												<div
@@ -964,11 +931,11 @@
 
 					<Button
 						variant="outline"
-						class="h-11 shrink-0 gap-2 rounded-2xl border-2 border-slate-200 px-6 font-black transition-all hover:border-primary-300 hover:bg-primary-50"
+						class="h-11 shrink-0 gap-2 rounded-2xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 md:px-6"
 						onclick={printReport}
 					>
 						<Printer size={18} />
-						<span>{i18n.t('printReport')}</span>
+						<span class="hidden sm:inline">{i18n.t('printReport')}</span>
 					</Button>
 				</div>
 
@@ -999,7 +966,7 @@
 									>
 									<th
 										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
-										>Safety Trained</th
+										>Training Status</th
 									>
 									<th
 										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
@@ -1051,17 +1018,6 @@
 												<button
 													class={cn(
 														'rounded-md px-2 py-0.5 text-[9px] font-black uppercase transition-all',
-														getLocation(entry) === 'ship'
-															? 'bg-white text-primary-600 shadow-sm'
-															: 'text-slate-400 hover:text-slate-600'
-													)}
-													onclick={() => updateEntryField(entry.id, 'location', 'ship')}
-												>
-													SHIP
-												</button>
-												<button
-													class={cn(
-														'rounded-md px-2 py-0.5 text-[9px] font-black uppercase transition-all',
 														getLocation(entry) === 'yard'
 															? 'bg-white text-primary-600 shadow-sm'
 															: 'text-slate-400 hover:text-slate-600'
@@ -1069,6 +1025,17 @@
 													onclick={() => updateEntryField(entry.id, 'location', 'yard')}
 												>
 													YARD
+												</button>
+												<button
+													class={cn(
+														'rounded-md px-2 py-0.5 text-[9px] font-black uppercase transition-all',
+														getLocation(entry) === 'ship'
+															? 'bg-white text-primary-600 shadow-sm'
+															: 'text-slate-400 hover:text-slate-600'
+													)}
+													onclick={() => updateEntryField(entry.id, 'location', 'ship')}
+												>
+													SHIP
 												</button>
 											</div>
 										</td>
@@ -1102,7 +1069,7 @@
 														getIsTrained(entry) ? 'text-emerald-600' : 'text-slate-400'
 													)}
 												>
-													{getIsTrained(entry) ? 'TRAINED' : 'PENDING'}
+													{getIsTrained(entry) ? 'Trained' : 'Pending'}
 												</span>
 											</label>
 										</td>

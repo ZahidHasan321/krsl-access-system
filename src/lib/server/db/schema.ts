@@ -48,8 +48,8 @@ export const user = pgTable('user', {
 		.notNull()
 		.references(() => roles.id),
 	failedAttempts: integer('failed_attempts').notNull().default(0),
-	lockoutUntil: timestamp('lockout_until', { mode: 'date' }),
-	createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`)
+	lockoutUntil: timestamp('lockout_until', { withTimezone: true, mode: 'date' }),
+	createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).default(sql`now()`)
 });
 
 export const session = pgTable('session', {
@@ -57,7 +57,7 @@ export const session = pgTable('session', {
 	userId: text('user_id')
 		.notNull()
 		.references(() => user.id, { onDelete: 'cascade' }),
-	expiresAt: timestamp('expires_at', { mode: 'date' }).notNull()
+	expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }).notNull()
 });
 
 export type Session = typeof session.$inferSelect;
@@ -74,7 +74,7 @@ export const personCategories = pgTable(
 			onDelete: 'restrict'
 		}), // null = root category
 		sortOrder: integer('sort_order').default(0), // ordering within siblings
-		createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`)
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).default(sql`now()`)
 	},
 	(table) => ({
 		parentIdIdx: index('category_parent_id_idx').on(table.parentId),
@@ -109,9 +109,9 @@ export const people = pgTable(
 		isTrained: boolean('is_trained').notNull().default(false),
 
 		// Metadata
-		joinDate: timestamp('join_date', { mode: 'date' }),
+		joinDate: timestamp('join_date', { withTimezone: true, mode: 'date' }),
 		notes: text('notes'),
-		createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`)
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).default(sql`now()`)
 	},
 	(table) => ({
 		nameIdx: index('people_name_idx').on(table.name),
@@ -132,15 +132,15 @@ export const attendanceLogs = pgTable(
 		personId: text('person_id')
 			.notNull()
 			.references(() => people.id, { onDelete: 'cascade' }),
-		entryTime: timestamp('entry_time', { mode: 'date' }).notNull(),
-		exitTime: timestamp('exit_time', { mode: 'date' }), // null = currently inside
+		entryTime: timestamp('entry_time', { withTimezone: true, mode: 'date' }).notNull(),
+		exitTime: timestamp('exit_time', { withTimezone: true, mode: 'date' }), // null = currently inside
 		status: text('status', { enum: ['on_premises', 'checked_out'] }).notNull(),
 		verifyMethod: text('verify_method'), // 'finger' | 'face' | 'card' | 'password' | null
 		date: text('date').notNull(), // 'YYYY-MM-DD'
 		purpose: text('purpose'), // Reason for visit (for non-employees)
 		location: text('location'), // 'ship' or 'yard'
 		notes: text('notes'),
-		createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`)
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).default(sql`now()`)
 	},
 	(table) => ({
 		personIdIdx: index('attendance_person_id_idx').on(table.personId),
@@ -164,8 +164,8 @@ export const vehicles = pgTable(
 		helperName: text('helper_name'),
 		mobile: text('mobile'),
 		note: text('note'),
-		entryTime: timestamp('entry_time', { mode: 'date' }).notNull(),
-		exitTime: timestamp('exit_time', { mode: 'date' }),
+		entryTime: timestamp('entry_time', { withTimezone: true, mode: 'date' }).notNull(),
+		exitTime: timestamp('exit_time', { withTimezone: true, mode: 'date' }),
 		status: text('status', { enum: ['on_premises', 'checked_out'] }).notNull(),
 		date: text('date').notNull()
 	},
@@ -187,16 +187,23 @@ export const devices = pgTable(
 		serialNumber: text('serial_number').notNull().unique(),
 		name: text('name').notNull(),
 		location: text('location'),
-		lastHeartbeat: timestamp('last_heartbeat', { mode: 'date' }),
+		lastHeartbeat: timestamp('last_heartbeat', { withTimezone: true, mode: 'date' }),
 		status: text('status', { enum: ['online', 'offline'] })
 			.notNull()
 			.default('offline'),
-		createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`)
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).default(sql`now()`)
 	},
 	(table) => ({
 		snIdx: index('devices_serial_number_idx').on(table.serialNumber)
 	})
 );
+
+// --- Master Designations ---
+export const designations = pgTable('designations', {
+	id: serial('id').primaryKey(),
+	name: text('name').notNull().unique(),
+	createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).default(sql`now()`)
+});
 
 // --- Device Commands ---
 export const deviceCommands = pgTable(
@@ -210,8 +217,8 @@ export const deviceCommands = pgTable(
 		status: text('status', { enum: ['PENDING', 'SENT', 'SUCCESS', 'FAILED'] })
 			.notNull()
 			.default('PENDING'),
-		createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`),
-		updatedAt: timestamp('updated_at', { mode: 'date' }).default(sql`now()`)
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).default(sql`now()`),
+		updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).default(sql`now()`)
 	},
 	(table) => ({
 		deviceSnIdx: index('device_commands_device_sn_idx').on(table.deviceSn),
@@ -231,8 +238,8 @@ export const bioTemplates = pgTable(
 		templateData: text('template_data').notNull(), // Raw tab-separated KV string from device
 		fid: text('fid'), // '0'=finger, '111'=face
 		templateNo: text('template_no'), // Template index from device
-		createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`),
-		updatedAt: timestamp('updated_at', { mode: 'date' }).default(sql`now()`)
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).default(sql`now()`),
+		updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).default(sql`now()`)
 	},
 	(table) => ({
 		personIdIdx: index('bio_templates_person_id_idx').on(table.personId),
@@ -247,12 +254,12 @@ export const rawPunches = pgTable(
 		id: text('id').primaryKey(),
 		deviceSn: text('device_sn').notNull(),
 		pin: text('pin').notNull(),
-		punchTime: timestamp('punch_time', { mode: 'date' }).notNull(),
+		punchTime: timestamp('punch_time', { withTimezone: true, mode: 'date' }).notNull(),
 		status: integer('status'),
 		verify: integer('verify'),
 		rawLine: text('raw_line').notNull(),
 		processed: boolean('processed').notNull().default(false),
-		createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`)
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).default(sql`now()`)
 	},
 	(table) => ({
 		deviceSnIdx: index('raw_punches_device_sn_idx').on(table.deviceSn),
@@ -269,16 +276,54 @@ export const auditEntries = pgTable(
 		personId: text('person_id')
 			.notNull()
 			.references(() => people.id, { onDelete: 'cascade' }),
-		entryTime: timestamp('entry_time', { mode: 'date' }).notNull(),
-		exitTime: timestamp('exit_time', { mode: 'date' }),
+		entryTime: timestamp('entry_time', { withTimezone: true, mode: 'date' }).notNull(),
+		exitTime: timestamp('exit_time', { withTimezone: true, mode: 'date' }),
 		purpose: text('purpose'),
 		location: text('location'), // 'ship' or 'yard'
 		isTrained: boolean('is_trained').notNull().default(false),
 		date: text('date').notNull(), // 'YYYY-MM-DD'
-		createdAt: timestamp('created_at', { mode: 'date' }).default(sql`now()`)
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).default(sql`now()`)
 	},
 	(table) => ({
 		personIdIdx: index('audit_entries_person_id_idx').on(table.personId),
 		dateIdx: index('audit_entries_date_idx').on(table.date)
+	})
+);
+
+// --- Push Subscriptions ---
+export const pushSubscriptions = pgTable(
+	'push_subscriptions',
+	{
+		id: serial('id').primaryKey(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		endpoint: text('endpoint').notNull().unique(),
+		p256dh: text('p256dh').notNull(),
+		auth: text('auth').notNull(),
+		userAgent: text('user_agent'),
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).default(sql`now()`)
+	},
+	(table) => ({
+		userIdIdx: index('push_subs_user_id_idx').on(table.userId)
+	})
+);
+
+// --- Notification History ---
+export const notifications = pgTable(
+	'notifications',
+	{
+		id: serial('id').primaryKey(),
+		userId: text('user_id').references(() => user.id, { onDelete: 'set null' }), // who triggered it
+		type: text('type').notNull(), // 'checkin', 'checkout', 'enrollment', 'system'
+		title: text('title').notNull(),
+		message: text('message').notNull(),
+		link: text('link'),
+		isRead: boolean('is_read').notNull().default(false),
+		createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).default(sql`now()`)
+	},
+	(table) => ({
+		userIdIdx: index('notif_user_id_idx').on(table.userId),
+		createdAtIdx: index('notif_created_at_idx').on(table.createdAt)
 	})
 );

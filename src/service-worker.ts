@@ -68,21 +68,48 @@ self.addEventListener('fetch', (event) => {
 
 // Push notification logic
 self.addEventListener('push', (event) => {
-	const data = event.data?.json() ?? {};
-	const title = data.title ?? 'KR Steel CRM';
-	const options = {
-		body: data.body ?? 'New notification received',
-		icon: '/pwa-192x192.png',
-		badge: '/favicon-32x32.png',
-		data: {
-			url: data.url ?? '/'
-		}
-	};
+	if (!event.data) return;
 
-	event.waitUntil(self.registration.showNotification(title, options));
+	try {
+		const data = event.data.json();
+		const title = data.title || 'KR Steel CRM';
+		const options = {
+			body: data.body || 'New notification received',
+			icon: '/icon-192x192.png',
+			badge: '/favicon-32x32.png',
+			vibrate: [100, 50, 100],
+			data: {
+				url: data.url || '/'
+			}
+		};
+
+		event.waitUntil(self.registration.showNotification(title, options));
+	} catch (err) {
+		console.error('Error parsing push data:', err);
+		// Fallback for non-JSON or malformed push
+		event.waitUntil(
+			self.registration.showNotification('KR Steel CRM', {
+				body: event.data.text()
+			})
+		);
+	}
 });
 
 self.addEventListener('notificationclick', (event) => {
 	event.notification.close();
-	event.waitUntil(clients.openWindow(event.notification.data.url));
+	const urlToOpen = new URL(event.notification.data.url, self.location.origin).href;
+
+	event.waitUntil(
+		clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+			for (let i = 0; i < windowClients.length; i++) {
+				const client = windowClients[i];
+				if (client.url === urlToOpen && 'focus' in client) {
+					return (client as WindowClient).focus();
+				}
+			}
+			if (clients.openWindow) {
+				return clients.openWindow(urlToOpen);
+			}
+		})
+	);
 });

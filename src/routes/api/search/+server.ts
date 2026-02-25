@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { people, vehicles, personCategories, attendanceLogs } from '$lib/server/db/schema';
-import { like, or, eq, and, inArray, sql } from 'drizzle-orm';
+import { like, or, eq, and, inArray, sql, desc } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { requirePermission } from '$lib/server/rbac';
@@ -26,14 +26,11 @@ function getDescendantIds(
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	requirePermission(locals, 'people.view');
-	const query = url.searchParams.get('q');
+	const query = url.searchParams.get('q') || '';
 	const categoryId = url.searchParams.get('category') || url.searchParams.get('categoryId');
-
-	if (!query || query.length < 2) {
-		return json([]);
-	}
-
-	const searchPattern = `%${query}%`;
+	const type = url.searchParams.get('type');
+	const limit = Math.min(1000, parseInt(url.searchParams.get('limit') || '15'));
+	const offset = parseInt(url.searchParams.get('offset') || '0');
 
 	// Get all categories for descendant resolution
 	const allCategories = await db
@@ -46,42 +43,66 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		categoryFilter = getDescendantIds(categoryId, allCategories);
 	}
 
-	// Build where clause for people
-	const searchCondition = or(
-		like(people.name, searchPattern),
-		like(people.codeNo, searchPattern),
-		like(people.company, searchPattern),
-		like(people.contactNo, searchPattern)
-	);
+	let whereCondition;
+	if (query && query.length >= 2) {
+		const searchPattern = `%${query}%`;
+		const searchCondition = or(
+			sql`${people.name} % ${query}`,
+			sql`${people.codeNo} % ${query}`,
+			sql`${people.company} % ${query}`,
+			like(people.name, searchPattern),
+			like(people.codeNo, searchPattern)
+		);
+		whereCondition = categoryFilter
+			? and(inArray(people.categoryId, categoryFilter), searchCondition)
+			: searchCondition;
+	} else if (categoryFilter) {
+		whereCondition = inArray(people.categoryId, categoryFilter);
+	}
 
-	const whereCondition = categoryFilter
-		? and(inArray(people.categoryId, categoryFilter), searchCondition)
-		: searchCondition;
+	// Query people if type is not 'vehicle'
+	let foundPeople: any[] = [];
+	if (type !== 'vehicle') {
+		// Define rank and order
+		const rankSql = query && query.length >= 2
+			? sql<number>`GREATEST(
+				similarity(${people.name}, ${query}),
+				similarity(COALESCE(${people.codeNo}, ''), ${query}),
+				similarity(COALESCE(${people.company}, ''), ${query})
+			)`.as('rank')
+			: sql<number>`0`.as('rank');
 
-	// Query people with their current status
-	const foundPeople = await db
-		.select({
-			id: people.id,
-			name: people.name,
-			codeNo: people.codeNo,
-			company: people.company,
-			photoUrl: people.photoUrl,
-			categoryId: people.categoryId,
-			categoryName: personCategories.name,
-			categorySlug: personCategories.slug,
-			parentId: personCategories.parentId,
-			isTrained: people.isTrained,
-			// Subquery to check if currently on premises
-			isOnPremises: sql<number>`(
-                SELECT COUNT(*) FROM ${attendanceLogs}
-                WHERE ${attendanceLogs.personId} = ${people.id}
-                AND ${attendanceLogs.status} = 'on_premises'
-            )`.as('is_on_premises')
-		})
-		.from(people)
-		.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
-		.where(whereCondition)
-		.limit(15);
+		const orderBy = query && query.length >= 2 ? sql`rank DESC` : desc(people.createdAt);
+
+		foundPeople = await db
+			.select({
+				id: people.id,
+				name: people.name,
+				codeNo: people.codeNo,
+				company: people.company,
+				photoUrl: people.photoUrl,
+				categoryId: people.categoryId,
+				categoryName: personCategories.name,
+				categorySlug: personCategories.slug,
+				parentId: personCategories.parentId,
+				isTrained: people.isTrained,
+				// Subquery to check if currently on premises
+				isOnPremises: sql<number>`(
+					SELECT COUNT(*) FROM ${attendanceLogs}
+					WHERE ${attendanceLogs.personId} = ${people.id}
+					AND ${attendanceLogs.status} = 'on_premises'
+				)`.as('is_on_premises'),
+				rank: rankSql
+			})
+			.from(people)
+			.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
+			.where(whereCondition)
+			.orderBy(orderBy)
+			.limit(limit)
+			.offset(offset);
+	}
+
+	console.log(`[Search API] query="${query}", category="${categoryId}", limit=${limit}, offset=${offset}, found=${foundPeople.length} people`);
 
 	// Build a map for quick root slug lookup
 	const catMap = new Map(allCategories.map((c) => [c.id, c]));
@@ -94,25 +115,43 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	}
 
 	// If searching globally (no categoryId), also search vehicles
-	const foundVehicles = categoryId
-		? []
-		: await db
-				.select({
-					id: vehicles.id,
-					vehicleNumber: vehicles.vehicleNumber,
-					driverName: vehicles.driverName,
-					type: vehicles.type,
-					status: vehicles.status
-				})
-				.from(vehicles)
-				.where(
-					or(
-						like(vehicles.vehicleNumber, searchPattern),
-						like(vehicles.driverName, searchPattern),
-						like(vehicles.mobile, searchPattern)
-					)
-				)
-				.limit(5);
+	let foundVehicles: any[] = [];
+	if (!categoryId && type !== 'person') {
+		const vehicleOrderBy = query && query.length >= 2 ? sql`rank DESC` : desc(vehicles.entryTime);
+		let vehicleWhere = undefined;
+
+		if (query && query.length >= 2) {
+			const searchPattern = `%${query}%`;
+			vehicleWhere = or(
+				sql`${vehicles.vehicleNumber} % ${query}`,
+				sql`${vehicles.driverName} % ${query}`,
+				like(vehicles.vehicleNumber, searchPattern),
+				like(vehicles.driverName, searchPattern),
+				like(vehicles.mobile, searchPattern)
+			);
+		}
+
+		foundVehicles = await db
+			.select({
+				id: vehicles.id,
+				vehicleNumber: vehicles.vehicleNumber,
+				driverName: vehicles.driverName,
+				type: vehicles.type,
+				status: vehicles.status,
+				rank:
+					query && query.length >= 2
+						? sql<number>`GREATEST(
+						similarity(${vehicles.vehicleNumber}, ${query}),
+						similarity(COALESCE(${vehicles.driverName}, ''), ${query}),
+						similarity(COALESCE(${vehicles.vendorName}, ''), ${query})
+					)`.as('rank')
+						: sql<number>`0`.as('rank')
+			})
+			.from(vehicles)
+			.where(vehicleWhere)
+			.orderBy(vehicleOrderBy)
+			.limit(5);
+	}
 
 	const results = [
 		...foundPeople.map((p) => ({

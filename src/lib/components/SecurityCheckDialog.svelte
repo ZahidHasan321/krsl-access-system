@@ -45,6 +45,10 @@
 	export function handleCheckIn(checkInData: CheckInData) {
 		if (!canViewDetails) return;
 
+		// Don't show the verification dialog for manual check-ins
+		// as location and purpose are already collected in the CheckInDialog
+		if (checkInData.verifyMethod === 'manual') return;
+
 		data = checkInData;
 		purpose = '';
 		location = '';
@@ -156,35 +160,34 @@
 					<Label class="text-xs font-black tracking-widest text-slate-500 uppercase">
 						Assignment Location <span class="text-rose-500">*</span>
 					</Label>
-					<div class="grid grid-cols-2 gap-3">
-						<button
-							type="button"
-							class={cn(
-								'flex h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
-								location === 'ship'
-									? 'scale-[1.02] border-primary-500 bg-primary-500 text-white shadow-lg shadow-primary-500/20'
-									: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200 hover:bg-slate-50'
-							)}
-							onclick={() => (location = 'ship')}
-						>
-							<Ship size={24} strokeWidth={location === 'ship' ? 3 : 2} />
-							Ship
-						</button>
-						<button
-							type="button"
-							class={cn(
-								'flex h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
-								location === 'yard'
-									? 'scale-[1.02] border-primary-500 bg-primary-500 text-white shadow-lg shadow-primary-500/20'
-									: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200 hover:bg-slate-50'
-							)}
-							onclick={() => (location = 'yard')}
-						>
-							<Warehouse size={24} strokeWidth={location === 'yard' ? 3 : 2} />
-							Yard
-						</button>
-					</div>
-				</div>
+											<div class="grid grid-cols-2 gap-3">
+												<button
+													type="button"
+													class={cn(
+														'flex h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
+														location === 'yard'
+															? 'scale-[1.02] border-primary-500 bg-primary-500 text-white shadow-lg shadow-primary-500/20'
+															: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200 hover:bg-slate-50'
+													)}
+													onclick={() => (location = 'yard')}
+												>
+													<Warehouse size={24} strokeWidth={location === 'yard' ? 3 : 2} />
+													Yard
+												</button>
+												<button
+													type="button"
+													class={cn(
+														'flex h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
+														location === 'ship'
+															? 'scale-[1.02] border-primary-500 bg-primary-500 text-white shadow-lg shadow-primary-500/20'
+															: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200 hover:bg-slate-50'
+													)}
+													onclick={() => (location = 'ship')}
+												>
+													<Ship size={24} strokeWidth={location === 'ship' ? 3 : 2} />
+													Ship
+												</button>
+											</div>				</div>
 
 				{#if needsPurpose}
 					<div class="space-y-3">

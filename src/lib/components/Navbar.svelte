@@ -21,6 +21,8 @@
 	import { clsx } from 'clsx';
 	import logo from '$lib/assets/kr_logo.svg';
 	import { enhance } from '$app/forms';
+	import NotificationSettings from './NotificationSettings.svelte';
+	import ActivityFeed from './ActivityFeed.svelte';
 
 	let isMobileMenuOpen = $state(false);
 	let isMobileSearchOpen = $state(false);
@@ -105,6 +107,7 @@
 			sub: [
 				{ href: '/admin/users', label: 'userManagement', icon: Users },
 				{ href: '/admin/roles', label: 'roleManagement', icon: Settings2 },
+				{ href: '/admin/activity', label: 'activityHistory', icon: History },
 				{ href: '/devices', label: 'devices', icon: Monitor },
 				{ href: '/admin/audit-report', label: 'auditReport', icon: ClipboardList }
 			]
@@ -355,6 +358,9 @@
 				</div>
 
 				<LangSwitch />
+				{#if page.data.user}
+					<ActivityFeed />
+				{/if}
 
 				{#if page.data.user}
 					<div class="relative ml-1 border-l border-gray-100 pl-2 sm:pl-4">
@@ -384,6 +390,8 @@
 									</p>
 								</div>
 								<div class="p-2">
+									<NotificationSettings variant="menu" />
+
 									<form method="POST" action="/logout" use:enhance>
 										<button
 											type="submit"

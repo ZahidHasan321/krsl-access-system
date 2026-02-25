@@ -11,10 +11,7 @@
 		PlusCircle,
 		Clock,
 		CheckCircle2,
-		LogOut,
 		RotateCcw,
-		ChevronRight,
-		ChevronLeft,
 		X,
 		Printer,
 		Loader2,
@@ -22,7 +19,6 @@
 		Fingerprint,
 		CreditCard,
 		History,
-		ArrowLeft,
 		Filter,
 		Shield,
 		MapPin
@@ -37,22 +33,19 @@
 	import { sineInOut } from 'svelte/easing';
 	import {
 		cn,
-		getCategoryLevelClass,
-		getCategoryBadgeClass,
-		statusBadgeClasses,
-		appToast
+		getCategoryBadgeClass
 	} from '$lib/utils';
 	import type { PageData, ActionData } from './$types';
 	import CheckInDialog from '$lib/components/CheckInDialog.svelte';
 	import RegisterDialog from '../people/RegisterDialog.svelte';
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
-	import Pagination from '$lib/components/ui/Pagination.svelte';
 	import {
 		CATEGORIES,
 		ROOT_CATEGORIES,
 		getSubCategories,
 		getCategoryById
 	} from '$lib/constants/categories';
+	import { onMount } from 'svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -78,6 +71,67 @@
 	let checkOutFormElement = $state<HTMLFormElement | null>(null);
 	let debounceTimer: any;
 	let isPrintConfirmOpen = $state(false);
+
+	// Infinite scroll state
+	let logs = $state<any[]>([]);
+	let pageNum = $state(1);
+	let isLoadingMore = $state(false);
+	let sentinel: HTMLDivElement | undefined = $state();
+	let observer: IntersectionObserver | undefined;
+
+	$effect(() => {
+		logs = data.logs;
+		pageNum = data.pagination.page;
+	});
+
+	$effect(() => {
+		if (sentinel && !observer) {
+			observer = new IntersectionObserver((entries) => {
+				if (entries[0].isIntersecting) {
+					loadMore();
+				}
+			}, { rootMargin: '200px' });
+			observer.observe(sentinel);
+		}
+		return () => {
+			if (observer) {
+				observer.disconnect();
+				observer = undefined;
+			}
+		};
+	});
+
+	async function loadMore() {
+		if (isLoadingMore || logs.length >= data.pagination.totalCount) return;
+
+		isLoadingMore = true;
+		const nextPage = pageNum + 1;
+		const url = new URL('/api/attendance', window.location.origin);
+		url.searchParams.set('page', nextPage.toString());
+		url.searchParams.set('limit', data.pagination.limit.toString());
+		if (searchQuery) url.searchParams.set('q', searchQuery);
+		if (selectedCategoryId) url.searchParams.set('category', selectedCategoryId);
+		if (selectedLocation) url.searchParams.set('location', selectedLocation);
+
+		try {
+			const res = await fetch(url);
+			if (res.ok) {
+				const result = await res.json();
+				// Convert date strings back to Date objects
+				const newLogs = result.logs.map((l: any) => ({
+					...l,
+					entryTime: new Date(l.entryTime),
+					exitTime: l.exitTime ? new Date(l.exitTime) : null
+				}));
+				logs = [...logs, ...newLogs];
+				pageNum = nextPage;
+			}
+		} catch (e) {
+			console.error('Failed to load more logs', e);
+		} finally {
+			isLoadingMore = false;
+		}
+	}
 
 	$effect(() => {
 		return () => {
@@ -212,7 +266,7 @@
 		url.searchParams.set('limit', '5000');
 		url.searchParams.set('page', '1');
 		url.searchParams.set('print', '1');
-		window.open(url.toString(), '_blank');
+		goto(url.toString(), { keepFocus: true, noScroll: true });
 	}
 
 	function formatDuration(seconds: number) {
@@ -280,7 +334,7 @@
 					>{i18n.t('location')}</th
 				>
 				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Duration</th
+					>Trained</th
 				>
 				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
 					>Purpose</th
@@ -288,7 +342,7 @@
 			</tr>
 		</thead>
 		<tbody>
-			{#each data.logs as log, index (log.id)}
+			{#each logs as log, index (log.id)}
 				<tr>
 					<td style="border: 1px solid #ddd; padding: 8px;">{index + 1}</td>
 					<td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">{log.person.name}</td>
@@ -300,9 +354,9 @@
 						style="border: 1px solid #ddd; padding: 8px; text-transform: uppercase; font-weight: 700;"
 						>{log.location || '-'}</td
 					>
-					<td style="border: 1px solid #ddd; padding: 8px;"
-						>{formatDuration(log.durationSeconds)}</td
-					>
+					<td style="border: 1px solid #ddd; padding: 8px; font-weight: 700; color: {log.person.isTrained ? '#059669' : '#e11d48'};">
+						{log.person.isTrained ? 'Trained' : 'Pending'}
+					</td>
 					<td style="border: 1px solid #ddd; padding: 8px;">{log.purpose || '-'}</td>
 				</tr>
 			{/each}
@@ -415,7 +469,7 @@
 						<Button
 							variant="outline"
 							class="h-10 shrink-0 gap-2 rounded-xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 lg:h-12 lg:rounded-2xl lg:px-6"
-							onclick={confirmPrint}
+							onclick={() => window.print()}
 						>
 							<Printer size={18} />
 							<span class="hidden sm:inline">Print Log</span>
@@ -506,17 +560,6 @@
 							<button
 								class={cn(
 									'rounded-xl px-4 py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
-									selectedLocation === 'ship'
-										? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
-										: 'text-slate-500 hover:bg-slate-50'
-								)}
-								onclick={() => changeLocation('ship')}
-							>
-								Ship
-							</button>
-							<button
-								class={cn(
-									'rounded-xl px-4 py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
 									selectedLocation === 'yard'
 										? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
 										: 'text-slate-500 hover:bg-slate-50'
@@ -524,6 +567,17 @@
 								onclick={() => changeLocation('yard')}
 							>
 								Yard
+							</button>
+							<button
+								class={cn(
+									'rounded-xl px-4 py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
+									selectedLocation === 'ship'
+										? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
+										: 'text-slate-500 hover:bg-slate-50'
+								)}
+								onclick={() => changeLocation('ship')}
+							>
+								Ship
 							</button>
 						</div>
 					</div>
@@ -655,23 +709,6 @@
 						</div>
 					</Button>
 					<Button
-						variant={selectedLocation === 'ship' ? 'secondary' : 'ghost'}
-						class={cn(
-							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-							selectedLocation === 'ship'
-								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
-								: 'text-slate-600'
-						)}
-						onclick={() => changeLocation('ship')}
-					>
-						<div class="flex items-center gap-2">
-							{#if selectedLocation === 'ship'}
-								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
-							{/if}
-							Ship
-						</div>
-					</Button>
-					<Button
 						variant={selectedLocation === 'yard' ? 'secondary' : 'ghost'}
 						class={cn(
 							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
@@ -688,245 +725,271 @@
 							Yard
 						</div>
 					</Button>
+					<Button
+						variant={selectedLocation === 'ship' ? 'secondary' : 'ghost'}
+						class={cn(
+							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+							selectedLocation === 'ship'
+								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+								: 'text-slate-600'
+						)}
+						onclick={() => changeLocation('ship')}
+					>
+						<div class="flex items-center gap-2">
+							{#if selectedLocation === 'ship'}
+								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+							{/if}
+							Ship
+						</div>
+					</Button>
 				</div>
 			</div>
 		</aside>
 
 		<!-- Main Content Area -->
-		<main class="w-full min-w-0 flex-1 space-y-6">
-			<!-- List Area (Natural Scroll) -->
-			<div class="space-y-4 pb-24 lg:pb-0">
-				<div class="grid grid-cols-1 gap-4">
-					{#each data.logs as log (log.id)}
-						<Card.Root
-							class="overflow-hidden border-l-4 border-l-emerald-500 bg-white transition-shadow hover:shadow-lg"
-						>
-							<Card.Content class="p-4 sm:p-5 md:p-6">
-								<div
-									class="flex flex-col items-start gap-4 xl:flex-row xl:items-center xl:justify-between"
+		<main class="w-full min-w-0 flex-1">
+			<!-- List Area (Infinite Scroll) -->
+			<div class="h-[calc(100vh-12rem)] overflow-y-auto rounded-3xl border-2 border-slate-100 bg-slate-50/30 shadow-inner">
+				<div class="relative min-h-full">
+					{#if logs.length > 0}
+						<div class="flex flex-col gap-4 p-4">
+							{#each logs as log (log.id)}
+								<Card.Root
+									class="overflow-hidden border-l-4 border-l-emerald-500 bg-white transition-shadow hover:shadow-lg"
 								>
-									<div class="flex w-full min-w-0 items-center gap-4 md:gap-5">
-										<!-- Avatar -->
+									<Card.Content class="p-4 sm:p-5 md:p-6">
 										<div
-											class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-100 bg-white shadow-sm md:size-14 md:rounded-2xl"
+											class="flex flex-col items-start gap-4 xl:flex-row xl:items-center xl:justify-between"
 										>
-											{#if log.person.photoUrl}
-												<img
-													src={log.person.thumbUrl || log.person.photoUrl}
-													alt={log.person.name}
-													class="size-full object-cover"
-												/>
-											{:else}
+											<div class="flex w-full min-w-0 items-center gap-4 md:gap-5">
+												<!-- Avatar -->
 												<div
-													class="flex size-full items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 text-base font-black text-white md:text-lg"
+													class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-100 bg-white shadow-sm md:size-14 md:rounded-2xl"
 												>
-													{log.person.name.trim().split(/\s+/).length > 1
-														? log.person.name
-																.trim()
-																.split(/\s+/)
-																.slice(0, 2)
-																.map((n: string) => [...n][0])
-																.join('')
-														: ([...log.person.name.trim()][0] ?? '?')}
-												</div>
-											{/if}
-										</div>
-
-										<!-- Main Info -->
-										<div class="min-w-0 flex-1">
-											<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-												<a
-													href="/people/{log.person.id}"
-													class="truncate text-base leading-tight font-black text-slate-900 transition-colors hover:text-primary-600 sm:text-lg"
-												>
-													{log.person.name}
-												</a>
-
-												<div class="flex flex-wrap gap-1">
-													{#each getCategoryPath(log.person.categoryId).slice(-2) as cat, i (cat.id)}
-														<Badge
-															variant="outline"
-															class={cn(
-																'h-5 px-1.5 text-[8px] font-black tracking-wider capitalize sm:h-6 sm:px-2 sm:text-[10px]',
-																getCategoryBadgeClass(cat.slug)
-															)}
+													{#if log.person.photoUrl}
+														<img
+															src={log.person.thumbUrl || log.person.photoUrl}
+															alt={log.person.name}
+															class="size-full object-cover"
+														/>
+													{:else}
+														<div
+															class="flex size-full items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 text-base font-black text-white md:text-lg"
 														>
-															{i18n.t(cat.slug as any) || cat.name}
-														</Badge>
-													{/each}
+															{log.person.name.trim().split(/\s+/).length > 1
+																? log.person.name
+																		.trim()
+																		.split(/\s+/)
+																		.slice(0, 2)
+																		.map((n: string) => [...n][0])
+																		.join('')
+																: ([...log.person.name.trim()][0] ?? '?')}
+														</div>
+													{/if}
 												</div>
-											</div>
-											<p class="mt-0.5 text-xs font-bold text-slate-500 sm:text-sm">
-												<span class="text-primary-600/70">{log.person.codeNo ? `#${log.person.codeNo}` : ''}</span>
-												{#if log.person.codeNo && log.person.company}
-													<span class="mx-1.5 opacity-30">|</span>
-												{/if}
-												<span class="truncate">{log.person.company || ''}</span>
-											</p>
-											{#if !isEmployeeView && log.purpose}
-												<p
-													class="mt-2 flex items-center gap-1.5 text-xs font-medium text-slate-600"
-												>
-													<span
-														class="text-[9px] font-black text-slate-400 capitalize sm:text-[10px]"
-														>Purpose:</span
-													>
-													<span class="truncate italic opacity-80">{log.purpose}</span>
-												</p>
-											{/if}
-										</div>
-									</div>
 
-									<!-- Stats Row - Dynamic Layout -->
-									<div
-										class="grid w-full grid-cols-2 gap-4 border-t border-slate-50 pt-4 xl:flex xl:w-auto xl:items-center xl:gap-10 xl:border-none xl:pt-0 2xl:gap-16"
-									>
-										{#if log.location}
-											<div class="space-y-1">
-												<p
-													class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
-												>
-													{i18n.t('location')}
-												</p>
-												<div
-													class="flex items-center gap-1.5 text-sm font-black whitespace-nowrap text-slate-900 uppercase sm:text-base md:gap-2"
-												>
-													<div
-														class={cn(
-															'rounded-lg p-1 md:p-1.5',
-															log.location === 'ship'
-																? 'bg-blue-100 text-blue-600'
-																: 'bg-amber-100 text-amber-600'
-														)}
-													>
-														<MapPin size={14} />
+												<!-- Main Info -->
+												<div class="min-w-0 flex-1">
+													<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+														<a
+															href="/people/{log.person.id}"
+															class="truncate text-base leading-tight font-black text-slate-900 transition-colors hover:text-primary-600 sm:text-lg"
+														>
+															{log.person.name}
+														</a>
+
+														<div class="flex flex-wrap gap-1">
+															{#each getCategoryPath(log.person.categoryId).slice(-2) as cat, i (cat.id)}
+																<Badge
+																	variant="outline"
+																	class={cn(
+																		'h-5 px-1.5 text-[8px] font-black tracking-wider capitalize sm:h-6 sm:px-2 sm:text-[10px]',
+																		getCategoryBadgeClass(cat.slug)
+																	)}
+																>
+																	{i18n.t(cat.slug as any) || cat.name}
+																</Badge>
+															{/each}
+														</div>
 													</div>
-													<span>{log.location}</span>
-												</div>
-											</div>
-										{/if}
-
-										<div class="space-y-1">
-											<p
-												class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
-											>
-												{i18n.t('entryTime')}
-											</p>
-											<div
-												class="flex items-center gap-1.5 text-sm font-black whitespace-nowrap text-slate-900 sm:text-base md:gap-2"
-											>
-												<div class="rounded-lg bg-primary-100 p-1 text-primary-600 md:p-1.5">
-													<Clock size={14} />
-												</div>
-												<span>{format(log.entryTime, 'hh:mm a')}</span>
-											</div>
-										</div>
-
-										<div class="space-y-1">
-											<p
-												class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
-											>
-												Inside For
-											</p>
-											<div
-												class="flex items-center gap-1.5 text-sm font-black whitespace-nowrap text-emerald-600 sm:text-base md:gap-2"
-											>
-												<div class="rounded-lg bg-emerald-100 p-1 md:p-1.5">
-													<Clock size={14} />
-												</div>
-												<span>{formatDuration(log.durationSeconds)}</span>
-											</div>
-										</div>
-
-										{#if log.verifyMethod}
-											<div class="col-span-1 space-y-1">
-												<p
-													class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
-												>
-													Method
-												</p>
-												<div
-													class="flex items-center gap-1.5 text-xs font-black text-slate-700 sm:text-sm md:gap-2"
-												>
-													<div
-														class={cn(
-															'rounded-lg p-1 md:p-1.5',
-															log.verifyMethod === 'face'
-																? 'bg-violet-100 text-violet-600'
-																: log.verifyMethod === 'finger'
-																	? 'bg-emerald-100 text-emerald-600'
-																	: log.verifyMethod === 'manual'
-																		? 'bg-blue-100 text-blue-600'
-																		: 'bg-slate-100 text-slate-500'
-														)}
-													>
-														{#if log.verifyMethod === 'face'}
-															<Scan size={14} />
-														{:else if log.verifyMethod === 'finger'}
-															<Fingerprint size={14} />
-														{:else if log.verifyMethod === 'card'}
-															<CreditCard size={14} />
-														{:else if log.verifyMethod === 'manual'}
-															<Shield size={14} />
-														{:else}
-															<Users size={14} />
+													<p class="mt-0.5 text-xs font-bold text-slate-500 sm:text-sm">
+														<span class="text-primary-600/70">{log.person.codeNo ? `#${log.person.codeNo}` : ''}</span>
+														{#if log.person.codeNo && log.person.company}
+															<span class="mx-1.5 opacity-30">|</span>
 														{/if}
-													</div>
-													<span class="capitalize">{log.verifyMethod}</span>
+														<span class="truncate">{log.person.company || ''}</span>
+													</p>
+													{#if !isEmployeeView && log.purpose}
+														<p
+															class="mt-2 flex items-center gap-1.5 text-xs font-medium text-slate-600"
+														>
+															<span
+																class="text-[9px] font-black text-slate-400 capitalize sm:text-[10px]"
+																>Purpose:</span
+															>
+															<span class="truncate italic opacity-80">{log.purpose}</span>
+														</p>
+													{/if}
 												</div>
 											</div>
-										{/if}
 
-										{#if data.user?.permissions.includes('people.create')}
-											<form
-												method="POST"
-												action="?/checkOut"
-												use:enhance
-												class="col-span-2 xl:col-span-1 xl:w-auto"
+											<!-- Stats Row - Dynamic Layout -->
+											<div
+												class="grid w-full grid-cols-2 gap-4 border-t border-slate-50 pt-4 xl:flex xl:w-auto xl:items-center xl:gap-10 xl:border-none xl:pt-0 2xl:gap-16"
 											>
-												<input type="hidden" name="logId" value={log.id} />
-												<Button
-													type="button"
-													variant="outline"
-													class="h-11 w-full cursor-pointer gap-2 border-2 border-rose-100 px-4 font-black text-rose-600 shadow-sm transition-all hover:bg-rose-50 hover:text-rose-700 md:h-12 xl:w-auto xl:px-6"
-													onclick={(e) =>
-														triggerCheckOut(
-															(e.currentTarget as HTMLButtonElement).form as HTMLFormElement
-														)}
-												>
-													<CheckCircle2 size={18} />
-													{i18n.t('checkOut')}
-												</Button>
-											</form>
-										{/if}
+												{#if log.location}
+													<div class="space-y-1">
+														<p
+															class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
+														>
+															{i18n.t('location')}
+														</p>
+														<div
+															class="flex items-center gap-1.5 text-sm font-black whitespace-nowrap text-slate-900 uppercase sm:text-base md:gap-2"
+														>
+															<div
+																class={cn(
+																	'rounded-lg p-1 md:p-1.5',
+																	log.location === 'ship'
+																		? 'bg-blue-100 text-blue-600'
+																		: 'bg-amber-100 text-amber-600'
+																)}
+															>
+																<MapPin size={14} />
+															</div>
+															<span>{log.location}</span>
+														</div>
+													</div>
+												{/if}
+
+												<div class="space-y-1">
+													<p
+														class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
+													>
+														{i18n.t('entryTime')}
+													</p>
+													<div
+														class="flex items-center gap-1.5 text-sm font-black whitespace-nowrap text-slate-900 sm:text-base md:gap-2"
+													>
+														<div class="rounded-lg bg-primary-100 p-1 text-primary-600 md:p-1.5">
+															<Clock size={14} />
+														</div>
+														<span>{format(log.entryTime, 'hh:mm a')}</span>
+													</div>
+												</div>
+
+												<div class="space-y-1">
+													<p
+														class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
+													>
+														Inside For
+													</p>
+													<div
+														class="flex items-center gap-1.5 text-sm font-black whitespace-nowrap text-emerald-600 sm:text-base md:gap-2"
+													>
+														<div class="rounded-lg bg-emerald-100 p-1 md:p-1.5">
+															<Clock size={14} />
+														</div>
+														<span>{formatDuration(log.durationSeconds)}</span>
+													</div>
+												</div>
+
+												{#if log.verifyMethod}
+													<div class="col-span-1 space-y-1">
+														<p
+															class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
+														>
+															Method
+														</p>
+														<div
+															class="flex items-center gap-1.5 text-xs font-black text-slate-700 sm:text-sm md:gap-2"
+														>
+															<div
+																class={cn(
+																	'rounded-lg p-1 md:p-1.5',
+																	log.verifyMethod === 'face'
+																		? 'bg-violet-100 text-violet-600'
+																		: log.verifyMethod === 'finger'
+																			? 'bg-emerald-100 text-emerald-600'
+																			: log.verifyMethod === 'manual'
+																				? 'bg-blue-100 text-blue-600'
+																				: 'bg-slate-100 text-slate-500'
+																)}
+															>
+																{#if log.verifyMethod === 'face'}
+																	<Scan size={14} />
+																{:else if log.verifyMethod === 'finger'}
+																	<Fingerprint size={14} />
+																{:else if log.verifyMethod === 'card'}
+																	<CreditCard size={14} />
+																{:else if log.verifyMethod === 'manual'}
+																	<Shield size={14} />
+																{:else}
+																	<Users size={14} />
+																{/if}
+															</div>
+															<span class="capitalize">{log.verifyMethod}</span>
+														</div>
+													</div>
+												{/if}
+
+												{#if data.user?.permissions.includes('people.create')}
+													<form
+														method="POST"
+														action="?/checkOut"
+														use:enhance
+														class="col-span-2 xl:col-span-1 xl:w-auto"
+													>
+														<input type="hidden" name="logId" value={log.id} />
+														<Button
+															type="button"
+															variant="outline"
+															class="h-11 w-full cursor-pointer gap-2 border-2 border-rose-100 px-4 font-black text-rose-600 shadow-sm transition-all hover:bg-rose-50 hover:text-rose-700 md:h-12 xl:w-auto xl:px-6"
+															onclick={(e) =>
+																triggerCheckOut(
+																	(e.currentTarget as HTMLButtonElement).form as HTMLFormElement
+																)}
+														>
+															<CheckCircle2 size={18} />
+															{i18n.t('checkOut')}
+														</Button>
+													</form>
+												{/if}
+											</div>
+										</div>
+									</Card.Content>
+								</Card.Root>
+							{/each}
+
+							<!-- Sentinel for Infinite Scroll -->
+							<div bind:this={sentinel} class="h-8 w-full">
+								{#if isLoadingMore}
+									<div class="flex justify-center p-2">
+										<Loader2 class="animate-spin text-primary-600" size={24} />
 									</div>
-								</div>
-							</Card.Content>
-						</Card.Root>
+								{/if}
+							</div>
+						</div>
 					{:else}
 						<div
-							class="py-16 text-center space-y-6 bg-white border-2 border-dashed border-slate-200 rounded-3xl lg:py-24"
+							class="flex h-full flex-col items-center justify-center space-y-6 rounded-3xl py-24 text-center"
 						>
 							<div
-								class="size-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-300 md:size-24"
+								class="flex size-16 items-center justify-center mx-auto rounded-full bg-slate-100 text-slate-300 md:size-24"
 							>
-								<Users size={32} class="md:hidden" />
-								<Users size={48} class="hidden md:block" />
+								<Users size={48} />
 							</div>
 							<div class="space-y-2 px-6">
 								<p class="text-lg font-black text-slate-600 md:text-xl">{i18n.t('noResults')}</p>
 								<p
-									class="text-slate-400 text-[10px] font-bold uppercase tracking-widest md:text-sm"
+									class="text-[10px] font-bold tracking-widest text-slate-400 uppercase md:text-sm"
 								>
 									No one currently on premises matches your criteria
 								</p>
 							</div>
 						</div>
-					{/each}
+					{/if}
 				</div>
-
-				<!-- Pagination -->
-				<Pagination {...data.pagination} />
 			</div>
 		</main>
 	</div>

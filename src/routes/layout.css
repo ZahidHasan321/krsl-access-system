@@ -291,8 +291,7 @@
 
 	/* GPU Acceleration for main content */
 	main {
-		transform: translateZ(0);
-		will-change: transform;
+		/* Removed transform and will-change to prevent trapping fixed-positioned children */
 	}
 
 	@media (min-width: 1920px) {

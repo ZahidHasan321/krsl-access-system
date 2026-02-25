@@ -7,6 +7,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { requirePermission } from '$lib/server/rbac';
 import { notifyChange, notifyCheckIn } from '$lib/server/events';
 import { queueDeviceSync, queueDeviceDelete } from '$lib/server/device-sync';
+import { ensureDesignation } from '$lib/server/db/designation-utils';
 import { writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import sharp from 'sharp';
@@ -96,6 +97,9 @@ export const load: PageServerLoad = async (event) => {
 	if (query) {
 		whereClauses.push(
 			or(
+				sql`${people.name} % ${query}`,
+				sql`${people.codeNo} % ${query}`,
+				sql`${people.company} % ${query}`,
 				like(people.name, `%${query}%`),
 				like(people.codeNo, `%${query}%`),
 				like(people.company, `%${query}%`),
@@ -125,6 +129,15 @@ export const load: PageServerLoad = async (event) => {
 	const validatedPage = Math.max(1, Math.min(page, totalPages || 1));
 	const validatedOffset = (validatedPage - 1) * limit;
 
+	// Define rank if query exists
+	const rankSql = query 
+		? sql<number>`GREATEST(
+			similarity(${people.name}, ${query}),
+			similarity(COALESCE(${people.codeNo}, ''), ${query}),
+			similarity(COALESCE(${people.company}, ''), ${query})
+		)`
+		: sql<number>`0`;
+
 	const list = await db
 		.select({
 			id: people.id,
@@ -145,14 +158,15 @@ export const load: PageServerLoad = async (event) => {
 				name: personCategories.name,
 				slug: personCategories.slug
 			},
-			status: sql<string>`(SELECT status FROM attendance_logs WHERE person_id = ${people.id} AND status = 'on_premises' LIMIT 1)`
+			status: sql<string>`(SELECT status FROM attendance_logs WHERE person_id = ${people.id} AND status = 'on_premises' LIMIT 1)`,
+			rank: rankSql
 		})
 		.from(people)
 		.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
 		.where(where)
 		.limit(limit)
 		.offset(validatedOffset)
-		.orderBy(desc(people.createdAt));
+		.orderBy(query ? desc(sql`rank`) : desc(people.createdAt));
 
 	const [summaryStats] = await db
 		.select({
@@ -204,6 +218,7 @@ export const actions: Actions = {
 		const notes = (data.get('notes') as string) || null;
 		const photo = data.get('photo') as File | null;
 		const purpose = (data.get('purpose') as string) || null;
+		const location = (data.get('location') as string) || null;
 
 		if (!name || !categoryId) {
 			return fail(400, { message: 'Name and Category are required' });
@@ -212,6 +227,9 @@ export const actions: Actions = {
 		try {
 			const photoResult = await savePhoto(photo);
 			const id = crypto.randomUUID();
+
+			// Save designation to master list
+			await ensureDesignation(designation);
 
 			// Auto-generate biometricId atomically
 			const nextBiometricId = await db.transaction(async (tx) => {
@@ -252,6 +270,7 @@ export const actions: Actions = {
 					entryTime: now,
 					status: 'on_premises',
 					purpose,
+					location,
 					date: format(now, 'yyyy-MM-dd')
 				});
 				notifyCheckIn({
@@ -307,6 +326,7 @@ export const actions: Actions = {
 		}
 
 		try {
+			await ensureDesignation(designation);
 			const photoResult = await savePhoto(photo);
 			if (photoResult) {
 				// Get old photo URL to delete it

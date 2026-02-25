@@ -243,7 +243,7 @@
 		url.searchParams.set('limit', '5000');
 		url.searchParams.set('page', '1');
 		url.searchParams.set('print', '1');
-		window.open(url.toString(), '_blank');
+		goto(url.toString(), { keepFocus: true, noScroll: true });
 	}
 
 	let showMobileFilters = $state(false);
@@ -312,7 +312,9 @@
 					<td style="border: 1px solid #ddd; padding: 8px;">{person.codeNo || '-'}</td>
 					<td style="border: 1px solid #ddd; padding: 8px;">{person.category.name}</td>
 					<td style="border: 1px solid #ddd; padding: 8px;">{person.company || '-'}</td>
-					<td style="border: 1px solid #ddd; padding: 8px;">{person.isTrained ? 'YES' : 'NO'}</td>
+					<td style="border: 1px solid #ddd; padding: 8px; font-weight: 700; color: {person.isTrained ? '#059669' : '#e11d48'};">
+						{person.isTrained ? 'Trained' : 'Pending'}
+					</td>
 					<td style="border: 1px solid #ddd; padding: 8px;"
 						>{person.status === 'on_premises' ? 'Inside' : 'Checked Out'}</td
 					>
@@ -788,12 +790,12 @@
 										{#if person.isTrained}
 											<div class="flex items-center gap-1.5 font-black text-emerald-600">
 												<CheckCircle2 size={14} />
-												<span class="text-[10px] uppercase">Safety Trained</span>
+												<span class="text-[10px] uppercase">Trained</span>
 											</div>
 										{:else}
 											<div class="flex items-center gap-1.5 font-black text-rose-500">
 												<XCircle size={14} />
-												<span class="text-[10px] uppercase">Not Trained</span>
+												<span class="text-[10px] uppercase">Pending</span>
 											</div>
 										{/if}
 										{#if parseEnrolledMethods(person.enrolledMethods).length > 0}
@@ -911,12 +913,12 @@
 											{#if person.isTrained}
 												<div class="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
 													<CheckCircle2 size={14} />
-													<span>YES</span>
+													<span>Trained</span>
 												</div>
 											{:else}
 												<div class="flex items-center gap-1.5 text-xs font-bold text-rose-500">
 													<XCircle size={14} />
-													<span>NO</span>
+													<span>Pending</span>
 												</div>
 											{/if}
 										</Table.Cell>

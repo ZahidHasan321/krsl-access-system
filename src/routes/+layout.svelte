@@ -12,7 +12,6 @@
 	import { ArrowUp } from 'lucide-svelte';
 	import ErrorBoundary from '$lib/components/ErrorBoundary.svelte';
 	import SecurityCheckDialog from '$lib/components/SecurityCheckDialog.svelte';
-	import BrandBackground from '$lib/components/BrandBackground.svelte';
 
 	let { children } = $props();
 
@@ -105,7 +104,6 @@
 <svelte:window bind:scrollY />
 
 <div class="relative flex min-h-screen flex-col overflow-x-clip bg-background">
-	<BrandBackground />
 	{#if !isLoginPage}
 		<Navbar />
 	{/if}

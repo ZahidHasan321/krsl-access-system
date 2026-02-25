@@ -163,7 +163,7 @@
 		url.searchParams.set('limit', '5000');
 		url.searchParams.set('page', '1');
 		url.searchParams.set('print', '1');
-		window.open(url.toString(), '_blank');
+		goto(url.toString(), { keepFocus: true, noScroll: true });
 	}
 
 	let showMobileFilters = $state(false);
@@ -330,7 +330,7 @@
 						<Button
 							variant="outline"
 							class="h-10 shrink-0 cursor-pointer gap-2 rounded-xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 lg:h-12 lg:rounded-2xl lg:px-6"
-							onclick={confirmPrint}
+							onclick={() => window.print()}
 						>
 							<Printer size={18} />
 							<span class="hidden sm:inline">Print Report</span>

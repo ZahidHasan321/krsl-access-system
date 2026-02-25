@@ -124,6 +124,9 @@ async function resetDatabase() {
 }
 
 async function seedDatabase() {
+	console.log('Enabling database extensions...');
+	await client.query('CREATE EXTENSION IF NOT EXISTS pg_trgm;');
+
 	console.log('Seeding base roles...');
 	for (const r of ROLES) {
 		await client.query(

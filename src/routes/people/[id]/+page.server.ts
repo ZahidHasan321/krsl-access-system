@@ -132,6 +132,15 @@ export const load: PageServerLoad = async (event) => {
 	const allCategories = await db.select().from(personCategories);
 
 	const allCategoriesFlat: any[] = [];
+	const catMap = new Map(allCategories.map((c) => [c.id, c]));
+
+	function getRootSlug(catId: string): string {
+		let current: any = catMap.get(catId);
+		while (current?.parentId) {
+			current = catMap.get(current.parentId);
+		}
+		return current?.slug || '';
+	}
 
 	function traverse(parentId: string | null, level = 0) {
 		const children = allCategories.filter((c) => c.parentId === parentId);
@@ -148,7 +157,8 @@ export const load: PageServerLoad = async (event) => {
 		stats,
 		isInside: !!isInside,
 		activeLog: isInside,
-		allCategoriesFlat
+		allCategoriesFlat,
+		rootCategorySlug: getRootSlug(person.category.id)
 	};
 };
 

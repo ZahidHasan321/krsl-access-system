@@ -234,7 +234,7 @@
 						>
 							{#if data.person.photoUrl}
 								<img
-									src={data.person.photoUrl}
+									src={data.person.thumbUrl || data.person.photoUrl}
 									alt={data.person.name}
 									class="h-full w-full object-cover"
 								/>
@@ -249,7 +249,7 @@
 						</div>
 						{#if data.isInside}
 							<div
-								class="absolute -right-1 -bottom-1 flex h-8 w-8 animate-pulse items-center justify-center rounded-full border-4 border-white bg-emerald-500"
+								class="absolute -right-1 -bottom-1 flex h-8 w-8 items-center justify-center rounded-full border-4 border-white bg-emerald-500 lg:animate-pulse"
 							>
 								<CheckCircle2 size={16} class="text-white" />
 							</div>
@@ -262,7 +262,7 @@
 					{#if data.isInside}
 						<div class="flex items-center justify-center">
 							<Badge
-								class="animate-pulse border-emerald-200 bg-emerald-100 px-4 py-1.5 text-xs font-black tracking-wider text-emerald-700 uppercase"
+								class="border-emerald-200 bg-emerald-100 px-4 py-1.5 text-xs font-black tracking-wider text-emerald-700 uppercase lg:animate-pulse"
 							>
 								Currently Inside
 							</Badge>

@@ -73,8 +73,8 @@
 					<div
 						class="flex size-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-300 shadow-sm"
 					>
-						{#if data.photoUrl}
-							<img src={data.photoUrl} alt={data.personName} class="size-full object-cover" />
+						{#if data.thumbUrl || data.photoUrl}
+							<img src={data.thumbUrl || data.photoUrl} alt={data.personName} class="size-full object-cover" />
 						{:else}
 							<User size={40} />
 						{/if}

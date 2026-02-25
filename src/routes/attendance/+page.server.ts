@@ -104,7 +104,8 @@ export const load: PageServerLoad = async (event) => {
 				codeNo: people.codeNo,
 				company: people.company,
 				categoryId: people.categoryId,
-				photoUrl: people.photoUrl
+				photoUrl: people.photoUrl,
+				thumbUrl: people.thumbUrl
 			},
 			category: {
 				id: personCategories.id,

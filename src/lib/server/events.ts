@@ -13,6 +13,7 @@ export interface CheckInData {
 	personName: string;
 	verifyMethod: string | null;
 	photoUrl: string | null;
+	thumbUrl?: string | null;
 	logId: string;
 	categoryId: string;
 	isTrained?: boolean;
@@ -30,6 +31,7 @@ export interface EnrollmentData {
 	personId: string;
 	method: string;
 	photoUrl?: string | null;
+	thumbUrl?: string | null;
 }
 
 export function notifyEnrollment(data: EnrollmentData) {

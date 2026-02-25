@@ -712,7 +712,7 @@
 										>
 											{#if log.person.photoUrl}
 												<img
-													src={log.person.photoUrl}
+													src={log.person.thumbUrl || log.person.photoUrl}
 													alt={log.person.name}
 													class="size-full object-cover"
 												/>

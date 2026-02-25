@@ -80,7 +80,7 @@
 				</h1>
 				{#if data.anyDeviceOnline}
 					<div
-						class="flex animate-pulse items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-emerald-600"
+						class="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-emerald-600 lg:animate-pulse"
 					>
 						<div class="size-1.5 rounded-full bg-emerald-500"></div>
 						<span class="text-[10px] font-black tracking-widest capitalize">Live</span>
@@ -124,7 +124,7 @@
 	<div class="content-container grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
 		<!-- Left Column: Currently Inside -->
 		<div class="space-y-6 lg:col-span-2">
-			<Card.Root class="mesh-gradient overflow-hidden border-2 border-slate-200 bg-white shadow-sm">
+			<Card.Root class="overflow-hidden border-2 border-slate-200 bg-white shadow-sm lg:mesh-gradient contain-paint">
 				<Card.Header class="px-4 py-3">
 					<div class="flex items-center justify-between">
 						<div class="space-y-1">
@@ -332,7 +332,7 @@
 									{#if log.status === 'on_premises'}
 										<span
 											class={cn(
-												'rounded-md border px-1 py-0.5 text-[8px] font-black tracking-wide capitalize',
+												'rounded-md border px-1 py-0.5 text-[8px] font-black tracking-wide capitalize lg:animate-pulse',
 												statusBadgeClasses.on_premises
 											)}>In</span
 										>

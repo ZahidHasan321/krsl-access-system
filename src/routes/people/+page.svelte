@@ -668,23 +668,47 @@
 						>
 							<Card.Content class="p-4 sm:p-5">
 								<div class="mb-4 flex items-start justify-between gap-3">
-									<div class="min-w-0 flex-1">
-										<div class="mb-1.5 flex flex-wrap items-center gap-2">
-											<h3 class="text-base leading-tight font-black text-slate-900 sm:text-lg">
-												{person.name}
-											</h3>
-											{#if person.status === 'on_premises'}
-												<Badge
-													class={cn(
-														'shrink-0 animate-pulse text-[9px] font-bold capitalize',
-														statusBadgeClasses.on_premises
-													)}
-												>
-													{i18n.t('inside')}
-												</Badge>
-											{/if}
-										</div>
-										<button
+																			<div
+																				class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-100 bg-white shadow-sm md:size-14 md:rounded-2xl"
+																			>
+																				{#if person.photoUrl}
+																					<img
+																						src={person.thumbUrl || person.photoUrl}
+																						alt={person.name}
+																						class="size-full object-cover"
+																					/>
+																				{:else}
+																					<div
+																						class="flex size-full items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 text-base font-black text-white md:text-lg"
+																					>
+																						{person.name.trim().split(/\s+/).length > 1
+																							? person.name
+																									.trim()
+																									.split(/\s+/)
+																									.slice(0, 2)
+																									.map((n: string) => [...n][0])
+																									.join('')
+																							: ([...person.name.trim()][0] ?? '?')}
+																					</div>
+																				{/if}
+																			</div>
+									
+																			<div class="min-w-0 flex-1">
+																				<div class="mb-1.5 flex flex-wrap items-center gap-2">
+																					<h3 class="text-base leading-tight font-black text-slate-900 sm:text-lg">
+																						{person.name}
+																					</h3>
+																					{#if person.status === 'on_premises'}
+																						<Badge
+																							class={cn(
+																								'shrink-0 text-[9px] font-bold capitalize lg:animate-pulse',
+																								statusBadgeClasses.on_premises
+																							)}
+																						>
+																							{i18n.t('inside')}
+																						</Badge>
+																					{/if}
+																				</div>										<button
 											class="transition-opacity hover:opacity-70"
 											onclick={(e) => openChangeCategory(person, e)}
 										>
@@ -900,7 +924,7 @@
 											{#if person.status === 'on_premises'}
 												<Badge
 													class={cn(
-														'animate-pulse text-[10px] font-bold uppercase',
+														'text-[10px] font-bold uppercase lg:animate-pulse',
 														statusBadgeClasses.on_premises
 													)}
 												>

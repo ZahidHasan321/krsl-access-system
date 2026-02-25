@@ -42,6 +42,12 @@
 	function update() {
 		if (!ctx) return;
 
+		// PERFORMANCE OPTIMIZATION: Completely stop animation loop on small screens
+		if (window.innerWidth < 1024) {
+			animationFrame = requestAnimationFrame(update);
+			return;
+		}
+
 		ctx.clearRect(0, 0, width, height);
 
 		// Draw connections
@@ -110,5 +116,11 @@
 	canvas {
 		/* Prevent layout shifts */
 		backface-visibility: hidden;
+	}
+
+	@media (max-width: 1023px) {
+		canvas {
+			display: none;
+		}
 	}
 </style>

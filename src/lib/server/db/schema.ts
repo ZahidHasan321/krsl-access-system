@@ -97,6 +97,7 @@ export const people = pgTable(
 		cardNo: text('card_no'), // RFID/NFC card number
 		biometricId: text('biometric_id'), // device ID
 		photoUrl: text('photo_url'), // path to stored photo
+		thumbUrl: text('thumb_url'), // path to stored thumbnail
 		enrolledMethods: text('enrolled_methods'), // JSON: ["finger","face","card"]
 
 		// Contact & details

@@ -13,14 +13,16 @@ import sharp from 'sharp';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
-async function savePhoto(photo: FormDataEntryValue | null): Promise<string | null> {
+async function savePhoto(photo: FormDataEntryValue | null): Promise<{ photoUrl: string; thumbUrl: string } | null> {
 	if (!photo || !(photo instanceof File) || photo.size === 0) return null;
 
 	if (photo.size > MAX_FILE_SIZE) {
 		throw new Error('File size exceeds 5MB limit');
 	}
 
-	const fileName = `${crypto.randomUUID()}.webp`;
+	const uuid = crypto.randomUUID();
+	const fileName = `${uuid}.webp`;
+	const thumbName = `${uuid}_thumb.webp`;
 	const uploadDir = join(process.cwd(), 'static', 'uploads', 'people');
 
 	if (!existsSync(uploadDir)) {
@@ -28,6 +30,7 @@ async function savePhoto(photo: FormDataEntryValue | null): Promise<string | nul
 	}
 
 	const filePath = join(uploadDir, fileName);
+	const thumbPath = join(uploadDir, thumbName);
 
 	try {
 		const buffer = Buffer.from(await photo.arrayBuffer());
@@ -39,12 +42,22 @@ async function savePhoto(photo: FormDataEntryValue | null): Promise<string | nul
 			throw new Error('Invalid file type. Only JPEG, PNG and WebP are allowed.');
 		}
 
+		// Save full size
 		await processedImage
 			.webp({ quality: 80 })
 			.resize(800, 800, { fit: 'inside', withoutEnlargement: true })
 			.toFile(filePath);
 
-		return `/uploads/people/${fileName}`;
+		// Save thumbnail
+		await sharp(buffer)
+			.webp({ quality: 75 })
+			.resize(80, 80, { fit: 'cover' })
+			.toFile(thumbPath);
+
+		return {
+			photoUrl: `/uploads/people/${fileName}`,
+			thumbUrl: `/uploads/people/${thumbName}`
+		};
 	} catch (e: any) {
 		console.error('Photo processing error:', e);
 		throw new Error(e.message || 'Failed to process photo');
@@ -64,6 +77,7 @@ export const load: PageServerLoad = async (event) => {
 			biometricId: people.biometricId,
 			enrolledMethods: people.enrolledMethods,
 			photoUrl: people.photoUrl,
+			thumbUrl: people.thumbUrl,
 			company: people.company,
 			contactNo: people.contactNo,
 			designation: people.designation,
@@ -165,11 +179,14 @@ export const actions: Actions = {
 		}
 
 		try {
-			const photoUrl = await savePhoto(photo);
-			if (photoUrl) {
+			const photoResult = await savePhoto(photo);
+			if (photoResult) {
 				// Get old photo URL to delete it
 				const [oldPerson] = await db
-					.select({ photoUrl: people.photoUrl })
+					.select({ 
+						photoUrl: people.photoUrl,
+						thumbUrl: people.thumbUrl
+					})
 					.from(people)
 					.where(eq(people.id, id));
 				if (oldPerson?.photoUrl) {
@@ -182,7 +199,18 @@ export const actions: Actions = {
 						console.error('Failed to delete old photo file:', err);
 					}
 				}
-				updates.photoUrl = photoUrl;
+				if (oldPerson?.thumbUrl) {
+					const oldThumbPath = join(process.cwd(), 'static', oldPerson.thumbUrl);
+					try {
+						if (existsSync(oldThumbPath)) {
+							unlinkSync(oldThumbPath);
+						}
+					} catch (err) {
+						console.error('Failed to delete old thumbnail file:', err);
+					}
+				}
+				updates.photoUrl = photoResult.photoUrl;
+				updates.thumbUrl = photoResult.thumbUrl;
 			}
 
 			await db.update(people).set(updates).where(eq(people.id, id));
@@ -222,6 +250,17 @@ export const actions: Actions = {
 					}
 				} catch (err) {
 					console.error('Failed to delete photo file:', err);
+				}
+			}
+
+			if (person?.thumbUrl) {
+				const thumbPath = join(process.cwd(), 'static', person.thumbUrl);
+				try {
+					if (existsSync(thumbPath)) {
+						unlinkSync(thumbPath);
+					}
+				} catch (err) {
+					console.error('Failed to delete thumbnail file:', err);
 				}
 			}
 

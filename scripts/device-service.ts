@@ -209,7 +209,10 @@ const server = http.createServer(async (req, res) => {
 							if (person) {
 								await db
 									.update(schema.people)
-									.set({ photoUrl: result.photoUrl })
+									.set({ 
+										photoUrl: result.photoUrl,
+										thumbUrl: result.thumbUrl
+									})
 									.where(eq(schema.people.id, person.id));
 								console.log(`[ZK:Photo] Saved ATTPHOTO for ${person.name}: ${result.photoUrl}`);
 								notifySvelte('change');
@@ -236,24 +239,26 @@ const server = http.createServer(async (req, res) => {
 
 						try {
 							const imageBuffer = Buffer.from(base64Content, 'base64');
-							const result = await savePersonPhoto(photoPin, imageBuffer);
-							if (result) {
-								const [person] = await db
-									.select()
-									.from(schema.people)
-									.where(eq(schema.people.biometricId, photoPin));
-								if (person) {
-									await db
-										.update(schema.people)
-										.set({ photoUrl: result.photoUrl })
-										.where(eq(schema.people.id, person.id));
-									console.log(
-										`[ZK:OperLog] Saved face photo for ${person.name}: ${result.photoUrl} (thumb: ${result.thumbUrl})`
-									);
-									notifySvelte('change');
-								}
-							}
-						} catch (e) {
+															const result = await savePersonPhoto(photoPin, imageBuffer);
+															if (result) {
+																const [person] = await db
+																	.select()
+																	.from(schema.people)
+																	.where(eq(schema.people.biometricId, photoPin));
+																if (person) {
+																	await db
+																		.update(schema.people)
+																		.set({ 
+																			photoUrl: result.photoUrl,
+																			thumbUrl: result.thumbUrl
+																		})
+																		.where(eq(schema.people.id, person.id));
+																	console.log(
+																		`[ZK:OperLog] Saved face photo for ${person.name}: ${result.photoUrl} (thumb: ${result.thumbUrl})`
+																	);
+																	notifySvelte('change');
+																}
+															}						} catch (e) {
 							console.error(`[ZK:OperLog] Error saving face photo:`, e);
 						}
 					}
@@ -439,6 +444,7 @@ const server = http.createServer(async (req, res) => {
 								personName: person.name,
 								verifyMethod: method,
 								photoUrl: person.photoUrl,
+								thumbUrl: person.thumbUrl,
 								logId: newLogId,
 								categoryId: person.categoryId
 							});
@@ -453,6 +459,7 @@ const server = http.createServer(async (req, res) => {
 								personName: person.name,
 								verifyMethod: method,
 								photoUrl: person.photoUrl,
+								thumbUrl: person.thumbUrl,
 								logId: activeLog.id,
 								categoryId: person.categoryId
 							});
@@ -467,6 +474,7 @@ const server = http.createServer(async (req, res) => {
 								personName: person.name,
 								verifyMethod: method,
 								photoUrl: person.photoUrl,
+								thumbUrl: person.thumbUrl,
 								logId: activeLog.id,
 								categoryId: person.categoryId
 							});
@@ -484,6 +492,7 @@ const server = http.createServer(async (req, res) => {
 								personName: person.name,
 								verifyMethod: method,
 								photoUrl: person.photoUrl,
+								thumbUrl: person.thumbUrl,
 								logId: newLogId,
 								categoryId: person.categoryId
 							});

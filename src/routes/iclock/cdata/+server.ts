@@ -112,7 +112,10 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				if (person) {
 					await db
 						.update(people)
-						.set({ photoUrl: result.photoUrl })
+						.set({ 
+							photoUrl: result.photoUrl,
+							thumbUrl: result.thumbUrl
+						})
 						.where(eq(people.id, person.id));
 					console.log(`[ZK:Photo] Saved ATTPHOTO for ${person.name}: ${result.photoUrl}`);
 					notifyChange();
@@ -156,7 +159,10 @@ export const POST: RequestHandler = async ({ url, request }) => {
 					if (person) {
 						await db
 							.update(people)
-							.set({ photoUrl: result.photoUrl })
+							.set({ 
+								photoUrl: result.photoUrl,
+								thumbUrl: result.thumbUrl
+							})
 							.where(eq(people.id, person.id));
 						console.log(
 							`[ZK:OperLog] Saved face photo for ${person.name}: ${result.photoUrl} (thumb: ${result.thumbUrl})`
@@ -353,6 +359,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				personName: person.name,
 				verifyMethod: method,
 				photoUrl: person.photoUrl,
+				thumbUrl: person.thumbUrl,
 				logId: newLogId,
 				categoryId: person.categoryId,
 				isTrained: person.isTrained
@@ -370,6 +377,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				personName: person.name,
 				verifyMethod: method,
 				photoUrl: person.photoUrl,
+				thumbUrl: person.thumbUrl,
 				logId: activeLog.id,
 				categoryId: person.categoryId
 			});
@@ -386,6 +394,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				personName: person.name,
 				verifyMethod: method,
 				photoUrl: person.photoUrl,
+				thumbUrl: person.thumbUrl,
 				logId: activeLog.id,
 				categoryId: person.categoryId
 			});
@@ -406,6 +415,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				personName: person.name,
 				verifyMethod: method,
 				photoUrl: person.photoUrl,
+				thumbUrl: person.thumbUrl,
 				logId: newLogId,
 				categoryId: person.categoryId,
 				isTrained: person.isTrained

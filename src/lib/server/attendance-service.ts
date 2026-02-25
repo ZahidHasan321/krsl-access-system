@@ -56,9 +56,9 @@ export async function getAttendanceLogs({
 	if (query) {
 		whereClauses.push(
 			or(
-				sql`${people.name} % ${query}`,
-				sql`${people.codeNo} % ${query}`,
-				sql`${people.company} % ${query}`,
+				sql`COALESCE(${people.name}, '') % ${query}`,
+				sql`COALESCE(${people.codeNo}, '') % ${query}`,
+				sql`COALESCE(${people.company}, '') % ${query}`,
 				like(people.name, `%${query}%`),
 				like(people.codeNo, `%${query}%`),
 				like(people.company, `%${query}%`),

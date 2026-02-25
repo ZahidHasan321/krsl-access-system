@@ -97,9 +97,9 @@ export const load: PageServerLoad = async (event) => {
 	if (query) {
 		whereClauses.push(
 			or(
-				sql`${people.name} % ${query}`,
-				sql`${people.codeNo} % ${query}`,
-				sql`${people.company} % ${query}`,
+				sql`COALESCE(${people.name}, '') % ${query}`,
+				sql`COALESCE(${people.codeNo}, '') % ${query}`,
+				sql`COALESCE(${people.company}, '') % ${query}`,
 				like(people.name, `%${query}%`),
 				like(people.codeNo, `%${query}%`),
 				like(people.company, `%${query}%`),
@@ -132,7 +132,7 @@ export const load: PageServerLoad = async (event) => {
 	// Define rank if query exists
 	const rankSql = query 
 		? sql<number>`GREATEST(
-			similarity(${people.name}, ${query}),
+			similarity(COALESCE(${people.name}, ''), ${query}),
 			similarity(COALESCE(${people.codeNo}, ''), ${query}),
 			similarity(COALESCE(${people.company}, ''), ${query})
 		)`
@@ -159,14 +159,14 @@ export const load: PageServerLoad = async (event) => {
 				slug: personCategories.slug
 			},
 			status: sql<string>`(SELECT status FROM attendance_logs WHERE person_id = ${people.id} AND status = 'on_premises' LIMIT 1)`,
-			rank: rankSql
+			search_rank: rankSql
 		})
 		.from(people)
 		.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
 		.where(where)
 		.limit(limit)
 		.offset(validatedOffset)
-		.orderBy(query ? desc(sql`rank`) : desc(people.createdAt));
+		.orderBy(query ? desc(sql`search_rank`) : desc(people.createdAt));
 
 	const [summaryStats] = await db
 		.select({

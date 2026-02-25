@@ -47,9 +47,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	if (query && query.length >= 2) {
 		const searchPattern = `%${query}%`;
 		const searchCondition = or(
-			sql`${people.name} % ${query}`,
-			sql`${people.codeNo} % ${query}`,
-			sql`${people.company} % ${query}`,
+			sql`COALESCE(${people.name}, '') % ${query}`,
+			sql`COALESCE(${people.codeNo}, '') % ${query}`,
+			sql`COALESCE(${people.company}, '') % ${query}`,
 			like(people.name, searchPattern),
 			like(people.codeNo, searchPattern)
 		);
@@ -66,13 +66,13 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Define rank and order
 		const rankSql = query && query.length >= 2
 			? sql<number>`GREATEST(
-				similarity(${people.name}, ${query}),
+				similarity(COALESCE(${people.name}, ''), ${query}),
 				similarity(COALESCE(${people.codeNo}, ''), ${query}),
 				similarity(COALESCE(${people.company}, ''), ${query})
-			)`.as('rank')
-			: sql<number>`0`.as('rank');
+			)`
+			: sql<number>`0`;
 
-		const orderBy = query && query.length >= 2 ? sql`rank DESC` : desc(people.createdAt);
+		const orderBy = query && query.length >= 2 ? sql`search_rank DESC` : desc(people.createdAt);
 
 		foundPeople = await db
 			.select({
@@ -92,7 +92,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 					WHERE ${attendanceLogs.personId} = ${people.id}
 					AND ${attendanceLogs.status} = 'on_premises'
 				)`.as('is_on_premises'),
-				rank: rankSql
+				search_rank: rankSql
 			})
 			.from(people)
 			.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
@@ -117,14 +117,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	// If searching globally (no categoryId), also search vehicles
 	let foundVehicles: any[] = [];
 	if (!categoryId && type !== 'person') {
-		const vehicleOrderBy = query && query.length >= 2 ? sql`rank DESC` : desc(vehicles.entryTime);
+		const vehicleOrderBy = query && query.length >= 2 ? sql`search_rank DESC` : desc(vehicles.entryTime);
 		let vehicleWhere = undefined;
 
 		if (query && query.length >= 2) {
 			const searchPattern = `%${query}%`;
 			vehicleWhere = or(
-				sql`${vehicles.vehicleNumber} % ${query}`,
-				sql`${vehicles.driverName} % ${query}`,
+				sql`COALESCE(${vehicles.vehicleNumber}, '') % ${query}`,
+				sql`COALESCE(${vehicles.driverName}, '') % ${query}`,
 				like(vehicles.vehicleNumber, searchPattern),
 				like(vehicles.driverName, searchPattern),
 				like(vehicles.mobile, searchPattern)
@@ -138,14 +138,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				driverName: vehicles.driverName,
 				type: vehicles.type,
 				status: vehicles.status,
-				rank:
+				search_rank:
 					query && query.length >= 2
 						? sql<number>`GREATEST(
-						similarity(${vehicles.vehicleNumber}, ${query}),
+						similarity(COALESCE(${vehicles.vehicleNumber}, ''), ${query}),
 						similarity(COALESCE(${vehicles.driverName}, ''), ${query}),
 						similarity(COALESCE(${vehicles.vendorName}, ''), ${query})
-					)`.as('rank')
-						: sql<number>`0`.as('rank')
+					)`
+						: sql<number>`0`
 			})
 			.from(vehicles)
 			.where(vehicleWhere)

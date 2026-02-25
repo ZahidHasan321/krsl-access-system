@@ -5,7 +5,7 @@
 	import { clsx } from 'clsx';
 	import { formatDistanceToNow } from 'date-fns';
 	import * as Popover from '$lib/components/ui/popover';
-	import { Button } from '$lib/components/ui/button';
+	import { buttonVariants } from '$lib/components/ui/button';
 	import { page } from '$app/state';
 
 	let history = $state<any[]>([]);
@@ -83,17 +83,15 @@
 </script>
 
 <Popover.Root bind:open={isOpen} onOpenChange={(open: boolean) => open && markAllAsRead()}>
-	<Popover.Trigger>
-		<Button variant="ghost" size="icon" class="relative">
-			<Bell class="size-5 text-slate-600" />
-			{#if unreadCount > 0}
-				<span
-					class="absolute top-2 right-2 flex size-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white"
-				>
-					{unreadCount > 9 ? '9+' : unreadCount}
-				</span>
-			{/if}
-		</Button>
+	<Popover.Trigger class={buttonVariants({ variant: "ghost", size: "icon", className: "relative" })}>
+		<Bell class="size-5 text-slate-600" />
+		{#if unreadCount > 0}
+			<span
+				class="absolute top-2 right-2 flex size-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white"
+			>
+				{unreadCount > 9 ? '9+' : unreadCount}
+			</span>
+		{/if}
 	</Popover.Trigger>
 	<Popover.Content
 		class="z-50 w-[calc(100vw-2rem)] max-w-[400px] overflow-hidden p-0 shadow-2xl sm:w-96"

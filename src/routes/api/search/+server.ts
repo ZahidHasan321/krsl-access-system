@@ -69,10 +69,10 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				similarity(COALESCE(${people.name}, ''), ${query}),
 				similarity(COALESCE(${people.codeNo}, ''), ${query}),
 				similarity(COALESCE(${people.company}, ''), ${query})
-			)`
-			: sql<number>`0`;
+			)`.as('search_rank')
+			: sql<number>`0`.as('search_rank');
 
-		const orderBy = query && query.length >= 2 ? sql`search_rank DESC` : desc(people.createdAt);
+		const orderBy = query && query.length >= 2 ? desc(rankSql) : desc(people.createdAt);
 
 		foundPeople = await db
 			.select({
@@ -117,7 +117,15 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	// If searching globally (no categoryId), also search vehicles
 	let foundVehicles: any[] = [];
 	if (!categoryId && type !== 'person') {
-		const vehicleOrderBy = query && query.length >= 2 ? sql`search_rank DESC` : desc(vehicles.entryTime);
+		const vehicleRankSql = query && query.length >= 2
+			? sql<number>`GREATEST(
+				similarity(COALESCE(${vehicles.vehicleNumber}, ''), ${query}),
+				similarity(COALESCE(${vehicles.driverName}, ''), ${query}),
+				similarity(COALESCE(${vehicles.vendorName}, ''), ${query})
+			)`.as('search_rank')
+			: sql<number>`0`.as('search_rank');
+
+		const vehicleOrderBy = query && query.length >= 2 ? desc(vehicleRankSql) : desc(vehicles.entryTime);
 		let vehicleWhere = undefined;
 
 		if (query && query.length >= 2) {
@@ -138,14 +146,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				driverName: vehicles.driverName,
 				type: vehicles.type,
 				status: vehicles.status,
-				search_rank:
-					query && query.length >= 2
-						? sql<number>`GREATEST(
-						similarity(COALESCE(${vehicles.vehicleNumber}, ''), ${query}),
-						similarity(COALESCE(${vehicles.driverName}, ''), ${query}),
-						similarity(COALESCE(${vehicles.vendorName}, ''), ${query})
-					)`
-						: sql<number>`0`
+				search_rank: vehicleRankSql
 			})
 			.from(vehicles)
 			.where(vehicleWhere)

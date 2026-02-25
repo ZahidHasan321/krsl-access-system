@@ -135,8 +135,8 @@ export const load: PageServerLoad = async (event) => {
 			similarity(COALESCE(${people.name}, ''), ${query}),
 			similarity(COALESCE(${people.codeNo}, ''), ${query}),
 			similarity(COALESCE(${people.company}, ''), ${query})
-		)`
-		: sql<number>`0`;
+		)`.as('search_rank')
+		: sql<number>`0`.as('search_rank');
 
 	const list = await db
 		.select({
@@ -166,7 +166,7 @@ export const load: PageServerLoad = async (event) => {
 		.where(where)
 		.limit(limit)
 		.offset(validatedOffset)
-		.orderBy(query ? desc(sql`search_rank`) : desc(people.createdAt));
+		.orderBy(query ? desc(rankSql) : desc(people.createdAt));
 
 	const [summaryStats] = await db
 		.select({

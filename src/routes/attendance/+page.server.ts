@@ -11,7 +11,7 @@ import { getAttendanceLogs } from '$lib/server/attendance-service';
 export const load: PageServerLoad = async (event) => {
 	requirePermission(event.locals, 'people.view');
 
-	const query = event.url.searchParams.get('q') || '';
+	const query = (event.url.searchParams.get('q') || '').trim();
 	const categoryId = event.url.searchParams.get('category') || '';
 	const location = event.url.searchParams.get('location') || '';
 	const page = parseInt(event.url.searchParams.get('page') || '1');

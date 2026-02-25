@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { people, personCategories, attendanceLogs } from '$lib/server/db/schema';
-import { eq, and, desc, sql, or, like, inArray } from 'drizzle-orm';
+import { eq, and, desc, sql, or, ilike, inArray } from 'drizzle-orm';
 import { format } from 'date-fns';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
@@ -86,7 +86,7 @@ function getDescendantIds(categoryId: string): string[] {
 export const load: PageServerLoad = async (event) => {
 	requirePermission(event.locals, 'people.view');
 
-	const query = event.url.searchParams.get('q') || '';
+	const query = (event.url.searchParams.get('q') || '').trim();
 	const categoryId = event.url.searchParams.get('category') || '';
 	const trained = event.url.searchParams.get('trained') || '';
 	const page = parseInt(event.url.searchParams.get('page') || '1');
@@ -100,10 +100,10 @@ export const load: PageServerLoad = async (event) => {
 				sql`COALESCE(${people.name}, '') % ${query}`,
 				sql`COALESCE(${people.codeNo}, '') % ${query}`,
 				sql`COALESCE(${people.company}, '') % ${query}`,
-				like(people.name, `%${query}%`),
-				like(people.codeNo, `%${query}%`),
-				like(people.company, `%${query}%`),
-				like(people.contactNo, `%${query}%`)
+				ilike(people.name, `%${query}%`),
+				ilike(people.codeNo, `%${query}%`),
+				ilike(people.company, `%${query}%`),
+				ilike(people.contactNo, `%${query}%`)
 			)
 		);
 	}
@@ -133,6 +133,7 @@ export const load: PageServerLoad = async (event) => {
 	const rankSql = query 
 		? sql<number>`GREATEST(
 			similarity(COALESCE(${people.name}, ''), ${query}),
+			word_similarity(${query}, COALESCE(${people.name}, '')),
 			similarity(COALESCE(${people.codeNo}, ''), ${query}),
 			similarity(COALESCE(${people.company}, ''), ${query})
 		)`.as('search_rank')

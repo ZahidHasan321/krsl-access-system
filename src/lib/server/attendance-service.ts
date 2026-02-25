@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { attendanceLogs, people, personCategories } from '$lib/server/db/schema';
-import { eq, and, desc, sql, or, like, inArray, count, type SQL } from 'drizzle-orm';
+import { eq, and, desc, sql, or, ilike, inArray, count, type SQL } from 'drizzle-orm';
 import { CATEGORIES } from '$lib/constants/categories';
 
 /** Given a root category ID, return all descendant IDs (inclusive). */
@@ -49,20 +49,21 @@ export async function getAttendanceLogs({
 	categoryId = '',
 	location = ''
 }: GetAttendanceLogsParams) {
+	const trimmedQuery = query.trim();
 	const rootLookup = buildRootLookup();
 
 	const whereClauses: (SQL | undefined)[] = [eq(attendanceLogs.status, 'on_premises')];
 
-	if (query) {
+	if (trimmedQuery) {
 		whereClauses.push(
 			or(
-				sql`COALESCE(${people.name}, '') % ${query}`,
-				sql`COALESCE(${people.codeNo}, '') % ${query}`,
-				sql`COALESCE(${people.company}, '') % ${query}`,
-				like(people.name, `%${query}%`),
-				like(people.codeNo, `%${query}%`),
-				like(people.company, `%${query}%`),
-				like(people.contactNo, `%${query}%`)
+				sql`COALESCE(${people.name}, '') % ${trimmedQuery}`,
+				sql`COALESCE(${people.codeNo}, '') % ${trimmedQuery}`,
+				sql`COALESCE(${people.company}, '') % ${trimmedQuery}`,
+				ilike(people.name, `%${trimmedQuery}%`),
+				ilike(people.codeNo, `%${trimmedQuery}%`),
+				ilike(people.company, `%${trimmedQuery}%`),
+				ilike(people.contactNo, `%${trimmedQuery}%`)
 			)
 		);
 	}

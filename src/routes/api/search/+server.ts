@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { people, vehicles, personCategories, attendanceLogs } from '$lib/server/db/schema';
-import { like, or, eq, and, inArray, sql, desc } from 'drizzle-orm';
+import { ilike, or, eq, and, inArray, sql, desc } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { requirePermission } from '$lib/server/rbac';
@@ -26,7 +26,7 @@ function getDescendantIds(
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	requirePermission(locals, 'people.view');
-	const query = url.searchParams.get('q') || '';
+	const query = (url.searchParams.get('q') || '').trim();
 	const categoryId = url.searchParams.get('category') || url.searchParams.get('categoryId');
 	const type = url.searchParams.get('type');
 	const limit = Math.min(1000, parseInt(url.searchParams.get('limit') || '15'));
@@ -50,8 +50,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			sql`COALESCE(${people.name}, '') % ${query}`,
 			sql`COALESCE(${people.codeNo}, '') % ${query}`,
 			sql`COALESCE(${people.company}, '') % ${query}`,
-			like(people.name, searchPattern),
-			like(people.codeNo, searchPattern)
+			ilike(people.name, searchPattern),
+			ilike(people.codeNo, searchPattern),
+			ilike(people.company, searchPattern)
 		);
 		whereCondition = categoryFilter
 			? and(inArray(people.categoryId, categoryFilter), searchCondition)
@@ -67,6 +68,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const rankSql = query && query.length >= 2
 			? sql<number>`GREATEST(
 				similarity(COALESCE(${people.name}, ''), ${query}),
+				word_similarity(${query}, COALESCE(${people.name}, '')),
 				similarity(COALESCE(${people.codeNo}, ''), ${query}),
 				similarity(COALESCE(${people.company}, ''), ${query})
 			)`.as('search_rank')
@@ -133,9 +135,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			vehicleWhere = or(
 				sql`COALESCE(${vehicles.vehicleNumber}, '') % ${query}`,
 				sql`COALESCE(${vehicles.driverName}, '') % ${query}`,
-				like(vehicles.vehicleNumber, searchPattern),
-				like(vehicles.driverName, searchPattern),
-				like(vehicles.mobile, searchPattern)
+				ilike(vehicles.vehicleNumber, searchPattern),
+				ilike(vehicles.driverName, searchPattern),
+				ilike(vehicles.mobile, searchPattern)
 			);
 		}
 

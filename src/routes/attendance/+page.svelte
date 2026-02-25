@@ -61,9 +61,9 @@
 		return path;
 	};
 
-	let searchQuery = $state('');
-	let selectedCategoryId = $state('');
-	let selectedLocation = $state('');
+	let searchQuery = $state(data.filters.query || '');
+	let selectedCategoryId = $state(data.filters.categoryId || '');
+	let selectedLocation = $state(data.filters.location || '');
 	let isCheckInOpen = $state(false);
 	let isRegisterOpen = $state(false);
 	let isPreparingPrint = $state(false);
@@ -137,12 +137,6 @@
 		return () => {
 			clearTimeout(debounceTimer);
 		};
-	});
-
-	$effect(() => {
-		searchQuery = data.filters.query;
-		selectedCategoryId = data.filters.categoryId;
-		selectedLocation = data.filters.location || '';
 	});
 
 	function triggerCheckOut(form: HTMLFormElement) {

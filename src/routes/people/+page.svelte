@@ -53,7 +53,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let searchQuery = $state('');
+	let searchQuery = $state(data.filters.query || '');
 	let isRegisterOpen = $state(false);
 	let debounceTimer: any;
 
@@ -66,10 +66,6 @@
 	let isPreparingPrint = $state(false);
 	let previousLimit = $state(20);
 	let isPrintConfirmOpen = $state(false);
-
-	$effect(() => {
-		searchQuery = data.filters.query;
-	});
 
 	$effect(() => {
 		if (page.url.searchParams.has('print')) {

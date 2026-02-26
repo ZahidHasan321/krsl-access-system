@@ -36,15 +36,24 @@
 	import { page } from '$app/state';
 	import { cn, appToast } from '$lib/utils';
 	import type { PageData, ActionData } from './$types';
+	import { untrack } from 'svelte';
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
 	import Pagination from '$lib/components/ui/Pagination.svelte';
 	import logo from '$lib/assets/kr_logo.svg';
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let isCheckInOpen = $state(false);
-	let searchQuery = $state(data.filters.query || '');
+	let searchQuery = $state('');
 	let searchInputEl = $state<HTMLInputElement | null>(null);
-	let typeFilter = $state(data.filters.typeFilter || 'all');
+	let typeFilter = $state('all');
+
+	// Initialize state from data prop once
+	$effect.pre(() => {
+		untrack(() => {
+			if (!searchQuery && data.filters.query) searchQuery = data.filters.query;
+			if (typeFilter === 'all' && data.filters.typeFilter) typeFilter = data.filters.typeFilter;
+		});
+	});
 
 	$effect(() => {
 		// Only sync from server if user is not currently focusing the input
@@ -282,7 +291,7 @@
 							<Search size={18} />
 						</div>
 						<Input
-							bind:this={searchInputEl}
+							bind:ref={searchInputEl}
 							bind:value={searchQuery}
 							oninput={handleSearchInput}
 							placeholder={i18n.t('searchVehiclesPlaceholder')}

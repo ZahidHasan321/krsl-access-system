@@ -29,6 +29,7 @@
 	import { page } from '$app/state';
 	import { fade, slide } from 'svelte/transition';
 	import { sineInOut } from 'svelte/easing';
+	import { untrack } from 'svelte';
 	import { format, parseISO } from 'date-fns';
 
 	import {
@@ -42,9 +43,18 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let searchQuery = $state(data.filters.query || '');
-	let startDate = $state(data.filters.startDate || '');
-	let endDate = $state(data.filters.endDate || '');
+	let searchQuery = $state('');
+	let startDate = $state('');
+	let endDate = $state('');
+
+	// Initialize state from data prop once
+	$effect.pre(() => {
+		untrack(() => {
+			if (!searchQuery && data.filters.query) searchQuery = data.filters.query;
+			if (!startDate && data.filters.startDate) startDate = data.filters.startDate;
+			if (!endDate && data.filters.endDate) endDate = data.filters.endDate;
+		});
+	});
 	let isPreparingPrint = $state(false);
 	let previousLimit = $state(20);
 

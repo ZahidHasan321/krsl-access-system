@@ -1,15 +1,21 @@
 import { db } from '$lib/server/db';
 import { vehicles } from '$lib/server/db/schema';
-import { eq, desc, like, or, sql } from 'drizzle-orm';
+import { eq, desc, ilike, or, sql } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
-	const vehicleNumber = url.searchParams.get('vehicleNumber');
+	const rawVehicleNumber = url.searchParams.get('vehicleNumber') || '';
+	const vehicleNumber = rawVehicleNumber.trim();
 
 	if (!vehicleNumber || vehicleNumber.length < 3) {
 		return json({ found: false, history: [] });
 	}
+
+	const rankSql = sql<number>`GREATEST(
+		similarity(COALESCE(${vehicles.vehicleNumber}, ''), ${vehicleNumber}),
+		word_similarity(${vehicleNumber}, COALESCE(${vehicles.vehicleNumber}, ''))
+	)`.as('search_rank');
 
 	// Find exact or similar vehicle numbers
 	const history = await db
@@ -25,16 +31,16 @@ export const GET: RequestHandler = async ({ url }) => {
 			exitTime: vehicles.exitTime,
 			status: vehicles.status,
 			date: vehicles.date,
-			rank: sql<number>`similarity(${vehicles.vehicleNumber}, ${vehicleNumber})`.as('rank')
+			search_rank: rankSql
 		})
 		.from(vehicles)
 		.where(
 			or(
-				sql`${vehicles.vehicleNumber} % ${vehicleNumber}`,
-				like(vehicles.vehicleNumber, `%${vehicleNumber}%`)
+				sql`COALESCE(${vehicles.vehicleNumber}, '') % ${vehicleNumber}`,
+				ilike(vehicles.vehicleNumber, `%${vehicleNumber}%`)
 			)
 		)
-		.orderBy(desc(sql`rank`), desc(vehicles.entryTime))
+		.orderBy(desc(rankSql), desc(vehicles.entryTime))
 		.limit(10);
 
 	// Check if there's an exact match currently on premises

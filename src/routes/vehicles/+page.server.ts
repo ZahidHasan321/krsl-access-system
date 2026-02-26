@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { vehicles } from '$lib/server/db/schema';
-import { desc, eq, and, or, like, count, sql } from 'drizzle-orm';
+import { desc, eq, and, or, ilike, count, sql } from 'drizzle-orm';
 import { format } from 'date-fns';
 import { fail, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
@@ -9,7 +9,7 @@ import { notifyChange } from '$lib/server/events';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	requirePermission(locals, 'vehicles.view');
-	const query = url.searchParams.get('q') || '';
+	const query = (url.searchParams.get('q') || '').trim();
 	const typeFilter = url.searchParams.get('type') || 'all';
 	const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
 	const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 20));
@@ -24,19 +24,29 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	if (query) {
 		conditions.push(
 			or(
-				sql`${vehicles.vehicleNumber} % ${query}`,
-				sql`${vehicles.driverName} % ${query}`,
-				sql`${vehicles.vendorName} % ${query}`,
-				like(vehicles.vehicleNumber, `%${query}%`),
-				like(vehicles.driverName, `%${query}%`),
-				like(vehicles.vendorName, `%${query}%`),
-				like(vehicles.cargoDescription, `%${query}%`),
-				like(vehicles.mobile, `%${query}%`)
+				sql`COALESCE(${vehicles.vehicleNumber}, '') % ${query}`,
+				sql`COALESCE(${vehicles.driverName}, '') % ${query}`,
+				sql`COALESCE(${vehicles.vendorName}, '') % ${query}`,
+				ilike(vehicles.vehicleNumber, `%${query}%`),
+				ilike(vehicles.driverName, `%${query}%`),
+				ilike(vehicles.vendorName, `%${query}%`),
+				ilike(vehicles.cargoDescription, `%${query}%`),
+				ilike(vehicles.mobile, `%${query}%`)
 			)!
 		);
 	}
 
 	const whereClause = and(...conditions);
+
+	// Define rank if query exists
+	const rankSql = query 
+		? sql<number>`GREATEST(
+			similarity(COALESCE(${vehicles.vehicleNumber}, ''), ${query}),
+			word_similarity(${query}, COALESCE(${vehicles.vehicleNumber}, '')),
+			similarity(COALESCE(${vehicles.driverName}, ''), ${query}),
+			similarity(COALESCE(${vehicles.vendorName}, ''), ${query})
+		)`.as('search_rank')
+		: sql<number>`0`.as('search_rank');
 
 	// Count Query
 	const [totalCountResult] = await db.select({ count: count() }).from(vehicles).where(whereClause);
@@ -46,10 +56,24 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 
 	// Data Query
 	const activeVehicles = await db
-		.select()
+		.select({
+			id: vehicles.id,
+			vehicleNumber: vehicles.vehicleNumber,
+			type: vehicles.type,
+			vendorName: vehicles.vendorName,
+			cargoDescription: vehicles.cargoDescription,
+			driverName: vehicles.driverName,
+			helperName: vehicles.helperName,
+			mobile: vehicles.mobile,
+			note: vehicles.note,
+			entryTime: vehicles.entryTime,
+			status: vehicles.status,
+			date: vehicles.date,
+			search_rank: rankSql
+		})
 		.from(vehicles)
 		.where(whereClause)
-		.orderBy(desc(vehicles.entryTime))
+		.orderBy(query ? desc(rankSql) : desc(vehicles.entryTime))
 		.limit(pageSize)
 		.offset(offset);
 

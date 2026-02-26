@@ -6,9 +6,15 @@ import { eq } from 'drizzle-orm';
 import { notifyChange } from './events';
 
 // Initialize web-push with VAPID keys from environment
-const publicVapidKey = env.PUBLIC_VAPID_KEY;
-const privateVapidKey = env.PRIVATE_VAPID_KEY;
+const publicVapidKey = env.VAPID_PUBLIC_KEY;
+const privateVapidKey = env.VAPID_PRIVATE_KEY;
 const vapidSubject = env.VAPID_SUBJECT || 'mailto:admin@example.com';
+
+console.log('[Push Service] Checking VAPID keys:', {
+	hasPublic: !!publicVapidKey,
+	hasPrivate: !!privateVapidKey,
+	subject: vapidSubject
+});
 
 if (publicVapidKey && privateVapidKey) {
 	webpush.setVapidDetails(vapidSubject, publicVapidKey, privateVapidKey);

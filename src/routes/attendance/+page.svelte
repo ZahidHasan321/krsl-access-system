@@ -45,7 +45,7 @@
 		getSubCategories,
 		getCategoryById
 	} from '$lib/constants/categories';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -61,10 +61,19 @@
 		return path;
 	};
 
-	let searchQuery = $state(data.filters.query || '');
+	let searchQuery = $state('');
 	let searchInputEl = $state<HTMLInputElement | null>(null);
-	let selectedCategoryId = $state(data.filters.categoryId || '');
-	let selectedLocation = $state(data.filters.location || '');
+	let selectedCategoryId = $state('');
+	let selectedLocation = $state('');
+
+	// Initialize state from data prop once
+	$effect.pre(() => {
+		untrack(() => {
+			if (!searchQuery && data.filters.query) searchQuery = data.filters.query;
+			if (!selectedCategoryId && data.filters.categoryId) selectedCategoryId = data.filters.categoryId;
+			if (!selectedLocation && data.filters.location) selectedLocation = data.filters.location;
+		});
+	});
 
 	$effect(() => {
 		// Only sync from server if user is not currently focusing the input
@@ -397,7 +406,7 @@
 							<Search size={18} />
 						</div>
 						<Input
-							bind:this={searchInputEl}
+							bind:ref={searchInputEl}
 							bind:value={searchQuery}
 							oninput={handleSearchInput}
 							placeholder={i18n.t('searchPeoplePlaceholder')}

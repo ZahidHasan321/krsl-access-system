@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { fade, scale } from 'svelte/transition';
 	import { AlertTriangle } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
+	import * as Dialog from '$lib/components/ui/dialog';
 
 	interface Props {
 		open?: boolean;
@@ -27,18 +27,15 @@
 
 	function handleConfirm() {
 		open = false;
-		onconfirm?.();
+		// Small delay to ensure state update propagates before re-submission
+		setTimeout(() => {
+			onconfirm?.();
+		}, 100);
 	}
 
 	function handleCancel() {
 		open = false;
 		oncancel?.();
-	}
-
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape' && open) {
-			handleCancel();
-		}
 	}
 
 	const variantStyles = {
@@ -54,45 +51,29 @@
 	};
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
-
-{#if open}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
-		transition:fade={{ duration: 150 }}
-	>
-		<button
-			class="absolute inset-0 cursor-default bg-gray-900/50 backdrop-blur-sm"
-			onclick={handleCancel}
-			aria-label="Close modal"
-		></button>
-
-		<div
-			class="relative w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl"
-			transition:scale={{ duration: 150, start: 0.95 }}
-		>
-			<div class="p-6 text-center">
-				<div
-					class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100"
-				>
-					<AlertTriangle class={iconColors[variant]} size={24} />
-				</div>
-				<h3 class="mb-2 text-lg font-bold text-gray-900">
-					{title}
-				</h3>
-				<p class="text-sm text-gray-600">
-					{message}
-				</p>
+<Dialog.Root bind:open>
+	<Dialog.Content class="max-w-sm overflow-hidden rounded-2xl p-0" showCloseButton={false}>
+		<div class="p-6 text-center">
+			<div
+				class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100"
+			>
+				<AlertTriangle class={iconColors[variant]} size={24} />
 			</div>
-
-			<div class="flex gap-3 border-t bg-gray-50 p-4">
-				<Button variant="outline" onclick={handleCancel} class="flex-1">
-					{cancelText}
-				</Button>
-				<Button onclick={handleConfirm} class="flex-1 {variantStyles[variant]}">
-					{confirmText}
-				</Button>
-			</div>
+			<Dialog.Title class="mb-2 text-lg font-bold text-gray-900">
+				{title}
+			</Dialog.Title>
+			<Dialog.Description class="text-sm text-gray-600">
+				{message}
+			</Dialog.Description>
 		</div>
-	</div>
-{/if}
+
+		<div class="flex gap-3 border-t bg-gray-50 p-4">
+			<Button variant="outline" onclick={handleCancel} class="flex-1">
+				{cancelText}
+			</Button>
+			<Button onclick={handleConfirm} class="flex-1 {variantStyles[variant]}">
+				{confirmText}
+			</Button>
+		</div>
+	</Dialog.Content>
+</Dialog.Root>

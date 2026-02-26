@@ -43,6 +43,7 @@
 	let deviceOnline = $state(false);
 	let deviceLoading = $state(true);
 	let showOfflineWarning = $state(false);
+	let skipOfflineCheck = $state(false);
 	let pendingFormSubmit = $state<HTMLFormElement | null>(null);
 
 	async function checkDeviceStatus() {
@@ -149,6 +150,7 @@
 		showSummary = false;
 		enrolledMethod = null;
 		showOfflineWarning = false;
+		skipOfflineCheck = false;
 		pendingFormSubmit = null;
 	}
 
@@ -461,13 +463,13 @@
 						class="space-y-5"
 						enctype="multipart/form-data"
 						use:enhance={({ formData, cancel, formElement }) => {
-							if (!deviceOnline && !showOfflineWarning) {
+							if (!deviceOnline && !skipOfflineCheck) {
 								showOfflineWarning = true;
 								pendingFormSubmit = formElement;
 								cancel();
 								return;
 							}
-							showOfflineWarning = false;
+							skipOfflineCheck = false;
 							// Capture form values before submission
 							const formName = formData.get('name') as string;
 							const formCompany = (formData.get('company') as string) || null;
@@ -747,5 +749,8 @@
 	message="No device is currently connected. The person will be registered in the system but biometric enrollment and device sync will not happen until a device comes online."
 	confirmText="Register Anyway"
 	variant="warning"
-	onconfirm={() => pendingFormSubmit?.requestSubmit()}
+	onconfirm={() => {
+		skipOfflineCheck = true;
+		pendingFormSubmit?.requestSubmit();
+	}}
 />

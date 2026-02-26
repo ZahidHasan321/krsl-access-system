@@ -47,6 +47,37 @@
 	let deleteFormElement = $state<HTMLFormElement | null>(null);
 	let showPassword = $state(false);
 	let isSubmitting = $state(false);
+	let generatedPassword = $state('');
+
+	function generatePassword() {
+		const length = 16;
+		const charset = {
+			upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+			lower: 'abcdefghijklmnopqrstuvwxyz',
+			number: '0123456789',
+			special: '!@#$%^&*()_+~`|}{[]:;?><,./-='
+		};
+
+		let password = '';
+		// Ensure at least one of each
+		password += charset.upper[Math.floor(Math.random() * charset.upper.length)];
+		password += charset.lower[Math.floor(Math.random() * charset.lower.length)];
+		password += charset.number[Math.floor(Math.random() * charset.number.length)];
+		password += charset.special[Math.floor(Math.random() * charset.special.length)];
+
+		const allChars = Object.values(charset).join('');
+		for (let i = password.length; i < length; i++) {
+			password += allChars[Math.floor(Math.random() * allChars.length)];
+		}
+
+		// Shuffle
+		generatedPassword = password
+			.split('')
+			.sort(() => 0.5 - Math.random())
+			.join('');
+
+		showPassword = true;
+	}
 
 	const isCurrentAdmin = $derived(data.currentUserRoleId === ROLES.ADMIN);
 
@@ -57,8 +88,14 @@
 	}
 
 	function openEdit(u: any) {
+		generatedPassword = '';
 		editingUser = { ...u };
 		isEditDialogOpen = true;
+	}
+
+	function openCreate() {
+		generatedPassword = '';
+		isCreateDialogOpen = true;
 	}
 
 	function canEdit(u: any) {
@@ -104,7 +141,7 @@
 		</div>
 		<Button
 			class="h-11 shrink-0 gap-2 rounded-xl px-6 font-black shadow-lg sm:h-12 sm:rounded-2xl"
-			onclick={() => (isCreateDialogOpen = true)}
+			onclick={openCreate}
 		>
 			<UserPlus size={20} />
 			Add User
@@ -276,13 +313,23 @@
 			</div>
 
 			<div class="space-y-2">
-				<Label class="text-xs font-bold tracking-widest text-slate-500 capitalize">Password</Label>
+				<div class="flex items-center justify-between">
+					<Label class="text-xs font-bold tracking-widest text-slate-500 capitalize">Password</Label>
+					<button
+						type="button"
+						class="text-[10px] font-black tracking-widest text-primary-600 uppercase transition-colors hover:text-primary-700"
+						onclick={generatePassword}
+					>
+						Generate
+					</button>
+				</div>
 				<div class="relative">
 					<Input
 						name="password"
 						type={showPassword ? 'text' : 'password'}
 						required
-						minlength={8}
+						minlength={10}
+						value={generatedPassword}
 						placeholder="••••••••"
 						class="h-11 border-2 pr-12"
 					/>
@@ -299,7 +346,7 @@
 						{/if}
 					</button>
 				</div>
-				<p class="text-xs text-slate-400">At least 8 characters with both letters and numbers</p>
+				<p class="text-xs text-slate-400">At least 10 characters with uppercase, lowercase, numbers, and special characters</p>
 			</div>
 
 			<div class="space-y-2">
@@ -414,16 +461,28 @@
 				</div>
 
 				<div class="space-y-2">
-					<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">
-						Password <span class="font-normal text-slate-400 normal-case"
-							>(Leave blank to keep current)</span
-						>
-					</Label>
+					<div class="flex items-center justify-between">
+						<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">
+							Password <span class="font-normal text-slate-400 normal-case"
+								>(Leave blank to keep current)</span
+							>
+						</Label>
+						{#if !(data.isMaster && data.users.find((u) => u.id === editingUser?.id)?.isMaster)}
+							<button
+								type="button"
+								class="text-[10px] font-black tracking-widest text-primary-600 uppercase transition-colors hover:text-primary-700"
+								onclick={generatePassword}
+							>
+								Generate
+							</button>
+						{/if}
+					</div>
 					<div class="relative">
 						<Input
 							name="password"
 							type={showPassword ? 'text' : 'password'}
-							minlength={8}
+							minlength={10}
+							value={generatedPassword}
 							placeholder="••••••••"
 							class="h-11 border-2 pr-12"
 							disabled={data.isMaster && data.users.find((u) => u.id === editingUser?.id)?.isMaster}
@@ -443,11 +502,10 @@
 					</div>
 					{#if !(data.isMaster && data.users.find((u) => u.id === editingUser?.id)?.isMaster)}
 						<p class="text-xs text-slate-400">
-							At least 8 characters with both letters and numbers
+							At least 10 characters with uppercase, lowercase, numbers, and special characters
 						</p>
 					{/if}
 				</div>
-
 				<div class="space-y-2">
 					<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">Role</Label>
 					<select

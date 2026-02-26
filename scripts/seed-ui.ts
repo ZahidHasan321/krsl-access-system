@@ -117,7 +117,7 @@ async function run() {
 
 	// 2. Admin User
 	const MASTER_USERNAME = process.env.MASTER_USERNAME || 'admin';
-	const MASTER_PASSWORD = process.env.MASTER_PASSWORD || 'admin123';
+	const MASTER_PASSWORD = process.env.MASTER_PASSWORD || 'Admin@123456';
 	console.log(`Ensuring admin user: ${MASTER_USERNAME}`);
 	const adminCheck = await client.query('SELECT id FROM "user" WHERE username = $1', [
 		MASTER_USERNAME

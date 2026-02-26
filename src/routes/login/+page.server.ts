@@ -30,7 +30,7 @@ export const actions: Actions = {
 		}
 		if (!validatePassword(password)) {
 			return fail(400, {
-				message: 'Password must be at least 8 characters with both letters and numbers'
+				message: 'Invalid password'
 			});
 		}
 
@@ -105,11 +105,5 @@ function validateUsername(username: unknown): username is string {
 }
 
 function validatePassword(password: unknown): password is string {
-	return (
-		typeof password === 'string' &&
-		password.length >= 8 &&
-		password.length <= 255 &&
-		/[a-zA-Z]/.test(password) &&
-		/[0-9]/.test(password)
-	);
+	return typeof password === 'string' && password.length >= 3 && password.length <= 255;
 }

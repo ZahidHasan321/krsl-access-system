@@ -52,6 +52,20 @@ function generateUserId() {
 	return id;
 }
 
+function validatePassword(password: string): boolean {
+	return (
+		password.length >= 10 &&
+		password.length <= 255 &&
+		/[a-z]/.test(password) &&
+		/[A-Z]/.test(password) &&
+		/[0-9]/.test(password) &&
+		/[^a-zA-Z0-9]/.test(password)
+	);
+}
+
+const PASSWORD_ERROR_MESSAGE =
+	'Password must be at least 10 characters long and include uppercase, lowercase, numbers, and special characters.';
+
 export const actions: Actions = {
 	createUser: async ({ request, locals }) => {
 		requirePermission(locals, 'users.manage');
@@ -72,14 +86,9 @@ export const actions: Actions = {
 			return fail(400, { message: 'Username must be between 3 and 31 characters' });
 		}
 
-		if (
-			password.length < 8 ||
-			password.length > 255 ||
-			!/[a-zA-Z]/.test(password) ||
-			!/[0-9]/.test(password)
-		) {
+		if (!validatePassword(password)) {
 			return fail(400, {
-				message: 'Password must be at least 8 characters with both letters and numbers'
+				message: PASSWORD_ERROR_MESSAGE
 			});
 		}
 
@@ -175,14 +184,9 @@ export const actions: Actions = {
 			}
 
 			if (password && password.length > 0) {
-				if (
-					password.length < 8 ||
-					password.length > 255 ||
-					!/[a-zA-Z]/.test(password) ||
-					!/[0-9]/.test(password)
-				) {
+				if (!validatePassword(password)) {
 					return fail(400, {
-						message: 'Password must be at least 8 characters with both letters and numbers'
+						message: PASSWORD_ERROR_MESSAGE
 					});
 				}
 				updateData.passwordHash = await hash(password, {

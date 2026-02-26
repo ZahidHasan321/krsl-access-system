@@ -448,7 +448,7 @@ const server = http.createServer(async (req, res) => {
 								logId: newLogId,
 								categoryId: person.categoryId
 							});
-						} else if (activeLog.date === punchDate) {
+						} else {
 							console.log(`[ZK:Punch] CHECK-OUT for ${person.name} (${method})`);
 							await db
 								.update(schema.attendanceLogs)
@@ -461,39 +461,6 @@ const server = http.createServer(async (req, res) => {
 								photoUrl: person.photoUrl,
 								thumbUrl: person.thumbUrl,
 								logId: activeLog.id,
-								categoryId: person.categoryId
-							});
-						} else {
-							console.log(`[ZK:Punch] CLOSE + NEW for ${person.name} (day shift)`);
-							await db
-								.update(schema.attendanceLogs)
-								.set({ exitTime: entry.timestamp, status: 'checked_out' })
-								.where(eq(schema.attendanceLogs.id, activeLog.id));
-							notifySvelte('checkout', {
-								personId: person.id,
-								personName: person.name,
-								verifyMethod: method,
-								photoUrl: person.photoUrl,
-								thumbUrl: person.thumbUrl,
-								logId: activeLog.id,
-								categoryId: person.categoryId
-							});
-							const newLogId = crypto.randomUUID();
-							await db.insert(schema.attendanceLogs).values({
-								id: newLogId,
-								personId: person.id,
-								entryTime: entry.timestamp,
-								verifyMethod: method,
-								status: 'on_premises',
-								date: punchDate
-							});
-							notifySvelte('checkin', {
-								personId: person.id,
-								personName: person.name,
-								verifyMethod: method,
-								photoUrl: person.photoUrl,
-								thumbUrl: person.thumbUrl,
-								logId: newLogId,
 								categoryId: person.categoryId
 							});
 						}

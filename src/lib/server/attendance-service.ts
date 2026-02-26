@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { attendanceLogs, people, personCategories } from '$lib/server/db/schema';
-import { eq, and, desc, sql, or, ilike, inArray, count, type SQL } from 'drizzle-orm';
+import { eq, and, desc, asc, sql, or, ilike, inArray, count, type SQL } from 'drizzle-orm';
 import { CATEGORIES } from '$lib/constants/categories';
 
 /** Given a root category ID, return all descendant IDs (inclusive). */
@@ -40,6 +40,7 @@ export interface GetAttendanceLogsParams {
 	query?: string;
 	categoryId?: string;
 	location?: string;
+	sortBy?: 'recent' | 'duration';
 }
 
 export async function getAttendanceLogs({
@@ -47,7 +48,8 @@ export async function getAttendanceLogs({
 	limit = 20,
 	query = '',
 	categoryId = '',
-	location = ''
+	location = '',
+	sortBy = 'recent'
 }: GetAttendanceLogsParams) {
 	const trimmedQuery = query.trim();
 	const rootLookup = buildRootLookup();
@@ -91,6 +93,9 @@ export async function getAttendanceLogs({
 	const validatedPage = Math.max(1, Math.min(page, totalPages || 1));
 	const validatedOffset = (validatedPage - 1) * limit;
 
+	const orderBy =
+		sortBy === 'duration' ? asc(attendanceLogs.entryTime) : desc(attendanceLogs.entryTime);
+
 	// Load active entries (on_premises) only with filtering
 	const logs = await db
 		.select({
@@ -122,7 +127,7 @@ export async function getAttendanceLogs({
 		.innerJoin(people, eq(attendanceLogs.personId, people.id))
 		.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
 		.where(where)
-		.orderBy(desc(attendanceLogs.entryTime))
+		.orderBy(orderBy)
 		.limit(limit)
 		.offset(validatedOffset);
 

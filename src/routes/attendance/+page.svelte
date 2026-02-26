@@ -65,6 +65,7 @@
 	let searchInputEl = $state<HTMLInputElement | null>(null);
 	let selectedCategoryId = $state('');
 	let selectedLocation = $state('');
+	let selectedSort = $state<'recent' | 'duration'>('recent');
 
 	// Initialize state from data prop once
 	$effect.pre(() => {
@@ -72,6 +73,7 @@
 			if (!searchQuery && data.filters.query) searchQuery = data.filters.query;
 			if (!selectedCategoryId && data.filters.categoryId) selectedCategoryId = data.filters.categoryId;
 			if (!selectedLocation && data.filters.location) selectedLocation = data.filters.location;
+			if (data.filters.sortBy) selectedSort = data.filters.sortBy;
 		});
 	});
 
@@ -130,6 +132,7 @@
 		if (searchQuery) url.searchParams.set('q', searchQuery);
 		if (selectedCategoryId) url.searchParams.set('category', selectedCategoryId);
 		if (selectedLocation) url.searchParams.set('location', selectedLocation);
+		if (selectedSort) url.searchParams.set('sort', selectedSort);
 
 		try {
 			const res = await fetch(url);
@@ -168,7 +171,10 @@
 			const timer = setTimeout(() => {
 				window.print();
 				isPreparingPrint = false;
-				window.close();
+				// Remove 'print' param without refreshing to stay on page
+				const url = new URL(page.url);
+				url.searchParams.delete('print');
+				goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
 			}, 1500);
 			return () => clearTimeout(timer);
 		}
@@ -184,6 +190,9 @@
 
 		if (selectedLocation) url.searchParams.set('location', selectedLocation);
 		else url.searchParams.delete('location');
+
+		if (selectedSort !== 'recent') url.searchParams.set('sort', selectedSort);
+		else url.searchParams.delete('sort');
 
 		url.searchParams.set('page', '1');
 		goto(url.toString(), { keepFocus: true, noScroll: true });
@@ -256,12 +265,18 @@
 		applyFilters();
 	}
 
-	const hasActiveFilters = $derived(!!searchQuery || !!selectedCategoryId || !!selectedLocation);
+	function changeSort(s: 'recent' | 'duration') {
+		selectedSort = s;
+		applyFilters();
+	}
+
+	const hasActiveFilters = $derived(!!searchQuery || !!selectedCategoryId || !!selectedLocation || selectedSort !== 'recent');
 
 	function clearFilters() {
 		searchQuery = '';
 		selectedCategoryId = '';
 		selectedLocation = '';
+		selectedSort = 'recent';
 		applyFilters();
 	}
 
@@ -300,85 +315,80 @@
 <div class="print-only hidden">
 	<div
 		class="print-header"
-		style="display: flex !important; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 2px solid #333; margin-bottom: 1rem;"
+		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 3px solid #1c55a4; margin-bottom: 2rem;"
 	>
-		<div style="display: flex; align-items: center; gap: 12px;">
-			<img src={logo} alt="Logo" style="height: 48px; width: auto;" />
-			<div>
-				<h1 style="font-size: 24px; font-weight: 800; margin: 0;">{i18n.t('appName')}</h1>
-				<p style="font-size: 12px; color: #666; margin: 4px 0 0 0;">Current Attendance Report</p>
+		<div style="display: flex; align-items: center; gap: 20px;">
+			<img src={logo} alt="Logo" style="height: 70px; width: auto;" />
+			<div style="border-left: 2px solid #e2e8f0; padding-left: 20px;">
+				<h1 style="font-family: 'HandelGothic', sans-serif; font-size: 32px; color: #0f172a; margin: 0; line-height: 1;">
+					<span style="color: #1c55a4;">KR</span> Steel Ltd.
+				</h1>
+				<p style="font-size: 11px; font-weight: 900; color: #64748b; margin: 6px 0 0 0; letter-spacing: 0.3em; text-transform: uppercase;">
+					Access Management System
+				</p>
 			</div>
 		</div>
 		<div style="text-align: right;">
-			<p style="font-size: 14px; font-weight: 600; margin: 0;">{format(new Date(), 'PPPP')}</p>
-			<p style="font-size: 12px; color: #666; margin: 4px 0 0 0;">
-				Printed at {format(new Date(), 'hh:mm a')}
+			<h2 style="font-size: 18px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">
+				Entry Log Report
+			</h2>
+			<p style="font-size: 12px; font-weight: 700; color: #64748b; margin: 4px 0 0 0;">
+				{format(new Date(), 'PPPP')} | {format(new Date(), 'hh:mm a')}
 			</p>
 		</div>
 	</div>
 
-	<div style="margin-bottom: 1rem; padding: 0.75rem; background: #f5f5f5; border-radius: 4px;">
-		<p style="font-size: 14px; font-weight: 600; margin: 0;">
-			Total People Currently Inside: <strong>{data.pagination.totalCount}</strong>
-		</p>
+	<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.25rem 2rem; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+		<div style="display: flex; flex-direction: column; gap: 2px;">
+			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Current Status</span>
+			<span style="font-size: 15px; font-weight: 900; color: #059669;">ON PREMISES</span>
+		</div>
+		
+		<div style="display: flex; flex-direction: column; gap: 2px; align-items: center; border-left: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; padding: 0 3rem;">
+			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Total Personnel</span>
+			<span style="font-size: 15px; font-weight: 900; color: #1c55a4;">{data.pagination.totalCount} Individuals</span>
+		</div>
+
+		<div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
+			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Report Category</span>
+			<span style="font-size: 15px; font-weight: 900; color: #0f172a;">Real-time Registry</span>
+		</div>
 	</div>
 
-	<table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+	<table style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: inherit;">
 		<thead>
-			<tr style="background: #f0f0f0;">
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">#</th>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Name</th
-				>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Code No.</th
-				>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Category</th
-				>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Company</th
-				>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Entry Time</th
-				>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>{i18n.t('location')}</th
-				>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Trained</th
-				>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Purpose</th
-				>
+			<tr style="background: #f1f5f9;">
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">#</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Name</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Category</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Entry Time</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Inside For</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Location</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Safety</th>
 			</tr>
 		</thead>
 		<tbody>
 			{#each logs as log, index (log.id)}
-				<tr>
-					<td style="border: 1px solid #ddd; padding: 8px;">{index + 1}</td>
-					<td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;">{log.person.name}</td>
-					<td style="border: 1px solid #ddd; padding: 8px;">{log.person.codeNo || '-'}</td>
-					<td style="border: 1px solid #ddd; padding: 8px;">{log.category.name}</td>
-					<td style="border: 1px solid #ddd; padding: 8px;">{log.person.company || '-'}</td>
-					<td style="border: 1px solid #ddd; padding: 8px;">{format(log.entryTime, 'hh:mm a')}</td>
-					<td
-						style="border: 1px solid #ddd; padding: 8px; text-transform: uppercase; font-weight: 700;"
-						>{log.location || '-'}</td
-					>
-					<td style="border: 1px solid #ddd; padding: 8px; font-weight: 700; color: {log.person.isTrained ? '#059669' : '#e11d48'};">
-						{log.person.isTrained ? 'Trained' : 'Pending'}
+				<tr style={index % 2 === 0 ? '' : 'background: #f8fafc;'}>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #64748b;">{index + 1}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: #0f172a;">{log.person.name}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.category.name}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{format(log.entryTime, 'hh:mm a')}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 700; color: #059669;">{formatDuration(log.durationSeconds)}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; text-transform: uppercase; font-weight: 800; color: #0f172a;">{log.location || '-'}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: {log.person.isTrained ? '#059669' : '#e11d48'};">
+						{log.person.isTrained ? 'TRAINED' : 'PENDING'}
 					</td>
-					<td style="border: 1px solid #ddd; padding: 8px;">{log.purpose || '-'}</td>
 				</tr>
 			{/each}
 		</tbody>
 	</table>
 
 	<div
-		style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ddd; display: flex; justify-content: space-between; font-size: 10px; color: #666;"
+		style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em;"
 	>
-		<p>Generated by {i18n.t('appName')}</p>
+		<p>Generated by {i18n.t('appName')} Official Reporting System</p>
+		<p>Page 1 of 1</p>
 	</div>
 </div>
 
@@ -552,46 +562,80 @@
 					{/if}
 
 					<!-- Mobile Location Toggle -->
-					<div class="mt-4 space-y-2">
-						<p class="ml-1 text-[9px] font-black tracking-widest text-slate-400 uppercase">
-							{i18n.t('location')}
-						</p>
-						<div
-							class="flex w-fit items-center gap-1 rounded-2xl border-2 border-slate-100 bg-white p-1 shadow-sm"
-						>
-							<button
-								class={cn(
-									'rounded-xl px-4 py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
-									selectedLocation === ''
-										? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
-										: 'text-slate-500 hover:bg-slate-50'
-								)}
-								onclick={() => changeLocation('')}
+					<div class="mt-4 flex gap-4">
+						<div class="flex-1 space-y-2">
+							<p class="ml-1 text-[9px] font-black tracking-widest text-slate-400 uppercase">
+								{i18n.t('location')}
+							</p>
+							<div
+								class="flex w-full items-center gap-1 rounded-2xl border-2 border-slate-100 bg-white p-1 shadow-sm"
 							>
-								{i18n.t('all')}
-							</button>
-							<button
-								class={cn(
-									'rounded-xl px-4 py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
-									selectedLocation === 'yard'
-										? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
-										: 'text-slate-500 hover:bg-slate-50'
-								)}
-								onclick={() => changeLocation('yard')}
+								<button
+									class={cn(
+										'flex-1 rounded-xl py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
+										selectedLocation === ''
+											? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
+											: 'text-slate-500 hover:bg-slate-50'
+									)}
+									onclick={() => changeLocation('')}
+								>
+									{i18n.t('all')}
+								</button>
+								<button
+									class={cn(
+										'flex-1 rounded-xl py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
+										selectedLocation === 'yard'
+											? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
+											: 'text-slate-500 hover:bg-slate-50'
+									)}
+									onclick={() => changeLocation('yard')}
+								>
+									Yard
+								</button>
+								<button
+									class={cn(
+										'flex-1 rounded-xl py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
+										selectedLocation === 'ship'
+											? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
+											: 'text-slate-500 hover:bg-slate-50'
+									)}
+									onclick={() => changeLocation('ship')}
+								>
+									Ship
+								</button>
+							</div>
+						</div>
+
+						<div class="flex-1 space-y-2">
+							<p class="ml-1 text-[9px] font-black tracking-widest text-slate-400 uppercase">
+								Sort By
+							</p>
+							<div
+								class="flex w-full items-center gap-1 rounded-2xl border-2 border-slate-100 bg-white p-1 shadow-sm"
 							>
-								Yard
-							</button>
-							<button
-								class={cn(
-									'rounded-xl px-4 py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
-									selectedLocation === 'ship'
-										? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
-										: 'text-slate-500 hover:bg-slate-50'
-								)}
-								onclick={() => changeLocation('ship')}
-							>
-								Ship
-							</button>
+								<button
+									class={cn(
+										'flex-1 rounded-xl py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
+										selectedSort === 'recent'
+											? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
+											: 'text-slate-500 hover:bg-slate-50'
+									)}
+									onclick={() => changeSort('recent')}
+								>
+									Recent
+								</button>
+								<button
+									class={cn(
+										'flex-1 rounded-xl py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
+										selectedSort === 'duration'
+											? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
+											: 'text-slate-500 hover:bg-slate-50'
+									)}
+									onclick={() => changeSort('duration')}
+								>
+									Inside
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -757,6 +801,49 @@
 					</Button>
 				</div>
 			</div>
+
+			<!-- Sort Filter -->
+			<div class="space-y-3">
+				<p class="text-[10px] font-black tracking-widest text-slate-400 capitalize">
+					Sort By
+				</p>
+				<div class="flex flex-col gap-1">
+					<Button
+						variant={selectedSort === 'recent' ? 'secondary' : 'ghost'}
+						class={cn(
+							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+							selectedSort === 'recent'
+								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+								: 'text-slate-600'
+						)}
+						onclick={() => changeSort('recent')}
+					>
+						<div class="flex items-center gap-2">
+							{#if selectedSort === 'recent'}
+								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+							{/if}
+							Recent (Default)
+						</div>
+					</Button>
+					<Button
+						variant={selectedSort === 'duration' ? 'secondary' : 'ghost'}
+						class={cn(
+							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+							selectedSort === 'duration'
+								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+								: 'text-slate-600'
+						)}
+						onclick={() => changeSort('duration')}
+					>
+						<div class="flex items-center gap-2">
+							{#if selectedSort === 'duration'}
+								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+							{/if}
+							Inside For (Longest)
+						</div>
+					</Button>
+				</div>
+			</div>
 		</aside>
 
 		<!-- Main Content Area -->
@@ -765,20 +852,14 @@
 			<div class="h-[calc(100vh-12rem)] overflow-y-auto rounded-3xl border-2 border-slate-100 bg-slate-50/30 shadow-inner">
 				<div class="relative min-h-full">
 					{#if logs.length > 0}
-						<div class="flex flex-col gap-4 p-4">
+						<div class="flex flex-col gap-3 p-4">
 							{#each logs as log (log.id)}
-								<Card.Root
-									class="overflow-hidden border-l-4 border-l-emerald-500 bg-white transition-shadow hover:shadow-lg"
-								>
-									<Card.Content class="p-4 sm:p-5 md:p-6">
-										<div
-											class="flex flex-col items-start gap-4 xl:flex-row xl:items-center xl:justify-between"
-										>
-											<div class="flex w-full min-w-0 items-center gap-4 md:gap-5">
+								<Card.Root class="group overflow-hidden border-2 border-slate-100 bg-white transition-all hover:border-primary-200 hover:shadow-md">
+									<Card.Content class="p-3 sm:p-4">
+										<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+											<div class="flex min-w-0 flex-1 items-center gap-4">
 												<!-- Avatar -->
-												<div
-													class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-100 bg-white shadow-sm md:size-14 md:rounded-2xl"
-												>
+												<div class="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-50 bg-white shadow-sm sm:size-12">
 													{#if log.person.photoUrl}
 														<img
 															src={log.person.thumbUrl || log.person.photoUrl}
@@ -786,185 +867,76 @@
 															class="size-full object-cover"
 														/>
 													{:else}
-														<div
-															class="flex size-full items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 text-base font-black text-white md:text-lg"
-														>
-															{log.person.name.trim().split(/\s+/).length > 1
-																? log.person.name
-																		.trim()
-																		.split(/\s+/)
-																		.slice(0, 2)
-																		.map((n: string) => [...n][0])
-																		.join('')
-																: ([...log.person.name.trim()][0] ?? '?')}
+														<div class="flex size-full items-center justify-center bg-slate-100 text-sm font-black text-slate-400">
+															{log.person.name.trim().split(/\s+/).slice(0, 2).map((n: string) => [...n][0]).join('')}
 														</div>
 													{/if}
 												</div>
 
-												<!-- Main Info -->
+												<!-- Primary Info -->
 												<div class="min-w-0 flex-1">
-													<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-														<a
-															href="/people/{log.person.id}"
-															class="truncate text-base leading-tight font-black text-slate-900 transition-colors hover:text-primary-600 sm:text-lg"
-														>
-															{log.person.name}
-														</a>
-
-														<div class="flex flex-wrap gap-1">
-															{#each getCategoryPath(log.person.categoryId).slice(-2) as cat, i (cat.id)}
-																<Badge
-																	variant="outline"
-																	class={cn(
-																		'h-5 px-1.5 text-[8px] font-black tracking-wider capitalize sm:h-6 sm:px-2 sm:text-[10px]',
-																		getCategoryBadgeClass(cat.slug)
-																	)}
-																>
-																	{i18n.t(cat.slug as any) || cat.name}
-																</Badge>
-															{/each}
-														</div>
-													</div>
-													<p class="mt-0.5 text-xs font-bold text-slate-500 sm:text-sm">
-														<span class="text-primary-600/70">{log.person.codeNo ? `#${log.person.codeNo}` : ''}</span>
-														{#if log.person.codeNo && log.person.company}
-															<span class="mx-1.5 opacity-30">|</span>
-														{/if}
-														<span class="truncate">{log.person.company || ''}</span>
-													</p>
-													{#if !isEmployeeView && log.purpose}
-														<p
-															class="mt-2 flex items-center gap-1.5 text-xs font-medium text-slate-600"
-														>
-															<span
-																class="text-[9px] font-black text-slate-400 capitalize sm:text-[10px]"
-																>Purpose:</span
+													<a href="/people/{log.person.id}" class="truncate text-base font-black text-slate-900 transition-colors hover:text-primary-600">
+														{log.person.name}
+													</a>
+													<div class="mt-1 flex flex-wrap gap-1.5">
+														{#each getCategoryPath(log.person.categoryId).slice(-2) as cat (cat.id)}
+															<Badge
+																variant="outline"
+																class={cn(
+																	'h-5 px-1.5 text-[9px] font-black tracking-wider uppercase',
+																	getCategoryBadgeClass(cat.slug)
+																)}
 															>
-															<span class="truncate italic opacity-80">{log.purpose}</span>
-														</p>
-													{/if}
+																{i18n.t(cat.slug as any) || cat.name}
+															</Badge>
+														{/each}
+													</div>
 												</div>
 											</div>
 
-											<!-- Stats Row - Dynamic Layout -->
-											<div
-												class="grid w-full grid-cols-2 gap-4 border-t border-slate-50 pt-4 xl:flex xl:w-auto xl:items-center xl:gap-10 xl:border-none xl:pt-0 2xl:gap-16"
-											>
+											<!-- Metrics & Actions -->
+											<div class="flex flex-wrap items-center gap-4 border-t border-slate-50 pt-3 sm:border-none sm:pt-0 md:gap-8 lg:gap-12">
+												<!-- Duration -->
+												<div class="space-y-0.5">
+													<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">Inside For</p>
+													<div class="flex items-center gap-1.5 text-sm font-black text-emerald-600">
+														<Clock size={14} />
+														<span>{formatDuration(log.durationSeconds)}</span>
+													</div>
+												</div>
+
+												<!-- Location -->
 												{#if log.location}
-													<div class="space-y-1">
-														<p
-															class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
-														>
-															{i18n.t('location')}
-														</p>
-														<div
-															class="flex items-center gap-1.5 text-sm font-black whitespace-nowrap text-slate-900 uppercase sm:text-base md:gap-2"
-														>
-															<div
-																class={cn(
-																	'rounded-lg p-1 md:p-1.5',
-																	log.location === 'ship'
-																		? 'bg-blue-100 text-blue-600'
-																		: 'bg-amber-100 text-amber-600'
-																)}
-															>
-																<MapPin size={14} />
-															</div>
+													<div class="space-y-0.5">
+														<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('location')}</p>
+														<div class="flex items-center gap-1.5 text-sm font-black text-slate-900 uppercase">
+															<MapPin size={14} class={cn(log.location === 'ship' ? 'text-blue-500' : 'text-amber-500')} />
 															<span>{log.location}</span>
 														</div>
 													</div>
 												{/if}
 
-												<div class="space-y-1">
-													<p
-														class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
-													>
-														{i18n.t('entryTime')}
-													</p>
-													<div
-														class="flex items-center gap-1.5 text-sm font-black whitespace-nowrap text-slate-900 sm:text-base md:gap-2"
-													>
-														<div class="rounded-lg bg-primary-100 p-1 text-primary-600 md:p-1.5">
-															<Clock size={14} />
-														</div>
+												<!-- Entry Time -->
+												<div class="space-y-0.5">
+													<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('entryTime')}</p>
+													<div class="flex items-center gap-1.5 text-sm font-black text-slate-500">
+														<Clock size={14} class="opacity-50" />
 														<span>{format(log.entryTime, 'hh:mm a')}</span>
 													</div>
 												</div>
 
-												<div class="space-y-1">
-													<p
-														class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
-													>
-														Inside For
-													</p>
-													<div
-														class="flex items-center gap-1.5 text-sm font-black whitespace-nowrap text-emerald-600 sm:text-base md:gap-2"
-													>
-														<div class="rounded-lg bg-emerald-100 p-1 md:p-1.5">
-															<Clock size={14} />
-														</div>
-														<span>{formatDuration(log.durationSeconds)}</span>
-													</div>
-												</div>
-
-												{#if log.verifyMethod}
-													<div class="col-span-1 space-y-1">
-														<p
-															class="text-[9px] leading-none font-black tracking-widest text-slate-400 capitalize md:text-[10px]"
-														>
-															Method
-														</p>
-														<div
-															class="flex items-center gap-1.5 text-xs font-black text-slate-700 sm:text-sm md:gap-2"
-														>
-															<div
-																class={cn(
-																	'rounded-lg p-1 md:p-1.5',
-																	log.verifyMethod === 'face'
-																		? 'bg-violet-100 text-violet-600'
-																		: log.verifyMethod === 'finger'
-																			? 'bg-emerald-100 text-emerald-600'
-																			: log.verifyMethod === 'manual'
-																				? 'bg-blue-100 text-blue-600'
-																				: 'bg-slate-100 text-slate-500'
-																)}
-															>
-																{#if log.verifyMethod === 'face'}
-																	<Scan size={14} />
-																{:else if log.verifyMethod === 'finger'}
-																	<Fingerprint size={14} />
-																{:else if log.verifyMethod === 'card'}
-																	<CreditCard size={14} />
-																{:else if log.verifyMethod === 'manual'}
-																	<Shield size={14} />
-																{:else}
-																	<Users size={14} />
-																{/if}
-															</div>
-															<span class="capitalize">{log.verifyMethod}</span>
-														</div>
-													</div>
-												{/if}
-
+												<!-- Actions -->
 												{#if data.user?.permissions.includes('people.create')}
-													<form
-														method="POST"
-														action="?/checkOut"
-														use:enhance
-														class="col-span-2 xl:col-span-1 xl:w-auto"
-													>
+													<form method="POST" action="?/checkOut" use:enhance class="ml-auto sm:ml-0">
 														<input type="hidden" name="logId" value={log.id} />
 														<Button
 															type="button"
 															variant="outline"
-															class="h-11 w-full cursor-pointer gap-2 border-2 border-rose-100 px-4 font-black text-rose-600 shadow-sm transition-all hover:bg-rose-50 hover:text-rose-700 md:h-12 xl:w-auto xl:px-6"
-															onclick={(e) =>
-																triggerCheckOut(
-																	(e.currentTarget as HTMLButtonElement).form as HTMLFormElement
-																)}
+															class="h-10 gap-2 border-2 border-rose-100 px-4 font-black text-rose-600 transition-all hover:bg-rose-50 hover:text-rose-700"
+															onclick={(e) => triggerCheckOut((e.currentTarget as HTMLButtonElement).form as HTMLFormElement)}
 														>
 															<CheckCircle2 size={18} />
-															{i18n.t('checkOut')}
+															<span class="hidden xl:inline">{i18n.t('checkOut')}</span>
 														</Button>
 													</form>
 												{/if}

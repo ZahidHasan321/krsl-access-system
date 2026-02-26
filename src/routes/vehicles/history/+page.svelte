@@ -140,95 +140,86 @@
 <div class="print-only hidden">
 	<div
 		class="print-header"
-		style="display: flex !important; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 2px solid #333; margin-bottom: 1rem;"
+		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 3px solid #1c55a4; margin-bottom: 2rem;"
 	>
-		<div style="display: flex; align-items: center; gap: 12px;">
-			<img src={logo} alt="Logo" style="height: 48px; width: auto;" />
-			<div>
-				<div style="font-size: 24px; font-weight: 800; margin: 0;">{i18n.t('appName')}</div>
-				<p style="font-size: 14px; font-weight: 600; color: #333; margin: 4px 0 0 0;">
-					Vehicle History Report
+		<div style="display: flex; align-items: center; gap: 20px;">
+			<img src={logo} alt="Logo" style="height: 70px; width: auto;" />
+			<div style="border-left: 2px solid #e2e8f0; padding-left: 20px;">
+				<h1 style="font-family: 'HandelGothic', sans-serif; font-size: 32px; color: #0f172a; margin: 0; line-height: 1;">
+					<span style="color: #1c55a4;">KR</span> Steel Ltd.
+				</h1>
+				<p style="font-size: 11px; font-weight: 900; color: #64748b; margin: 6px 0 0 0; letter-spacing: 0.3em; text-transform: uppercase;">
+					Access Management System
 				</p>
 			</div>
 		</div>
 		<div style="text-align: right;">
-			<p style="font-size: 14px; font-weight: 600; margin: 0;">
-				Generated: {new Date().toLocaleDateString()}
+			<h2 style="font-size: 18px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">
+				Vehicle History Report
+			</h2>
+			<p style="font-size: 12px; font-weight: 700; color: #64748b; margin: 4px 0 0 0;">
+				{format(new Date(), 'PPPP')} | {format(new Date(), 'hh:mm a')}
 			</p>
 		</div>
 	</div>
 
-	<div style="margin-bottom: 1rem; padding: 0.75rem; background: #f5f5f5; border-radius: 4px;">
-		<p style="font-size: 14px; font-weight: 600; margin: 0;">
-			Total Visits: <strong>{data.pagination.totalCount}</strong>
-		</p>
+	<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.25rem 2rem; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+		<div style="display: flex; flex-direction: column; gap: 2px;">
+			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Scope</span>
+			<span style="font-size: 15px; font-weight: 900; color: #0f172a;">HISTORICAL DATA</span>
+		</div>
+		
+		<div style="display: flex; flex-direction: column; gap: 2px; align-items: center; border-left: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; padding: 0 3rem;">
+			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Total Visits</span>
+			<span style="font-size: 15px; font-weight: 900; color: #1c55a4;">{data.pagination.totalCount} Records</span>
+		</div>
+
+		<div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
+			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Report Type</span>
+			<span style="font-size: 15px; font-weight: 900; color: #0f172a;">Full Activity Log</span>
+		</div>
 	</div>
 
-	<table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+	<table style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: inherit;">
 		<thead>
-			<tr style="background: #f0f0f0;">
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;">#</th>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Vehicle No.</th
-				>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Type</th
-				>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Driver</th
-				>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Vendor</th
-				>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Date</th
-				>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Entry</th
-				>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Exit</th
-				>
-				<th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 700;"
-					>Status</th
-				>
+			<tr style="background: #f1f5f9;">
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">#</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Vehicle No.</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Type</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Driver</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Vendor</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Date</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Entry</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Exit</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Status</th>
 			</tr>
 		</thead>
 		<tbody>
 			{#each data.vehicles as vehicle, index (vehicle.id)}
-				<tr>
-					<td style="border: 1px solid #ddd; padding: 8px;">{index + 1}</td>
-					<td style="border: 1px solid #ddd; padding: 8px; font-weight: 600;"
-						>{vehicle.vehicleNumber}</td
-					>
-					<td style="border: 1px solid #ddd; padding: 8px;"
-						>{vehicle.type === 'transport'
-							? i18n.t('transportVehicle')
-							: i18n.t('regularVehicle')}</td
-					>
-					<td style="border: 1px solid #ddd; padding: 8px;">{vehicle.driverName || '-'}</td>
-					<td style="border: 1px solid #ddd; padding: 8px;">{vehicle.vendorName || '-'}</td>
-					<td style="border: 1px solid #ddd; padding: 8px;"
-						>{format(parseISO(vehicle.date), 'PP')}</td
-					>
-					<td style="border: 1px solid #ddd; padding: 8px;"
-						>{format(new Date(vehicle.entryTime), 'hh:mm a')}</td
-					>
-					<td style="border: 1px solid #ddd; padding: 8px;"
-						>{vehicle.exitTime ? format(new Date(vehicle.exitTime), 'hh:mm a') : '-'}</td
-					>
-					<td style="border: 1px solid #ddd; padding: 8px;"
-						>{vehicle.status === 'on_premises' ? 'Inside' : 'Checked Out'}</td
-					>
+				<tr style={index % 2 === 0 ? '' : 'background: #f8fafc;'}>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #64748b;">{index + 1}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: #0f172a;">{vehicle.vehicleNumber}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">
+						{vehicle.type === 'transport' ? i18n.t('transportVehicle') : i18n.t('regularVehicle')}
+					</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{vehicle.driverName || '-'}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{vehicle.vendorName || '-'}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{format(parseISO(vehicle.date), 'PP')}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{format(new Date(vehicle.entryTime), 'hh:mm a')}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{vehicle.exitTime ? format(new Date(vehicle.exitTime), 'hh:mm a') : '-'}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 700; color: {vehicle.status === 'on_premises' ? '#059669' : '#64748b'};">
+						{vehicle.status === 'on_premises' ? 'INSIDE' : 'CHECKED OUT'}
+					</td>
 				</tr>
 			{/each}
 		</tbody>
 	</table>
 
 	<div
-		style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ddd; font-size: 10px; color: #666; text-align: center;"
+		style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em;"
 	>
-		Generated by {i18n.t('appName')}
+		<p>Generated by {i18n.t('appName')} Official Reporting System</p>
+		<p>Page 1 of 1</p>
 	</div>
 </div>
 

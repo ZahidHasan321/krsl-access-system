@@ -69,6 +69,12 @@
 
 		const registration = await navigator.serviceWorker.ready;
 
+		if (!publicVapidKey) {
+			console.error('Push registration failed: PUBLIC_VAPID_KEY is not defined');
+			appToast.error('Push notification configuration is missing');
+			return;
+		}
+
 		const subscription = await registration.pushManager.subscribe({
 			userVisibleOnly: true,
 			applicationServerKey: urlBase64ToUint8Array(publicVapidKey)

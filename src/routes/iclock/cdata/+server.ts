@@ -364,8 +364,8 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				categoryId: person.categoryId,
 				isTrained: person.isTrained
 			});
-		} else if (activeLog.date === punchDate) {
-			// CHECK-OUT: same day, second punch → mark as checked out
+		} else {
+			// CHECK-OUT: active log exists → mark as checked out
 			await db
 				.update(attendanceLogs)
 				.set({ exitTime: entry.timestamp, status: 'checked_out' })
@@ -380,45 +380,6 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				thumbUrl: person.thumbUrl,
 				logId: activeLog.id,
 				categoryId: person.categoryId
-			});
-		} else {
-			// CLOSE + NEW: different day → close old, create new
-			await db
-				.update(attendanceLogs)
-				.set({ exitTime: entry.timestamp, status: 'checked_out' })
-				.where(eq(attendanceLogs.id, activeLog.id));
-
-			// Notify real-time check-out (closing old log)
-			notifyCheckOut({
-				personId: person.id,
-				personName: person.name,
-				verifyMethod: method,
-				photoUrl: person.photoUrl,
-				thumbUrl: person.thumbUrl,
-				logId: activeLog.id,
-				categoryId: person.categoryId
-			});
-
-			const newLogId = crypto.randomUUID();
-			await db.insert(attendanceLogs).values({
-				id: newLogId,
-				personId: person.id,
-				entryTime: entry.timestamp,
-				verifyMethod: method,
-				status: 'on_premises',
-				date: punchDate
-			});
-
-			// Notify real-time check-in (new day entry)
-			notifyCheckIn({
-				personId: person.id,
-				personName: person.name,
-				verifyMethod: method,
-				photoUrl: person.photoUrl,
-				thumbUrl: person.thumbUrl,
-				logId: newLogId,
-				categoryId: person.categoryId,
-				isTrained: person.isTrained
 			});
 		}
 

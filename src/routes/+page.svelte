@@ -271,25 +271,33 @@
 
 			<!-- Method Stats -->
 			<div class="grid grid-cols-4 gap-2">
-				<div class="flex flex-col items-center justify-center rounded-xl border-2 border-slate-100 bg-white py-3 shadow-sm text-center transition-colors hover:border-slate-200">
-					<ScanFace size={16} class="mb-1.5 text-slate-400" />
-					<span class="block text-[8px] font-black tracking-widest text-slate-400 uppercase">Face</span>
-					<span class="text-sm font-black text-slate-700"><CountUp value={data.methodStats?.face || 0} /></span>
+				<div class="group flex flex-col items-center justify-center rounded-2xl border-2 border-slate-50 bg-white py-3 shadow-sm text-center transition-all hover:border-indigo-200 hover:bg-indigo-50/30">
+					<div class="mb-2 flex size-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 transition-transform group-hover:scale-110">
+						<ScanFace size={18} />
+					</div>
+					<span class="block text-[9px] font-black tracking-widest text-slate-400 uppercase">Face</span>
+					<span class="text-sm font-black text-slate-900"><CountUp value={data.methodStats?.face || 0} /></span>
 				</div>
-				<div class="flex flex-col items-center justify-center rounded-xl border-2 border-slate-100 bg-white py-3 shadow-sm text-center transition-colors hover:border-slate-200">
-					<Fingerprint size={16} class="mb-1.5 text-slate-400" />
-					<span class="block text-[8px] font-black tracking-widest text-slate-400 uppercase">Finger</span>
-					<span class="text-sm font-black text-slate-700"><CountUp value={data.methodStats?.finger || 0} /></span>
+				<div class="group flex flex-col items-center justify-center rounded-2xl border-2 border-slate-50 bg-white py-3 shadow-sm text-center transition-all hover:border-emerald-200 hover:bg-emerald-50/30">
+					<div class="mb-2 flex size-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 transition-transform group-hover:scale-110">
+						<Fingerprint size={18} />
+					</div>
+					<span class="block text-[9px] font-black tracking-widest text-slate-400 uppercase">Finger</span>
+					<span class="text-sm font-black text-slate-900"><CountUp value={data.methodStats?.finger || 0} /></span>
 				</div>
-				<div class="flex flex-col items-center justify-center rounded-xl border-2 border-slate-100 bg-white py-3 shadow-sm text-center transition-colors hover:border-slate-200">
-					<IdCard size={16} class="mb-1.5 text-slate-400" />
-					<span class="block text-[8px] font-black tracking-widest text-slate-400 uppercase">Card</span>
-					<span class="text-sm font-black text-slate-700"><CountUp value={data.methodStats?.card || 0} /></span>
+				<div class="group flex flex-col items-center justify-center rounded-2xl border-2 border-slate-50 bg-white py-3 shadow-sm text-center transition-all hover:border-amber-200 hover:bg-amber-50/30">
+					<div class="mb-2 flex size-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600 transition-transform group-hover:scale-110">
+						<IdCard size={18} />
+					</div>
+					<span class="block text-[9px] font-black tracking-widest text-slate-400 uppercase">Card</span>
+					<span class="text-sm font-black text-slate-900"><CountUp value={data.methodStats?.card || 0} /></span>
 				</div>
-				<div class="flex flex-col items-center justify-center rounded-xl border-2 border-slate-100 bg-white py-3 shadow-sm text-center transition-colors hover:border-slate-200">
-					<PenTool size={16} class="mb-1.5 text-slate-400" />
-					<span class="block text-[8px] font-black tracking-widest text-slate-400 uppercase">Manual</span>
-					<span class="text-sm font-black text-slate-700"><CountUp value={data.methodStats?.manual || 0} /></span>
+				<div class="group flex flex-col items-center justify-center rounded-2xl border-2 border-slate-50 bg-white py-3 shadow-sm text-center transition-all hover:border-slate-200 hover:bg-slate-50">
+					<div class="mb-2 flex size-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition-transform group-hover:scale-110">
+						<PenTool size={18} />
+					</div>
+					<span class="block text-[9px] font-black tracking-widest text-slate-400 uppercase">Manual</span>
+					<span class="text-sm font-black text-slate-900"><CountUp value={data.methodStats?.manual || 0} /></span>
 				</div>
 			</div>
 
@@ -340,6 +348,31 @@
 											>
 												{log.categoryName}
 											</p>
+											{#if log.verifyMethod}
+												<div
+													class={cn(
+														'flex size-6 items-center justify-center rounded-full border shadow-sm',
+														log.verifyMethod === 'face'
+															? 'border-indigo-100 bg-indigo-50 text-indigo-600'
+															: log.verifyMethod === 'finger'
+																? 'border-emerald-100 bg-emerald-50 text-emerald-600'
+																: log.verifyMethod === 'card'
+																	? 'border-amber-100 bg-amber-50 text-amber-600'
+																	: 'border-slate-100 bg-slate-50 text-slate-500'
+													)}
+													title={log.verifyMethod}
+												>
+													{#if log.verifyMethod === 'face'}
+														<ScanFace size={12} />
+													{:else if log.verifyMethod === 'finger'}
+														<Fingerprint size={12} />
+													{:else if log.verifyMethod === 'card'}
+														<IdCard size={12} />
+													{:else}
+														<PenTool size={12} />
+													{/if}
+												</div>
+											{/if}
 										</div>
 									</div>
 								</div>

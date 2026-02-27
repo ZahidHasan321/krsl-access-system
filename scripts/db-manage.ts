@@ -157,15 +157,19 @@ async function seedDatabase() {
 		}
 	}
 
-	console.log('Creating admin user...');
+	console.log('Creating/Updating admin user...');
 	const result = await client.query('SELECT id FROM "user" WHERE username = $1', [
 		ADMIN_USER.username
 	]);
 
+	const passwordHash = await hashPassword(ADMIN_USER.password);
 	if (result.rows.length > 0) {
-		console.log(`  User "${ADMIN_USER.username}" already exists, skipping.`);
+		await client.query(
+			'UPDATE "user" SET password_hash = $1, role_id = $2 WHERE username = $3',
+			[passwordHash, ADMIN_USER.roleId, ADMIN_USER.username]
+		);
+		console.log(`  Updated user "${ADMIN_USER.username}" with credentials from .env`);
 	} else {
-		const passwordHash = await hashPassword(ADMIN_USER.password);
 		await client.query(
 			'INSERT INTO "user" (id, username, password_hash, role_id) VALUES ($1, $2, $3, $4)',
 			[generateId(), ADMIN_USER.username, passwordHash, ADMIN_USER.roleId]

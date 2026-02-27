@@ -122,12 +122,19 @@ async function run() {
 	const adminCheck = await client.query('SELECT id FROM "user" WHERE username = $1', [
 		MASTER_USERNAME
 	]);
+	const passwordHash = await hashPassword(MASTER_PASSWORD);
 	if (adminCheck.rows.length === 0) {
-		const passwordHash = await hashPassword(MASTER_PASSWORD);
 		await client.query(
 			'INSERT INTO "user" (id, username, password_hash, role_id) VALUES ($1, $2, $3, $4)',
 			[generateId(), MASTER_USERNAME, passwordHash, 'admin']
 		);
+		console.log(`  Created user "${MASTER_USERNAME}"`);
+	} else {
+		await client.query(
+			'UPDATE "user" SET password_hash = $1, role_id = $2 WHERE username = $3',
+			[passwordHash, 'admin', MASTER_USERNAME]
+		);
+		console.log(`  Updated user "${MASTER_USERNAME}" with credentials from .env`);
 	}
 
 	// 3. Categories

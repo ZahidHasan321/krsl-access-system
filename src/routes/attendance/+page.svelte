@@ -15,13 +15,13 @@
 		X,
 		Printer,
 		Loader2,
-		Scan,
+		ScanFace,
 		Fingerprint,
-		CreditCard,
-		History,
+		IdCard,
+		PenTool,
+		MapPin,
 		Filter,
-		Shield,
-		MapPin
+		History
 	} from 'lucide-svelte';
 	import logo from '$lib/assets/kr_logo.svg';
 	import { goto } from '$app/navigation';
@@ -876,9 +876,36 @@
 
 												<!-- Primary Info -->
 												<div class="min-w-0 flex-1">
-													<a href="/people/{log.person.id}" class="truncate text-base font-black text-slate-900 transition-colors hover:text-primary-600">
-														{log.person.name}
-													</a>
+													<div class="flex items-center gap-2">
+														<a href="/people/{log.person.id}" class="truncate text-base font-black text-slate-900 transition-colors hover:text-primary-600">
+															{log.person.name}
+														</a>
+														{#if log.verifyMethod}
+															<div
+																class={cn(
+																	'flex size-6 shrink-0 items-center justify-center rounded-full border shadow-sm',
+																	log.verifyMethod === 'face'
+																		? 'border-indigo-100 bg-indigo-50 text-indigo-600'
+																		: log.verifyMethod === 'finger'
+																			? 'border-emerald-100 bg-emerald-50 text-emerald-600'
+																			: log.verifyMethod === 'card'
+																				? 'border-amber-100 bg-amber-50 text-amber-600'
+																				: 'border-slate-100 bg-slate-50 text-slate-500'
+																)}
+																title={log.verifyMethod}
+															>
+																{#if log.verifyMethod === 'face'}
+																	<ScanFace size={12} />
+																{:else if log.verifyMethod === 'finger'}
+																	<Fingerprint size={12} />
+																{:else if log.verifyMethod === 'card'}
+																	<IdCard size={12} />
+																{:else}
+																	<PenTool size={12} />
+																{/if}
+															</div>
+														{/if}
+													</div>
 													<div class="mt-1 flex flex-wrap gap-1.5">
 														{#each getCategoryPath(log.person.categoryId).slice(-2) as cat (cat.id)}
 															<Badge

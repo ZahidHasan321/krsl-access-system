@@ -76,6 +76,7 @@ export const load: PageServerLoad = async (event) => {
 				entryTime: attendanceLogs.entryTime,
 				exitTime: attendanceLogs.exitTime,
 				status: attendanceLogs.status,
+				verifyMethod: attendanceLogs.verifyMethod,
 				personName: people.name,
 				personId: people.id,
 				categoryName: personCategories.name
@@ -159,11 +160,13 @@ export const load: PageServerLoad = async (event) => {
 	};
 
 	const methodStats = {
-		finger: insideByMethod.find((m) => m.method === 'finger')?.count || 0,
-		face: insideByMethod.find((m) => m.method === 'face')?.count || 0,
-		card: insideByMethod.find((m) => m.method === 'card')?.count || 0,
-		manual: insideByMethod.find((m) => m.method === 'manual')?.count || 0,
-		unknown: insideByMethod.find((m) => m.method === 'password' || !m.method)?.count || 0
+		finger: insideByMethod.filter((m) => m.method === 'finger').reduce((acc, m) => acc + m.count, 0),
+		face: insideByMethod.filter((m) => m.method === 'face').reduce((acc, m) => acc + m.count, 0),
+		card: insideByMethod.filter((m) => m.method === 'card').reduce((acc, m) => acc + m.count, 0),
+		manual: insideByMethod.filter((m) => m.method === 'manual').reduce((acc, m) => acc + m.count, 0),
+		unknown: insideByMethod
+			.filter((m) => m.method === 'password' || m.method === 'finger_vein' || !m.method)
+			.reduce((acc, m) => acc + m.count, 0)
 	};
 
 	return {

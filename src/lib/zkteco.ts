@@ -129,18 +129,23 @@ export const Commands = {
 
 /** Map ZKTeco verify code to human-readable method */
 export function verifyCodeToMethod(verify: number): string | null {
-	// Codes based on tested ZKTeco PUSH protocol
+	// Codes based on ZKTeco PUSH protocol standards
 	switch (verify) {
 		case 1:
 			return 'finger';
+		case 0:
 		case 3:
 			return 'password';
+		case 2:
 		case 4:
 			return 'card';
 		case 15:
+		case 20:
 			return 'face';
 		case 21:
 			return 'finger_vein';
+		case 25:
+			return 'palm';
 		default:
 			return null;
 	}

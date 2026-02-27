@@ -197,7 +197,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 					.set({ enrolledMethods: JSON.stringify(methods) })
 					.where(eq(people.id, person.id));
 				console.log(`[ZK:Enroll] Detected ${entry.enrollMethod} enrollment for ${person.name}`);
-				notifyEnrollment({ personId: person.id, method: entry.enrollMethod });
+				notifyEnrollment({ personId: person.id, personName: person.name, method: entry.enrollMethod });
 			}
 		}
 		notifyChange();
@@ -288,7 +288,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 						.set({ enrolledMethods: JSON.stringify(Array.from(new Set(methods))) })
 						.where(eq(people.id, person.id));
 				}
-				notifyEnrollment({ personId: person.id, method });
+				notifyEnrollment({ personId: person.id, personName: person.name, method });
 				notifyChange();
 			}
 		}

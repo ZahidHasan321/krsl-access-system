@@ -98,11 +98,9 @@
 	);
 
 	const needsPurpose = $derived(selectedRootCategory && selectedRootCategory.slug !== 'employee');
-	const isSubCategoryRequired = $derived(subCategories.length > 0);
 	const isSubCategorySelected = $derived(!!selectedSubCategoryId);
 	const canSubmit = $derived(
 		selectedRootCategoryId &&
-			(!isSubCategoryRequired || isSubCategorySelected) &&
 			(!autoCheckIn || !!location)
 	);
 

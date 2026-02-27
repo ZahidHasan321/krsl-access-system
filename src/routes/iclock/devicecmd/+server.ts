@@ -82,13 +82,13 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					}
 
 					// Notify UI — enrollment complete
-					notifyEnrollment({ personId: person.id, method });
+					notifyEnrollment({ personId: person.id, personName: person.name, method });
 				} else if (newStatus === 'FAILED' && person) {
 					// Enrollment failed — notify UI so it can stop spinning
 					console.log(
 						`[ZK:Enroll] Enrollment FAILED for ${person.name} (PIN=${pin}, Return=${returnCode})`
 					);
-					notifyEnrollmentFailed({ personId: person.id, returnCode: returnCode || 'unknown' });
+					notifyEnrollmentFailed({ personId: person.id, personName: person.name, returnCode: returnCode || 'unknown' });
 				}
 			}
 		}

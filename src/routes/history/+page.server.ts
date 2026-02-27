@@ -99,7 +99,8 @@ export const load: PageServerLoad = async (event) => {
 					name: people.name,
 					codeNo: people.codeNo,
 					company: people.company,
-					categoryId: people.categoryId
+					categoryId: people.categoryId,
+					isTrained: people.isTrained
 				},
 				category: {
 					name: personCategories.name

@@ -1,16 +1,5 @@
 <script lang="ts">
-	import { tweened } from 'svelte/motion';
-	import { cubicOut } from 'svelte/easing';
-
-	let { value = 0, duration = 600 } = $props();
-
-	const displayValue = tweened(0, {
-		easing: cubicOut
-	});
-
-	$effect(() => {
-		displayValue.set(Number(value) || 0, { duration: Number(duration) });
-	});
+	let { value = 0 } = $props();
 </script>
 
-<span>{Math.floor($displayValue)}</span>
+<span>{value}</span>

@@ -63,11 +63,12 @@
 	$effect(() => {
 		if (page.url.searchParams.has('print')) {
 			isPreparingPrint = true;
-			// Wait for data to be fully rendered
 			const timer = setTimeout(() => {
 				window.print();
 				isPreparingPrint = false;
-				window.close();
+				const url = new URL(page.url);
+				url.searchParams.delete('print');
+				goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
 			}, 1500);
 			return () => clearTimeout(timer);
 		}
@@ -216,7 +217,7 @@
 </svelte:head>
 
 <!-- Print-only section -->
-<div class="print-only hidden">
+<div class="print-only hidden" style="padding-top: 1.5cm; padding-bottom: 1.5cm;">
 	<div
 		class="print-header"
 		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 3px solid #1c55a4; margin-bottom: 2rem;"
@@ -273,6 +274,7 @@
 					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Name</th>
 					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Identity No.</th>
 					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Category</th>
+					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Training</th>
 					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Date</th>
 					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Entry</th>
 					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Exit</th>
@@ -286,6 +288,9 @@
 						<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: #0f172a;">{log.person.name}</td>
 						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.person.codeNo || '-'}</td>
 						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.category.name}</td>
+						<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: {log.person.isTrained ? '#059669' : '#e11d48'};">
+							{log.person.isTrained ? 'TRAINED' : 'PENDING'}
+						</td>
 						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{format(parseISO(log.date), 'PP')}</td>
 						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{format(log.entryTime, 'hh:mm a')}</td>
 						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.exitTime ? format(log.exitTime, 'hh:mm a') : 'Inside'}</td>
@@ -448,7 +453,7 @@
 	<div class="content-container flex flex-col items-start gap-8 md:flex-row">
 		<!-- Sidebar - Sticky -->
 		<aside
-			class="custom-scrollbar max-h-[calc(100vh-10rem)] w-full shrink-0 space-y-6 overflow-y-auto pr-2 pb-10 md:w-64"
+			class="custom-scrollbar max-h-[calc(100vh-10rem)] w-full shrink-0 self-start space-y-6 overflow-y-auto pr-2 pb-10 md:sticky md:top-36 md:w-64"
 		>
 			<!-- Category Filter -->
 			<div class="space-y-3">
@@ -641,23 +646,30 @@
 								<Card.Content class="p-4">
 									<div class="mb-3 flex items-start justify-between gap-3">
 										<div>
-											<div class="font-bold text-slate-900">{log.person.name}</div>
-											<div class="mt-1 flex items-center gap-1.5">
+											<div class="mb-1.5 flex flex-wrap items-center gap-2">
+												<h3 class="text-base leading-tight font-black text-slate-900 sm:text-lg">
+													{log.person.name}
+												</h3>
+											</div>
+											<div class="flex flex-wrap items-center gap-2">
 												<Badge
 													variant="outline"
 													class={cn(
-														'h-4 px-1.5 text-[9px] font-bold tracking-tight capitalize',
+														'text-[9px] font-bold tracking-wider capitalize',
 														getCategoryBadgeClass(log.category.slug)
 													)}
 												>
 													{log.rootCategory.name}
 													{log.category.name !== log.rootCategory.name
-														? '• ' + log.category.name
+														? ' • ' + log.category.name
 														: ''}
 												</Badge>
-												<span class="text-[10px] font-bold text-slate-400"
-													>#{log.person.codeNo || 'N/A'}</span
-												>
+												<span class="text-[10px] font-bold tracking-tight text-slate-400 uppercase">
+													{#if log.person.codeNo}#{log.person.codeNo}{/if}
+													{#if log.person.codeNo && log.person.company} • {/if}
+													{#if log.person.company}{log.person.company}{/if}
+													{#if !log.person.codeNo && !log.person.company}-{/if}
+												</span>
 											</div>
 										</div>
 										{#if !log.exitTime}
@@ -782,6 +794,7 @@
 								<Table.Header>
 									<Table.Row class="bg-slate-50 hover:bg-transparent">
 										<Table.Head class="font-black text-slate-900">{i18n.t('name')}</Table.Head>
+										<Table.Head class="font-black text-slate-900">{i18n.t('category')}</Table.Head>
 										<Table.Head class="font-black text-slate-900">{i18n.t('date')}</Table.Head>
 										<Table.Head class="font-black text-slate-900">{i18n.t('entryTime')}</Table.Head>
 										<Table.Head class="font-black text-slate-900">{i18n.t('exitTime')}</Table.Head>
@@ -803,23 +816,28 @@
 												>
 													{log.person.name}
 												</div>
-												<div class="mt-1 flex items-center gap-1.5">
-													<Badge
-														variant="outline"
-														class={cn(
-															'h-4 px-1.5 text-[9px] font-bold tracking-tight capitalize',
-															getCategoryBadgeClass(log.category.slug)
-														)}
-													>
-														{log.rootCategory.name}
-														{log.category.name !== log.rootCategory.name
-															? '• ' + log.category.name
-															: ''}
-													</Badge>
-													<span class="text-[10px] font-bold text-slate-400"
-														>#{log.person.codeNo || 'N/A'}</span
-													>
+												<div class="flex items-center gap-2">
+													<span class="text-[10px] font-bold tracking-tight text-slate-400 uppercase">
+														{#if log.person.codeNo}#{log.person.codeNo}{/if}
+														{#if log.person.codeNo && log.person.company} • {/if}
+														{#if log.person.company}{log.person.company}{/if}
+														{#if !log.person.codeNo && !log.person.company}-{/if}
+													</span>
 												</div>
+											</Table.Cell>
+											<Table.Cell>
+												<Badge
+													variant="outline"
+													class={cn(
+														'text-[10px] font-bold tracking-wider capitalize',
+														getCategoryBadgeClass(log.category.slug)
+													)}
+												>
+													{log.rootCategory.name}
+													{log.category.name !== log.rootCategory.name
+														? ' • ' + log.category.name
+														: ''}
+												</Badge>
 											</Table.Cell>
 											<Table.Cell class="py-4 font-medium text-slate-600"
 												>{format(parseISO(log.date), 'PP')}</Table.Cell
@@ -854,7 +872,7 @@
 									{:else}
 										<Table.Row>
 											<Table.Cell
-												colspan={isEmployeeView ? 5 : 6}
+												colspan={isEmployeeView ? 6 : 7}
 												class="h-64 text-center text-slate-400 font-bold"
 												>{i18n.t('noData')}</Table.Cell
 											>

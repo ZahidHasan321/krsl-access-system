@@ -23,20 +23,71 @@ export const load: PageServerLoad = async (event) => {
 	const todayEnd = new Date(now);
 	todayEnd.setHours(23, 59, 59, 999);
 
-	// Check device status
-	const allDevices = await db.select({ lastHeartbeat: devices.lastHeartbeat }).from(devices);
-	const anyDeviceOnline = allDevices.some((d) => isDeviceOnline(d.lastHeartbeat));
+	// Execute all independent dashboard queries concurrently
+	const [
+		allDevices,
+		insideByCategory,
+		[totalPeopleCount],
+		[vehiclesInsideCount],
+		vehiclesByType,
+		insideByLocation,
+		insideByMethod,
+		recentLogs
+	] = await Promise.all([
+		db.select({ lastHeartbeat: devices.lastHeartbeat }).from(devices),
+		db
+			.select({
+				categoryId: people.categoryId,
+				count: count()
+			})
+			.from(attendanceLogs)
+			.innerJoin(people, eq(attendanceLogs.personId, people.id))
+			.where(eq(attendanceLogs.status, 'on_premises'))
+			.groupBy(people.categoryId),
+		db.select({ value: count() }).from(people),
+		db.select({ value: count() }).from(vehicles).where(eq(vehicles.status, 'on_premises')),
+		db
+			.select({
+				type: vehicles.type,
+				count: count()
+			})
+			.from(vehicles)
+			.where(eq(vehicles.status, 'on_premises'))
+			.groupBy(vehicles.type),
+		db
+			.select({
+				location: attendanceLogs.location,
+				count: count()
+			})
+			.from(attendanceLogs)
+			.where(eq(attendanceLogs.status, 'on_premises'))
+			.groupBy(attendanceLogs.location),
+		db
+			.select({
+				method: attendanceLogs.verifyMethod,
+				count: count()
+			})
+			.from(attendanceLogs)
+			.where(eq(attendanceLogs.status, 'on_premises'))
+			.groupBy(attendanceLogs.verifyMethod),
+		db
+			.select({
+				id: attendanceLogs.id,
+				entryTime: attendanceLogs.entryTime,
+				exitTime: attendanceLogs.exitTime,
+				status: attendanceLogs.status,
+				personName: people.name,
+				personId: people.id,
+				categoryName: personCategories.name
+			})
+			.from(attendanceLogs)
+			.innerJoin(people, eq(attendanceLogs.personId, people.id))
+			.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
+			.orderBy(desc(attendanceLogs.entryTime))
+			.limit(8)
+	]);
 
-	// Currently inside people - grouped by their direct category
-	const insideByCategory = await db
-		.select({
-			categoryId: people.categoryId,
-			count: count()
-		})
-		.from(attendanceLogs)
-		.innerJoin(people, eq(attendanceLogs.personId, people.id))
-		.where(eq(attendanceLogs.status, 'on_premises'))
-		.groupBy(people.categoryId);
+	const anyDeviceOnline = allDevices.some((d) => isDeviceOnline(d.lastHeartbeat));
 
 	const countMap = new Map(insideByCategory.map((r) => [r.categoryId, r.count]));
 
@@ -95,105 +146,25 @@ export const load: PageServerLoad = async (event) => {
 
 	const totalPeopleInside = categoryTree.reduce((acc, c) => acc + c.count, 0);
 
-	// Total registered people
-	const [totalPeopleCount] = await db.select({ value: count() }).from(people);
-
-	// Currently Inside - Vehicles
-	const [vehiclesInsideCount] = await db
-		.select({ value: count() })
-		.from(vehicles)
-		.where(eq(vehicles.status, 'on_premises'));
-
-	const vehiclesByType = await db
-		.select({
-			type: vehicles.type,
-			count: count()
-		})
-		.from(vehicles)
-		.where(eq(vehicles.status, 'on_premises'))
-		.groupBy(vehicles.type);
-
 	const vehicleStats = {
 		total: vehiclesInsideCount.value,
 		transport: vehiclesByType.find((v) => v.type === 'transport')?.count || 0,
 		regular: vehiclesByType.find((v) => v.type === 'regular')?.count || 0
 	};
 
-	// Today's Activity
-	const [todayEntries] = await db
-		.select({ value: count() })
-		.from(attendanceLogs)
-		.where(eq(attendanceLogs.date, today));
+	const locationStats = {
+		ship: insideByLocation.find((l) => l.location === 'ship')?.count || 0,
+		yard: insideByLocation.find((l) => l.location === 'yard')?.count || 0,
+		unknown: insideByLocation.find((l) => !l.location)?.count || 0
+	};
 
-	// Exits today: count logs where exitTime falls within today (handles cross-midnight)
-	const [todayExits] = await db
-		.select({ value: count() })
-		.from(attendanceLogs)
-		.where(
-			and(
-				eq(attendanceLogs.status, 'checked_out'),
-				gte(attendanceLogs.exitTime, todayStart),
-				lte(attendanceLogs.exitTime, todayEnd)
-			)
-		);
-
-	const [todayVehiclesIn] = await db
-		.select({ value: count() })
-		.from(vehicles)
-		.where(eq(vehicles.date, today));
-
-	const [todayVehiclesOut] = await db
-		.select({ value: count() })
-		.from(vehicles)
-		.where(and(eq(vehicles.date, today), eq(vehicles.status, 'checked_out')));
-
-	// 7-Day Trend with dates
-	const trendData = await db
-		.select({
-			date: attendanceLogs.date,
-			count: count()
-		})
-		.from(attendanceLogs)
-		.where(gte(attendanceLogs.date, sevenDaysAgo))
-		.groupBy(attendanceLogs.date)
-		.orderBy(attendanceLogs.date);
-
-	const trendMap = new Map(trendData.map((d) => [d.date, d.count]));
-	const trend7Day = Array.from({ length: 7 }, (_, i) => {
-		const date = format(subDays(new Date(), 6 - i), 'yyyy-MM-dd');
-		return { date, count: trendMap.get(date) || 0 };
-	});
-
-	// Recent activity: entries from today + cross-midnight (entered before today, exited today or still inside)
-	const recentLogs = await db
-		.select({
-			id: attendanceLogs.id,
-			entryTime: attendanceLogs.entryTime,
-			exitTime: attendanceLogs.exitTime,
-			status: attendanceLogs.status,
-			personName: people.name,
-			personId: people.id,
-			categoryName: personCategories.name
-		})
-		.from(attendanceLogs)
-		.innerJoin(people, eq(attendanceLogs.personId, people.id))
-		.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
-		.where(
-			or(
-				// Entered today
-				eq(attendanceLogs.date, today),
-				// Still on premises (entered earlier, not yet checked out)
-				eq(attendanceLogs.status, 'on_premises'),
-				// Exited today but entered before today (cross-midnight)
-				and(
-					eq(attendanceLogs.status, 'checked_out'),
-					gte(attendanceLogs.exitTime, todayStart),
-					lte(attendanceLogs.exitTime, todayEnd)
-				)
-			)
-		)
-		.orderBy(desc(attendanceLogs.entryTime))
-		.limit(8);
+	const methodStats = {
+		finger: insideByMethod.find((m) => m.method === 'finger')?.count || 0,
+		face: insideByMethod.find((m) => m.method === 'face')?.count || 0,
+		card: insideByMethod.find((m) => m.method === 'card')?.count || 0,
+		manual: insideByMethod.find((m) => m.method === 'manual')?.count || 0,
+		unknown: insideByMethod.find((m) => m.method === 'password' || !m.method)?.count || 0
+	};
 
 	return {
 		currentlyInside: {
@@ -203,14 +174,8 @@ export const load: PageServerLoad = async (event) => {
 			vehicleStats
 		},
 		totalPeople: totalPeopleCount.value,
-		todayActivity: {
-			entries: todayEntries.value,
-			exits: todayExits.value,
-			stillInside: totalPeopleInside,
-			vehiclesIn: todayVehiclesIn.value,
-			vehiclesOut: todayVehiclesOut.value
-		},
-		trend7Day,
+		locationStats,
+		methodStats,
 		recentLogs,
 		anyDeviceOnline
 	};

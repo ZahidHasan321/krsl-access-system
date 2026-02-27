@@ -4,6 +4,7 @@
 	import { format } from 'date-fns';
 	import { clsx } from 'clsx';
 	import { Card } from '$lib/components/ui/card';
+	import Pagination from '$lib/components/ui/Pagination.svelte';
 
 	let { data } = $props();
 
@@ -87,6 +88,13 @@
 					</a>
 				{/each}
 			</div>
+			
+			<Pagination 
+				page={data.pagination.page}
+				limit={data.pagination.limit}
+				totalPages={data.pagination.totalPages}
+				totalCount={data.pagination.total}
+			/>
 		{/if}
 	</Card>
 </div>

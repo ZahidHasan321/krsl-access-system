@@ -156,7 +156,7 @@
 	class={clsx(
 		'no-print sticky top-0 z-40 transition-all duration-300',
 		isScrolled
-			? 'border-b border-slate-200/60 bg-white/90 py-0 shadow-sm backdrop-blur-md'
+			? 'border-b border-slate-200/60 bg-white/95 py-0 shadow-sm'
 			: 'border-b border-transparent bg-transparent py-2'
 	)}
 >
@@ -258,7 +258,7 @@
 				</div>
 			</div>
 
-			<div class="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2 xl:gap-4">
+			<div class="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2 xl:gap-4">
 				<div class="relative flex items-center">
 					<button
 						class="rounded-full p-2 text-gray-600 transition-colors hover:bg-gray-100 2xl:hidden"
@@ -357,7 +357,9 @@
 					</div>
 				</div>
 
-				<LangSwitch />
+				<div class="hidden sm:block">
+					<LangSwitch />
+				</div>
 				{#if page.data.user}
 					<ActivityFeed />
 				{/if}
@@ -389,7 +391,15 @@
 										{page.data.user.roleName || 'User'}
 									</p>
 								</div>
-								<div class="p-2">
+								<div class="p-2 space-y-1">
+									<div class="sm:hidden px-3 py-2">
+										<p class="mb-2 text-[10px] font-bold tracking-widest text-slate-400 uppercase">Language</p>
+										<!-- svelte-ignore a11y_click_events_have_key_events -->
+										<!-- svelte-ignore a11y_no_static_element_interactions -->
+										<div class="flex" onclick={(e) => e.stopPropagation()}>
+											<LangSwitch class="w-full" />
+										</div>
+									</div>
 									<NotificationSettings variant="menu" />
 
 									<form method="POST" action="/logout" use:enhance>

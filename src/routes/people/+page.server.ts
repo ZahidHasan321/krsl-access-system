@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { requirePermission } from '$lib/server/rbac';
-import { notifyChange, notifyCheckIn } from '$lib/server/events';
+import { notifyChange, notifyCheckIn, notifyEnrollment } from '$lib/server/events';
 import { queueDeviceSync, queueDeviceDelete } from '$lib/server/device-sync';
 import { ensureDesignation } from '$lib/server/db/designation-utils';
 import { writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
@@ -284,6 +284,15 @@ export const actions: Actions = {
 					categoryId: categoryId
 				});
 			}
+
+			// Add registration history
+			notifyEnrollment({
+				personId: id,
+				personName: name,
+				method: 'Web UI',
+				photoUrl: photoResult?.photoUrl || null,
+				thumbUrl: photoResult?.thumbUrl || null
+			});
 
 			notifyChange();
 			return { success: true, personId: id, biometricId: nextBiometricId, personName: name };

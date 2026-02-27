@@ -42,11 +42,13 @@
 				fetchHistory();
 			}
 		};
-		window.addEventListener('checkin', handler);
-		window.addEventListener('checkout', handler);
+		window.addEventListener('checkin-sse', handler);
+		window.addEventListener('checkout-sse', handler);
+		window.addEventListener('enrollment-sse', handler);
 		return () => {
-			window.removeEventListener('checkin', handler);
-			window.removeEventListener('checkout', handler);
+			window.removeEventListener('checkin-sse', handler);
+			window.removeEventListener('checkout-sse', handler);
+			window.removeEventListener('enrollment-sse', handler);
 		};
 	}
 

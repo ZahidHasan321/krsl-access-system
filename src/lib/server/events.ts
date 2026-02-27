@@ -40,6 +40,7 @@ export function notifyCheckOut(data: CheckInData) {
 
 export interface EnrollmentData {
 	personId: string;
+	personName?: string;
 	method: string;
 	photoUrl?: string | null;
 	thumbUrl?: string | null;
@@ -49,13 +50,14 @@ export function notifyEnrollment(data: EnrollmentData) {
 	eventHub.emit('enrollment', data);
 	broadcastPushNotification({
 		title: 'New Registration',
-		body: `Person ID ${data.personId} successfully enrolled via ${data.method}.`,
+		body: `${data.personName || 'A person'} successfully enrolled via ${data.method}.`,
 		url: `/people/${data.personId}`
 	}, 'enrollment').catch(console.error);
 }
 
 export interface EnrollmentFailedData {
 	personId: string;
+	personName?: string;
 	returnCode: string;
 }
 
@@ -63,7 +65,7 @@ export function notifyEnrollmentFailed(data: EnrollmentFailedData) {
 	eventHub.emit('enrollment-failed', data);
 	broadcastPushNotification({
 		title: 'Registration Failed',
-		body: `Person ID ${data.personId} enrollment failed (Code: ${data.returnCode}).`,
+		body: `${data.personName || 'A person'} enrollment failed (Code: ${data.returnCode}).`,
 		url: `/people/${data.personId}`
 	}, 'enrollment').catch(console.error);
 }

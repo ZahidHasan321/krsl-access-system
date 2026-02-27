@@ -6,9 +6,12 @@ declare const self: ServiceWorkerGlobalScope;
 // Create a unique cache name for this deployment
 const CACHE = `cache-${version}`;
 
+// Filter out uploads from static files
+const filteredFiles = files.filter(file => !file.startsWith('/uploads/'));
+
 const ASSETS = [
 	...build, // the app itself
-	...files, // everything in `static`
+	...filteredFiles, // everything in `static` except uploads
 	...prerendered // all prerendered pages
 ];
 
@@ -50,7 +53,8 @@ self.addEventListener('fetch', (event) => {
 		try {
 			const response = await fetch(event.request);
 
-			if (response.status === 200) {
+			// Avoid caching large binary assets dynamically to prevent mobile IO bottlenecks
+			if (response.status === 200 && !url.pathname.startsWith('/uploads/')) {
 				cache.put(event.request, response.clone());
 			}
 

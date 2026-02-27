@@ -161,13 +161,13 @@
 							</div>
 							<div class="min-w-0 flex-1">
 								<div class="flex flex-wrap items-center gap-2 sm:gap-3">
-									<h3 class="truncate text-base leading-tight font-black text-slate-900 sm:text-lg">
+									<h3 class="max-w-full truncate text-base leading-tight font-black text-slate-900 sm:text-lg">
 										{u.username}
 									</h3>
 									<Badge
 										variant="outline"
 										class={clsx(
-											'px-2 py-0.5 text-[9px] font-black tracking-wider capitalize shadow-sm',
+											'shrink-0 px-2 py-0.5 text-[9px] font-black tracking-wider capitalize shadow-sm',
 											u.roleId === ROLES.ADMIN
 												? 'border-rose-200 bg-rose-50 text-rose-700'
 												: 'border-indigo-200 bg-indigo-50 text-indigo-700'
@@ -186,41 +186,41 @@
 									class="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-[11px] font-bold tracking-tight text-slate-500 capitalize sm:grid-cols-2 sm:text-xs"
 								>
 									{#if u.name}
-										<span class="flex items-center gap-1.5 truncate">
-											<User size={14} class="opacity-50" />
-											{u.name}
-										</span>
+										<div class="flex min-w-0 items-center gap-1.5">
+											<User size={14} class="shrink-0 opacity-50" />
+											<span class="truncate">{u.name}</span>
+										</div>
 									{/if}
 									{#if u.contact}
-										<span class="flex items-center gap-1.5">
-											<Phone size={14} class="opacity-50" />
-											{u.contact}
-										</span>
+										<div class="flex min-w-0 items-center gap-1.5">
+											<Phone size={14} class="shrink-0 opacity-50" />
+											<span class="truncate">{u.contact}</span>
+										</div>
 									{/if}
-									<span class="flex items-center gap-1.5 truncate">
-										<Mail size={14} class="opacity-50" />
-										{u.username}
-									</span>
-									<span class="flex items-center gap-1.5">
-										<Calendar size={14} class="opacity-50" />
-										{u.createdAt ? format(new Date(u.createdAt), 'PP') : 'N/A'}
-									</span>
+									<div class="flex min-w-0 items-center gap-1.5 lowercase">
+										<Mail size={14} class="shrink-0 opacity-50" />
+										<span class="truncate">{u.username}</span>
+									</div>
+									<div class="flex min-w-0 items-center gap-1.5">
+										<Calendar size={14} class="shrink-0 opacity-50" />
+										<span class="truncate">{u.createdAt ? format(new Date(u.createdAt), 'PP') : 'N/A'}</span>
+									</div>
 								</div>
 							</div>
 						</div>
 
 						<div
-							class="flex items-center gap-2 border-t border-slate-50 pt-3 md:border-t-0 md:pt-0"
+							class="flex w-full flex-row items-center gap-2 border-t border-slate-50 pt-3 md:w-auto md:border-t-0 md:pt-0"
 						>
 							{#if canEdit(u)}
 								<Button
 									type="button"
 									variant="ghost"
 									size="icon"
-									class="h-10 w-full rounded-xl border-2 border-transparent text-slate-400 transition-all hover:border-slate-100 hover:bg-slate-50 hover:text-primary-600 sm:w-10"
+									class="h-10 flex-1 rounded-xl border-2 border-transparent text-slate-400 transition-all hover:border-slate-100 hover:bg-slate-50 hover:text-primary-600 sm:w-10 sm:flex-none"
 									onclick={() => openEdit(u)}
 								>
-									<Pencil size={18} />
+									<Pencil size={18} class="shrink-0" />
 									<span class="ml-2 font-bold sm:hidden">Edit User</span>
 								</Button>
 							{/if}
@@ -231,7 +231,7 @@
 									action="?/deleteUser"
 									use:enhance
 									bind:this={deleteFormElement}
-									class="w-full sm:w-auto"
+									class="flex-1 sm:w-auto sm:flex-none"
 								>
 									<input type="hidden" name="id" value={u.id} />
 									<Button
@@ -245,7 +245,7 @@
 												(e.currentTarget as HTMLButtonElement).form as HTMLFormElement
 											)}
 									>
-										<Trash2 size={18} />
+										<Trash2 size={18} class="shrink-0" />
 										<span class="ml-2 font-bold sm:hidden">Delete</span>
 									</Button>
 								</form>
@@ -289,7 +289,7 @@
 			}}
 			class="space-y-4 pt-4"
 		>
-			<div class="grid grid-cols-2 gap-4">
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div class="space-y-2">
 					<Label class="text-xs font-bold tracking-widest text-slate-500 capitalize">Name</Label>
 					<Input name="name" placeholder="Full Name" class="h-11 border-2" />
@@ -415,7 +415,7 @@
 			>
 				<input type="hidden" name="userId" value={editingUser.id} />
 
-				<div class="grid grid-cols-2 gap-4">
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<div class="space-y-2">
 						<Label class="text-xs font-bold tracking-widest text-slate-500 uppercase">Name</Label>
 						<Input

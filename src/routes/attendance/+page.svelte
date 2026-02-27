@@ -364,7 +364,7 @@
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Entry Time</th>
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Inside For</th>
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Location</th>
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Safety</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Training</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -647,7 +647,7 @@
 	<div class="content-container flex flex-col gap-8 px-4 md:px-0 lg:flex-row">
 		<!-- Sidebar - Desktop Only -->
 		<aside
-			class="custom-scrollbar hidden max-h-[calc(100vh-10rem)] w-full shrink-0 space-y-6 overflow-y-auto pr-2 pb-10 lg:block lg:w-64"
+			class="custom-scrollbar hidden max-h-[calc(100vh-10rem)] w-full shrink-0 self-start space-y-6 overflow-y-auto pr-2 pb-10 lg:sticky lg:top-36 lg:block lg:w-64"
 		>
 			<!-- Category Filter -->
 			<div class="space-y-3">
@@ -849,10 +849,10 @@
 		<!-- Main Content Area -->
 		<main class="w-full min-w-0 flex-1">
 			<!-- List Area (Infinite Scroll) -->
-			<div class="h-[calc(100vh-12rem)] overflow-y-auto rounded-3xl border-2 border-slate-100 bg-slate-50/30 shadow-inner">
+			<div class="lg:rounded-3xl lg:border-2 lg:border-slate-100 lg:bg-slate-50/30 lg:shadow-inner">
 				<div class="relative min-h-full">
 					{#if logs.length > 0}
-						<div class="flex flex-col gap-3 p-4">
+						<div class="flex flex-col gap-3 lg:p-4">
 							{#each logs as log (log.id)}
 								<Card.Root class="group overflow-hidden border-2 border-slate-100 bg-white transition-all hover:border-primary-200 hover:shadow-md">
 									<Card.Content class="p-3 sm:p-4">
@@ -865,6 +865,7 @@
 															src={log.person.thumbUrl || log.person.photoUrl}
 															alt={log.person.name}
 															class="size-full object-cover"
+															loading="lazy"
 														/>
 													{:else}
 														<div class="flex size-full items-center justify-center bg-slate-100 text-sm font-black text-slate-400">

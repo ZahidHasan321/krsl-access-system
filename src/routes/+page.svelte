@@ -17,9 +17,13 @@
 		ChevronRight,
 		LogOut,
 		CornerDownRight,
-		Layers,
-		CircleDot,
-		UserPlus
+		UserPlus,
+		Ship,
+		Warehouse,
+		ScanFace,
+		Fingerprint,
+		IdCard,
+		PenTool
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import { format, parseISO } from 'date-fns';
@@ -42,16 +46,6 @@
 	let isPersonCheckInOpen = $state(false);
 	let isVehicleCheckInOpen = $state(false);
 	let isRegisterOpen = $state(false);
-
-	const trendMax = $derived(Math.max(...data.trend7Day.map((d) => d.count), 1));
-	const trendTotal = $derived(data.trend7Day.reduce((a, d) => a + d.count, 0));
-
-	function dayLabel(dateStr: string) {
-		const d = parseISO(dateStr);
-		const today = new Date();
-		if (format(d, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')) return 'Today';
-		return format(d, 'EEE');
-	}
 
 	function openPersonCheckIn() {
 		isCheckInTypeSelectOpen = false;
@@ -253,31 +247,55 @@
 
 		<!-- Right Column: Activity & Stats -->
 		<div class="space-y-6">
-			<!-- Quick Stats Mini-Grid -->
+			<!-- Quick Stats Mini-Grid (Location Stats) -->
 			<div class="grid grid-cols-2 gap-3">
-				<div class="rounded-xl border-2 border-emerald-100 bg-white p-3 shadow-sm">
-					<div class="mb-1.5 flex items-center gap-2 text-emerald-700">
-						<ArrowRight size={14} />
-						<span class="text-[9px] font-black tracking-widest capitalize">Today's Entries</span>
+				<div class="rounded-xl border-2 border-blue-100 bg-white p-3 shadow-sm">
+					<div class="mb-1.5 flex items-center gap-2 text-blue-700">
+						<Ship size={14} />
+						<span class="text-[9px] font-black tracking-widest capitalize">Ship</span>
 					</div>
 					<span class="text-xl font-black tracking-tighter text-slate-900"
-						><CountUp value={data.todayActivity?.entries || 0} /></span
+						><CountUp value={data.locationStats?.ship || 0} /></span
 					>
 				</div>
-				<div class="rounded-xl border-2 border-rose-100 bg-white p-3 shadow-sm">
-					<div class="mb-1.5 flex items-center gap-2 text-rose-700">
-						<LogOut size={14} />
-						<span class="text-[9px] font-black tracking-widest capitalize">Today's Exits</span>
+				<div class="rounded-xl border-2 border-emerald-100 bg-white p-3 shadow-sm">
+					<div class="mb-1.5 flex items-center gap-2 text-emerald-700">
+						<Warehouse size={14} />
+						<span class="text-[9px] font-black tracking-widest capitalize">Yard</span>
 					</div>
 					<span class="text-xl font-black tracking-tighter text-slate-900"
-						><CountUp value={data.todayActivity?.exits || 0} /></span
+						><CountUp value={data.locationStats?.yard || 0} /></span
 					>
 				</div>
 			</div>
 
+			<!-- Method Stats -->
+			<div class="grid grid-cols-4 gap-2">
+				<div class="flex flex-col items-center justify-center rounded-xl border-2 border-slate-100 bg-white py-3 shadow-sm text-center transition-colors hover:border-slate-200">
+					<ScanFace size={16} class="mb-1.5 text-slate-400" />
+					<span class="block text-[8px] font-black tracking-widest text-slate-400 uppercase">Face</span>
+					<span class="text-sm font-black text-slate-700"><CountUp value={data.methodStats?.face || 0} /></span>
+				</div>
+				<div class="flex flex-col items-center justify-center rounded-xl border-2 border-slate-100 bg-white py-3 shadow-sm text-center transition-colors hover:border-slate-200">
+					<Fingerprint size={16} class="mb-1.5 text-slate-400" />
+					<span class="block text-[8px] font-black tracking-widest text-slate-400 uppercase">Finger</span>
+					<span class="text-sm font-black text-slate-700"><CountUp value={data.methodStats?.finger || 0} /></span>
+				</div>
+				<div class="flex flex-col items-center justify-center rounded-xl border-2 border-slate-100 bg-white py-3 shadow-sm text-center transition-colors hover:border-slate-200">
+					<IdCard size={16} class="mb-1.5 text-slate-400" />
+					<span class="block text-[8px] font-black tracking-widest text-slate-400 uppercase">Card</span>
+					<span class="text-sm font-black text-slate-700"><CountUp value={data.methodStats?.card || 0} /></span>
+				</div>
+				<div class="flex flex-col items-center justify-center rounded-xl border-2 border-slate-100 bg-white py-3 shadow-sm text-center transition-colors hover:border-slate-200">
+					<PenTool size={16} class="mb-1.5 text-slate-400" />
+					<span class="block text-[8px] font-black tracking-widest text-slate-400 uppercase">Manual</span>
+					<span class="text-sm font-black text-slate-700"><CountUp value={data.methodStats?.manual || 0} /></span>
+				</div>
+			</div>
+
 			<!-- Recent Activity -->
-			<Card.Root class="border-2 border-slate-200 bg-white shadow-sm">
-				<Card.Header class="px-4 pt-3 pb-0">
+			<Card.Root class="border-2 border-slate-200 bg-white shadow-sm flex flex-col h-[calc(100vh-20rem)] min-h-[400px]">
+				<Card.Header class="px-4 py-3 shrink-0 border-b-2 border-slate-50">
 					<div class="flex items-center justify-between">
 						<Card.Title
 							class="flex items-center gap-2 text-xs font-black tracking-widest text-slate-600 capitalize"
@@ -295,7 +313,7 @@
 						</Button>
 					</div>
 				</Card.Header>
-				<Card.Content class="p-0">
+				<Card.Content class="p-0 overflow-y-auto min-h-0 flex-1">
 					<div class="divide-y-2 divide-slate-50">
 						{#each data.recentLogs as log (log.id)}
 							<button
@@ -325,7 +343,7 @@
 										</div>
 									</div>
 								</div>
-								<div class="shrink-0 pl-2 text-right">
+								<div class="shrink-0 pl-2 text-right flex flex-col items-end gap-1">
 									<p class="text-[10px] font-black text-slate-900">
 										{format(log.entryTime, 'hh:mm a')}
 									</p>
@@ -347,62 +365,7 @@
 								</div>
 							</button>
 						{:else}
-							<div class="p-6 text-center text-slate-500 text-sm font-black">No activity today</div>
-						{/each}
-					</div>
-				</Card.Content>
-			</Card.Root>
-
-			<!-- 7-Day Trend -->
-			<Card.Root class="border-2 border-slate-200 bg-white shadow-sm">
-				<Card.Header class="px-4 py-3">
-					<div class="flex items-center justify-between">
-						<Card.Title
-							class="flex items-center gap-2 text-xs font-black tracking-widest text-slate-600 capitalize"
-						>
-							<TrendingUp size={14} />
-							{i18n.t('trend7Day')}
-						</Card.Title>
-						<span class="text-[10px] font-black tracking-tighter text-slate-500 capitalize"
-							>{trendTotal} total</span
-						>
-					</div>
-				</Card.Header>
-				<Card.Content class="p-4 pt-0">
-					<div class="flex h-32 items-end gap-2 pt-6">
-						{#each data.trend7Day as day, i (day.date)}
-							{@const isToday = i === data.trend7Day.length - 1}
-							{@const pct = trendMax > 0 ? (day.count / trendMax) * 100 : 0}
-							<div class="group flex h-full flex-1 flex-col items-center">
-								<!-- Bar Container -->
-								<div class="relative flex w-full flex-1 items-end justify-center">
-									<!-- Tooltip-ish Value -->
-									<div
-										class="pointer-events-none absolute -top-6 z-10 rounded bg-slate-900 px-1.5 py-0.5 text-[9px] font-black text-white opacity-0 transition-opacity group-hover:opacity-100"
-									>
-										{day.count}
-									</div>
-
-									<!-- Bar -->
-									<div
-										class={clsx(
-											'w-full max-w-[20px] cursor-pointer rounded-t-sm transition-all duration-500',
-											isToday ? 'bg-primary-600' : 'bg-slate-200 group-hover:bg-primary-400'
-										)}
-										style="height: {Math.max(pct, 5)}%"
-									></div>
-								</div>
-
-								<!-- Day label -->
-								<span
-									class={clsx(
-										'mt-2 w-full truncate text-center text-[8px] font-black capitalize',
-										isToday ? 'text-primary-700' : 'text-slate-500'
-									)}
-								>
-									{dayLabel(day.date).slice(0, 3)}
-								</span>
-							</div>
+							<div class="p-6 text-center text-slate-500 text-sm font-black">No recent activity</div>
 						{/each}
 					</div>
 				</Card.Content>

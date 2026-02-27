@@ -33,14 +33,22 @@
 		isNavigating = !!nav;
 	});
 
+	function handleLocalCheckIn(e: any) {
+		handleCheckInEvent(e.detail.data);
+	}
+
 	onMount(() => {
 		initI18n();
 		connectSSE();
+		window.addEventListener('checkin', handleLocalCheckIn);
 	});
 
 	onDestroy(() => {
 		eventSource?.close();
 		unsubNav();
+		if (typeof window !== 'undefined') {
+			window.removeEventListener('checkin', handleLocalCheckIn);
+		}
 	});
 
 	function handleCheckInEvent(eventData: any) {
@@ -78,11 +86,7 @@
 
 		eventSource.addEventListener('checkin', (e) => {
 			handleCheckInEvent(e.data);
-		});
-
-		// Listen for local test events
-		window.addEventListener('checkin', (e: any) => {
-			handleCheckInEvent(e.detail.data);
+			window.dispatchEvent(new CustomEvent('checkin-sse', { detail: e.data }));
 		});
 
 		eventSource.addEventListener('checkout', (e) => {
@@ -90,7 +94,12 @@
 				const data = JSON.parse(e.data);
 				const method = data.verifyMethod ? ` (${data.verifyMethod})` : '';
 				appToast.checkOut(`${data.personName} checked out${method}`);
+				window.dispatchEvent(new CustomEvent('checkout-sse', { detail: e.data }));
 			} catch {}
+		});
+
+		eventSource.addEventListener('enrollment', (e) => {
+			window.dispatchEvent(new CustomEvent('enrollment-sse', { detail: e.data }));
 		});
 
 		eventSource.onerror = () => {
@@ -122,7 +131,7 @@
 		<button
 			onclick={scrollToTop}
 			transition:fade={{ duration: 200 }}
-			class="no-print fixed bottom-8 left-8 z-50 flex size-12 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white/90 text-primary-600 shadow-xl backdrop-blur-sm transition-all hover:scale-110 hover:bg-white active:scale-95 sm:right-8 sm:bottom-40 sm:left-auto"
+			class="no-print fixed bottom-8 left-8 z-50 flex size-12 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white/95 text-primary-600 shadow-xl transition-all hover:scale-110 hover:bg-white active:scale-95 sm:right-8 sm:bottom-40 sm:left-auto"
 			aria-label="Scroll to top"
 		>
 			<ArrowUp size={24} strokeWidth={2.5} />

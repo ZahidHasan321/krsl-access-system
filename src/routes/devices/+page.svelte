@@ -5,13 +5,19 @@
 	import { i18n } from '$lib/i18n.svelte';
 	import { clsx } from 'clsx';
 	import { format } from 'date-fns';
-	import { Monitor, RefreshCw, Fingerprint, Users, Loader2, Clock } from 'lucide-svelte';
+	import { Monitor, RefreshCw, Fingerprint, Users, Loader2, Clock, Trash2 } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
 	import { invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
+	import Modal from '$lib/components/ui/Modal.svelte';
 
 	let { data }: { data: PageData } = $props();
 	let syncingDevice = $state<string | null>(null);
+	let deletingDevice = $state<string | null>(null);
+	let deleteDeviceName = $state<string>('');
+	let deleteDeviceSn = $state<string>('');
+	let deleteConfirmationText = $state<string>('');
+	let isDeleting = $state(false);
 
 	async function syncDevice(deviceSn: string) {
 		syncingDevice = deviceSn;
@@ -32,6 +38,36 @@
 			toast.error('Failed to sync device');
 		} finally {
 			syncingDevice = null;
+		}
+	}
+
+	function confirmDelete(sn: string, name: string) {
+		deleteDeviceSn = sn;
+		deleteDeviceName = name;
+		deleteConfirmationText = '';
+		deletingDevice = sn;
+	}
+
+	async function handleDelete() {
+		if (deleteConfirmationText !== deleteDeviceName) return;
+
+		isDeleting = true;
+		try {
+			const res = await fetch(`/api/devices/${deleteDeviceSn}`, {
+				method: 'DELETE'
+			});
+			if (res.ok) {
+				toast.success(`Device ${deleteDeviceName} removed successfully`);
+				await invalidateAll();
+				deletingDevice = null;
+			} else {
+				const data = await res.json();
+				toast.error(data.error || 'Failed to remove device');
+			}
+		} catch (e) {
+			toast.error('An unexpected error occurred');
+		} finally {
+			isDeleting = false;
 		}
 	}
 </script>
@@ -169,6 +205,14 @@
 							class="flex items-center gap-3 border-t border-slate-50 pt-4 md:border-t-0 md:pt-0"
 						>
 							<Button
+								variant="outline"
+								class="h-11 border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 sm:h-12"
+								onclick={() => confirmDelete(device.serialNumber, device.name)}
+							>
+								<Trash2 size={18} />
+								<span class="sr-only">Delete Device</span>
+							</Button>
+							<Button
 								class="h-11 w-full gap-2 rounded-xl px-6 font-black shadow-sm transition-all sm:h-12 sm:w-auto sm:rounded-2xl"
 								disabled={syncingDevice === device.serialNumber}
 								onclick={() => syncDevice(device.serialNumber)}
@@ -196,3 +240,41 @@
 		{/each}
 	</div>
 </div>
+
+<Modal bind:open={() => deletingDevice !== null, (val) => { if(!val) deletingDevice = null; }} title="Remove Device">
+	<div class="space-y-4">
+		<div class="rounded-lg border-2 border-rose-100 bg-rose-50 p-4 text-rose-700">
+			<p class="text-sm font-bold">Warning: This action cannot be undone.</p>
+			<p class="mt-1 text-xs">
+				This will permanently remove the device <strong>{deleteDeviceName}</strong> and all its queued sync commands from the system. If the device reconnects, it will register as a new device.
+			</p>
+		</div>
+
+		<div class="space-y-2">
+			<label for="confirmText" class="text-sm font-bold text-slate-700">
+				Please type <strong>{deleteDeviceName}</strong> to confirm.
+			</label>
+			<input
+				type="text"
+				id="confirmText"
+				bind:value={deleteConfirmationText}
+				class="w-full rounded-xl border-2 border-slate-200 px-4 py-2 font-bold focus:border-rose-500 focus:outline-none"
+				placeholder={deleteDeviceName}
+			/>
+		</div>
+
+		<div class="flex items-center justify-end gap-3 pt-4">
+			<Button variant="ghost" onclick={() => (deletingDevice = null)}>Cancel</Button>
+			<Button
+				variant="destructive"
+				disabled={deleteConfirmationText !== deleteDeviceName || isDeleting}
+				onclick={handleDelete}
+			>
+				{#if isDeleting}
+					<Loader2 size={16} class="mr-2 animate-spin" />
+				{/if}
+				Delete Device
+			</Button>
+		</div>
+	</div>
+</Modal>

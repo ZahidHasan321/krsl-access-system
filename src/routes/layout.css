@@ -347,6 +347,8 @@
 
 /* Filter Bar behavior */
 .sticky-filter-bar {
+	position: sticky;
+	top: 4rem; /* Below 64px Navbar */
 	z-index: 30;
 	background-color: rgb(248 250 252 / 0.98);
 	padding-top: 0.5rem;
@@ -491,6 +493,16 @@
 /* ===========================================
    UTILITY CLASSES
    =========================================== */
+
+@layer utilities {
+	.custom-scrollbar {
+		scrollbar-width: none; /* Firefox */
+		-ms-overflow-style: none; /* IE and Edge */
+	}
+	.custom-scrollbar::-webkit-scrollbar {
+		display: none; /* Chrome, Safari and Opera */
+	}
+}
 
 @layer components {
 	.container {

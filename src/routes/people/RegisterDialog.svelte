@@ -21,7 +21,8 @@
 		Loader2,
 		AlertTriangle,
 		Ship,
-		Warehouse
+		Warehouse,
+		IdCard
 	} from 'lucide-svelte';
 	import { enhance } from '$app/forms';
 	import { appToast } from '$lib/utils';
@@ -161,6 +162,7 @@
 	const finalCategoryId = $derived(selectedSubCategoryId || selectedRootCategoryId || '');
 
 	const activeColorMap: Record<string, string> = {
+		purple: 'border-purple-500 bg-purple-500 text-white shadow-md scale-[1.02]',
 		blue: 'border-blue-500 bg-blue-500 text-white shadow-md scale-[1.02]',
 		orange: 'border-orange-500 bg-orange-500 text-white shadow-md scale-[1.02]',
 		amber: 'border-amber-500 bg-amber-500 text-white shadow-md scale-[1.02]',

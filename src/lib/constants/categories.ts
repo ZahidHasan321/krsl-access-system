@@ -9,7 +9,8 @@ import {
 	User,
 	Wrench,
 	ShoppingCart,
-	UserCircle
+	UserCircle,
+	IdCard
 } from 'lucide-svelte';
 
 export interface Category {
@@ -22,6 +23,14 @@ export interface Category {
 }
 
 export const CATEGORIES: Category[] = [
+	{
+		id: 'card',
+		name: 'Card',
+		slug: 'card',
+		icon: IdCard,
+		color: 'purple',
+		parentId: null
+	},
 	{
 		id: 'customer',
 		name: 'Customer',

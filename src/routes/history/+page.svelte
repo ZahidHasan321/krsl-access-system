@@ -59,6 +59,7 @@
 	let previousLimit = $state(20);
 
 	let isPrintConfirmOpen = $state(false);
+	let showMobileFilters = $state(false);
 
 	$effect(() => {
 		if (page.url.searchParams.has('print')) {
@@ -361,99 +362,268 @@
 <!-- Screen view -->
 <div class="no-print pb-20">
 	<!-- Sticky Top Bar for Filters -->
-	<div class="sticky-filter-bar">
-		<div class="content-container flex flex-wrap items-center justify-between gap-4">
-			<!-- Search Section - Left -->
-			<div class="flex max-w-md flex-1 items-center gap-4">
-				<Button
-					variant="ghost"
-					size="icon"
-					class="shrink-0 rounded-xl hover:bg-slate-100"
-					onclick={() => history.back()}
-				>
-					<ArrowLeft size={20} />
-				</Button>
-				<div class="group relative flex-1">
-					<div
-						class="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500"
-					>
-						<Search size={20} />
-					</div>
-					<Input
-						bind:value={searchQuery}
-						oninput={handleSearchInput}
-						placeholder={i18n.t('searchHistoryPlaceholder')}
-						class="h-12 w-full rounded-2xl border-2 border-slate-300 bg-white pr-12 pl-12 text-base font-bold shadow-sm transition-all focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/30"
-					/>
-					{#if searchQuery}
-						<button
-							class="absolute top-1/2 right-4 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100"
-							onclick={() => {
-								searchQuery = '';
-								applyFilters();
-							}}
-						>
-							<X size={16} />
-						</button>
-					{/if}
-				</div>
-			</div>
-
-			<!-- Range and Actions - Right -->
-			<div class="flex flex-wrap items-center gap-3">
-				<div
-					class="flex h-12 items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white px-4 shadow-sm"
-				>
-					<Calendar size={18} class="text-slate-400" />
-					<div class="flex items-center gap-3">
-						<input
-							type="date"
-							bind:value={startDate}
-							onchange={applyFilters}
-							max={new Date().toISOString().split('T')[0]}
-							class="cursor-pointer bg-transparent text-sm font-black text-slate-700 focus:outline-none"
-						/>
-						<div class="h-0.5 w-4 rounded-full bg-slate-200"></div>
-						<input
-							type="date"
-							bind:value={endDate}
-							onchange={applyFilters}
-							max={new Date().toISOString().split('T')[0]}
-							class="cursor-pointer bg-transparent text-sm font-black text-slate-700 focus:outline-none"
-						/>
-					</div>
-				</div>
-
-				<div class="flex items-center gap-2">
-					<Button
-						variant="outline"
-						class="h-12 cursor-pointer gap-2 rounded-2xl border-2 border-slate-200 px-6 font-black transition-all hover:border-primary-300 hover:bg-primary-50"
-						onclick={confirmPrint}
-					>
-						<Printer size={18} />
-						<span>Print Report</span>
-					</Button>
-
-					{#if hasActiveFilters}
+	<div class="sticky-filter-bar px-4 md:px-0">
+		<div class="content-container">
+			<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+				<!-- Top Row: Search & Stats -->
+				<div class="flex w-full items-center lg:flex-1">
+					<div class="mr-3 hidden lg:block">
 						<Button
 							variant="ghost"
-							class="h-12 cursor-pointer gap-2 rounded-2xl border-2 border-transparent px-6 font-black text-rose-500 transition-all hover:border-rose-100 hover:bg-rose-50 hover:text-rose-600"
-							onclick={clearFilters}
+							size="icon"
+							class="shrink-0 rounded-xl hover:bg-slate-100"
+							onclick={() => history.back()}
 						>
-							<RotateCcw size={18} />
-							Reset
+							<ArrowLeft size={20} />
 						</Button>
-					{/if}
+					</div>
+					<div class="group relative flex-1 lg:max-w-md">
+						<div
+							class="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500"
+						>
+							<Search size={18} />
+						</div>
+						<Input
+							bind:value={searchQuery}
+							oninput={handleSearchInput}
+							placeholder={i18n.t('searchHistoryPlaceholder')}
+							class="h-11 w-full rounded-2xl border-2 border-slate-300 bg-white pr-10 pl-11 text-sm font-bold shadow-sm transition-all focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/30 lg:h-12 lg:text-base"
+						/>
+						{#if searchQuery}
+							<button
+								class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100"
+								onclick={() => {
+									searchQuery = '';
+									applyFilters();
+								}}
+							>
+								<X size={14} />
+							</button>
+						{/if}
+					</div>
+				</div>
+
+				<!-- Actions Row: Buttons -->
+				<div
+					class="custom-scrollbar flex items-center justify-between gap-2 overflow-x-auto lg:justify-end lg:overflow-visible"
+				>
+					<!-- Left Side (Mobile View) -->
+					<div class="flex items-center gap-2 lg:hidden">
+						<Button
+							variant="outline"
+							size="sm"
+							class="h-10 w-10 shrink-0 rounded-xl border-2 border-slate-200 bg-white p-0"
+							onclick={() => history.back()}
+						>
+							<ArrowLeft size={20} />
+						</Button>
+
+						<Button
+							variant="outline"
+							size="sm"
+							class={cn(
+								'h-10 rounded-xl border-2 font-black transition-all',
+								showMobileFilters
+									? 'border-primary-500 bg-primary-50 text-primary-600'
+									: 'border-slate-200'
+							)}
+							onclick={() => (showMobileFilters = !showMobileFilters)}
+						>
+							<Filter size={16} class="mr-1.5" />
+							Filters
+						</Button>
+
+						<!-- Mobile Info Badge Moved Here -->
+						<div class="flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2">
+							<span class="text-[9px] font-black tracking-widest text-slate-400 capitalize"
+								>Records</span
+							>
+							<span class="text-xs font-black text-primary-700">{data.pagination.totalCount}</span>
+						</div>
+					</div>
+
+					<!-- Desktop/Standard Actions -->
+					<div class="flex items-center gap-2">
+						<!-- Desktop Only Date Range -->
+						<div
+							class="mr-2 hidden h-12 items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white px-4 shadow-sm lg:flex"
+						>
+							<Calendar size={18} class="text-slate-400" />
+							<div class="flex items-center gap-3">
+								<input
+									type="date"
+									bind:value={startDate}
+									onchange={applyFilters}
+									max={new Date().toISOString().split('T')[0]}
+									class="cursor-pointer bg-transparent text-sm font-black text-slate-700 focus:outline-none"
+								/>
+								<div class="h-0.5 w-4 rounded-full bg-slate-200"></div>
+								<input
+									type="date"
+									bind:value={endDate}
+									onchange={applyFilters}
+									max={new Date().toISOString().split('T')[0]}
+									class="cursor-pointer bg-transparent text-sm font-black text-slate-700 focus:outline-none"
+								/>
+							</div>
+						</div>
+
+						<Button
+							variant="outline"
+							class="h-10 shrink-0 gap-2 rounded-xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 lg:h-12 lg:rounded-2xl lg:px-6"
+							onclick={confirmPrint}
+						>
+							<Printer size={18} />
+							<span class="hidden sm:inline">Print Report</span>
+						</Button>
+
+						{#if hasActiveFilters}
+							<Button
+								variant="ghost"
+								class="h-10 shrink-0 gap-2 rounded-xl border-2 border-transparent px-4 font-black text-rose-500 transition-all hover:border-rose-100 hover:bg-rose-50 hover:text-rose-600 lg:h-12 lg:rounded-2xl lg:px-6"
+								onclick={clearFilters}
+							>
+								<RotateCcw size={18} />
+								<span class="hidden sm:inline">Reset</span>
+							</Button>
+						{/if}
+					</div>
 				</div>
 			</div>
+
+			<!-- Mobile Horizontal Filter Section -->
+			{#if showMobileFilters}
+				<div class="mt-4 lg:hidden" transition:slide>
+					<!-- Mobile Date Range -->
+					<div class="space-y-2">
+						<p class="ml-1 text-[9px] font-black tracking-widest text-slate-400 uppercase">
+							Date Range
+						</p>
+						<div
+							class="flex h-12 items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white px-4 shadow-sm"
+						>
+							<Calendar size={18} class="text-slate-400" />
+							<div class="flex flex-1 items-center justify-between gap-3">
+								<input
+									type="date"
+									bind:value={startDate}
+									onchange={applyFilters}
+									max={new Date().toISOString().split('T')[0]}
+									class="flex-1 cursor-pointer bg-transparent text-sm font-black text-slate-700 focus:outline-none"
+								/>
+								<div class="h-0.5 w-4 shrink-0 rounded-full bg-slate-200"></div>
+								<input
+									type="date"
+									bind:value={endDate}
+									onchange={applyFilters}
+									max={new Date().toISOString().split('T')[0]}
+									class="flex-1 cursor-pointer bg-transparent text-sm font-black text-slate-700 focus:outline-none"
+								/>
+							</div>
+						</div>
+					</div>
+
+					<div class="mt-4 custom-scrollbar flex gap-2 overflow-x-auto pb-2">
+						<button
+							class={cn(
+								'shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+								!selectedCategoryId
+									? 'bg-primary-600 text-white shadow-md'
+									: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+							)}
+							onclick={() => changeCategory(null)}
+						>
+							{i18n.t('all')}
+						</button>
+						{#each ROOT_CATEGORIES as cat (cat.id)}
+							<button
+								class={cn(
+									'shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+									activeRootCategoryId() === cat.id
+										? 'bg-primary-600 text-white shadow-md'
+										: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+								)}
+								onclick={() => changeCategory(cat.id)}
+							>
+								{i18n.t(cat.slug as any) || cat.name}
+							</button>
+						{/each}
+					</div>
+
+					{#if activeRootCategoryId() && availableSubCategories().length > 0}
+						<div class="mt-2 flex gap-2 overflow-x-auto pb-2 pl-2">
+							<div class="size-2 shrink-0 self-center rounded-full bg-primary-200"></div>
+							{#each availableSubCategories() as subCat (subCat.id)}
+								<button
+									class={cn(
+										'shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+										selectedCategoryId === subCat.id
+											? 'border-primary-600 bg-primary-50 text-primary-700'
+											: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200'
+									)}
+									onclick={() => changeCategory(subCat.id)}
+								>
+									{i18n.t(subCat.slug as any) || subCat.name}
+								</button>
+							{/each}
+						</div>
+					{/if}
+
+					<!-- Mobile View Toggles -->
+					<div class="mt-4 flex gap-4">
+						<div class="flex-1 space-y-2">
+							<p class="ml-1 text-[9px] font-black tracking-widest text-slate-400 uppercase">
+								View Type
+							</p>
+							<div
+								class="flex w-full items-center gap-1 rounded-2xl border-2 border-slate-100 bg-white p-1 shadow-sm"
+							>
+								<button
+									class={cn(
+										'flex-1 rounded-xl py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
+										data.view === 'detailed'
+											? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
+											: 'text-slate-500 hover:bg-slate-50'
+									)}
+									onclick={() => changeView('detailed')}
+								>
+									{i18n.t('detailed')}
+								</button>
+								<button
+									class={cn(
+										'flex-1 rounded-xl py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
+										data.view === 'daily'
+											? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
+											: 'text-slate-500 hover:bg-slate-50'
+									)}
+									onclick={() => changeView('daily')}
+								>
+									{i18n.t('dailySummary')}
+								</button>
+								<button
+									class={cn(
+										'flex-1 rounded-xl py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
+										data.view === 'monthly'
+											? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
+											: 'text-slate-500 hover:bg-slate-50'
+									)}
+									onclick={() => changeView('monthly')}
+								>
+									{i18n.t('monthlySummary')}
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			{/if}
 		</div>
 	</div>
 
 	<!-- Main Content Area -->
-	<div class="content-container flex flex-col items-start gap-8 md:flex-row">
-		<!-- Sidebar - Sticky -->
+	<div class="content-container flex flex-col gap-8 px-4 md:px-0 lg:flex-row">
+		<!-- Sidebar - Desktop Only -->
 		<aside
-			class="custom-scrollbar max-h-[calc(100vh-10rem)] w-full shrink-0 self-start space-y-6 overflow-y-auto pr-2 pb-10 md:sticky md:top-36 md:w-64"
+			class="custom-scrollbar hidden max-h-[calc(100vh-10rem)] w-full shrink-0 self-start space-y-6 overflow-y-auto pr-2 pb-10 lg:sticky lg:top-36 lg:block lg:w-64"
 		>
 			<!-- Category Filter -->
 			<div class="space-y-3">
@@ -632,7 +802,7 @@
 		</aside>
 
 		<!-- Main Scrolling Content Area -->
-		<main class="min-w-0 flex-1 space-y-6">
+		<main class="w-full min-w-0 flex-1 space-y-6">
 			<!-- List Section -->
 			<div class="space-y-4">
 				<!-- Mobile Card View -->
@@ -716,13 +886,22 @@
 								</Card.Content>
 							</Card.Root>
 						{:else}
-							<div class="py-20 text-center space-y-4">
+							<div
+								class="flex flex-col items-center justify-center space-y-6 rounded-3xl py-24 text-center"
+							>
 								<div
-									class="size-20 bg-white rounded-full flex items-center justify-center mx-auto text-slate-300 border-2 border-slate-100 shadow-sm"
+									class="flex size-16 items-center justify-center mx-auto rounded-full bg-slate-100 text-slate-300 md:size-24"
 								>
-									<Users size={40} />
+									<Users size={48} />
 								</div>
-								<p class="text-slate-500 font-bold">{i18n.t('noData')}</p>
+								<div class="space-y-2 px-6">
+									<p class="text-lg font-black text-slate-600 md:text-xl">{i18n.t('noResults')}</p>
+									<p
+										class="text-[10px] font-bold tracking-widest text-slate-400 uppercase md:text-sm"
+									>
+										No history records found matching your criteria
+									</p>
+								</div>
 							</div>
 						{/each}
 					{:else if data.view === 'daily'}

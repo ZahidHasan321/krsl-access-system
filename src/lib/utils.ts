@@ -95,6 +95,8 @@ export function getPageRange(current: number, total: number) {
 export function getCategoryBadgeClass(slug: string | undefined): string {
 	switch (slug) {
 		// Root Categories
+		case 'card':
+			return 'bg-purple-100 text-purple-700 border-purple-200 shadow-sm';
 		case 'employee':
 			return 'bg-blue-100 text-blue-700 border-blue-200 shadow-sm';
 		case 'vendor':
@@ -154,6 +156,8 @@ export function getCategoryLevelClass(level: number): string {
  */
 export function getCategoryColorClass(color: string): string {
 	switch (color) {
+		case 'purple':
+			return 'bg-purple-50 text-purple-700 border-purple-200';
 		case 'blue':
 			return 'bg-blue-50 text-blue-700 border-blue-200';
 		case 'orange':

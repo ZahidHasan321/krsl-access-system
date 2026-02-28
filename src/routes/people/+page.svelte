@@ -366,7 +366,7 @@
 		<div class="content-container">
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 				<!-- Search Section - Left -->
-				<div class="flex flex-1 items-center gap-3">
+				<div class="flex w-full items-center lg:flex-1">
 					<div class="group relative flex-1 lg:max-w-md">
 						<div
 							class="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500"
@@ -392,19 +392,11 @@
 							</button>
 						{/if}
 					</div>
-
-					<!-- Mobile Info Badge -->
-					<div class="flex items-center gap-2 rounded-2xl bg-slate-100 px-3 py-2 lg:hidden">
-						<span class="text-[9px] font-black tracking-widest text-slate-400 uppercase"
-							>Registry</span
-						>
-						<span class="text-xs font-black text-primary-700">{data.pagination.totalCount}</span>
-					</div>
 				</div>
 
 				<!-- Actions - Right -->
 				<div
-					class="flex items-center justify-between gap-2 overflow-x-auto pb-1 lg:justify-end lg:overflow-visible lg:pb-0"
+					class="custom-scrollbar flex items-center justify-between gap-2 overflow-x-auto lg:justify-end lg:overflow-visible"
 				>
 					<div class="flex items-center gap-2 lg:hidden">
 						<Button
@@ -421,6 +413,14 @@
 							<Filter size={16} class="mr-1.5" />
 							Filters
 						</Button>
+
+						<!-- Mobile Info Badge Moved Here -->
+						<div class="flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2">
+							<span class="text-[9px] font-black tracking-widest text-slate-400 uppercase"
+								>Registry</span
+							>
+							<span class="text-xs font-black text-primary-700">{data.pagination.totalCount}</span>
+						</div>
 					</div>
 
 					<div class="flex items-center gap-2">

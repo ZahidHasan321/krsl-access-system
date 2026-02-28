@@ -347,8 +347,8 @@
 
 /* Filter Bar behavior */
 .sticky-filter-bar {
-	position: sticky;
-	top: 4rem; /* Below 64px Navbar */
+	position: relative;
+	top: auto;
 	z-index: 30;
 	background-color: rgb(248 250 252 / 0.98);
 	padding-top: 0.5rem;
@@ -360,6 +360,8 @@
 
 @media (min-width: 1024px) {
 	.sticky-filter-bar {
+		position: sticky;
+		top: 4rem; /* Below 64px Navbar */
 		backdrop-filter: blur(4px);
 		background-color: rgb(248 250 252 / 0.95);
 	}

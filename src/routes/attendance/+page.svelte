@@ -21,7 +21,9 @@
 		PenTool,
 		MapPin,
 		Filter,
-		History
+		History,
+		Ship,
+		Warehouse
 	} from 'lucide-svelte';
 	import logo from '$lib/assets/kr_logo.svg';
 	import { goto } from '$app/navigation';
@@ -33,7 +35,8 @@
 	import { sineInOut } from 'svelte/easing';
 	import {
 		cn,
-		getCategoryBadgeClass
+		getCategoryBadgeClass,
+		statusBadgeClasses
 	} from '$lib/utils';
 	import type { PageData, ActionData } from './$types';
 	import CheckInDialog from '$lib/components/CheckInDialog.svelte';
@@ -842,6 +845,34 @@
 							Inside For (Longest)
 						</div>
 					</Button>
+				</div>
+			</div>
+
+			<!-- Summary Stats -->
+			<div class="space-y-3 rounded-xl border-2 border-slate-100 bg-white p-4 shadow-sm">
+				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Summary</p>
+				<div class="grid grid-cols-2 gap-3">
+					<div class="col-span-2 flex items-center justify-between rounded-lg bg-primary-50 p-2.5">
+						<div class="flex items-center gap-2">
+							<Users size={16} class="text-primary-600" />
+							<span class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('total')}</span>
+						</div>
+						<span class="text-xl font-black text-primary-700">{data.summary.total}</span>
+					</div>
+					<div class="rounded-lg border border-blue-100 bg-white p-2">
+						<div class="mb-1 flex items-center gap-1.5 text-blue-600">
+							<Ship size={12} />
+							<span class="text-[9px] font-bold uppercase">Ship</span>
+						</div>
+						<p class="text-lg font-black text-slate-900">{data.summary.ship}</p>
+					</div>
+					<div class="rounded-lg border border-amber-100 bg-white p-2">
+						<div class="mb-1 flex items-center gap-1.5 text-amber-600">
+							<Warehouse size={12} />
+							<span class="text-[9px] font-bold uppercase">Yard</span>
+						</div>
+						<p class="text-lg font-black text-slate-900">{data.summary.yard}</p>
+					</div>
 				</div>
 			</div>
 		</aside>

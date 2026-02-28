@@ -108,7 +108,6 @@ export const load: PageServerLoad = async (event) => {
 		id: string;
 		name: string;
 		slug: string;
-		icon: any;
 		color: string;
 		count: number; // Inside count
 		registeredCount: number; // Total registered count
@@ -138,7 +137,6 @@ export const load: PageServerLoad = async (event) => {
 				id: c.id,
 				name: c.name,
 				slug: c.slug,
-				icon: c.icon,
 				color: c.color,
 				count: totalCounts.inside,
 				registeredCount: totalCounts.registered,
@@ -158,7 +156,6 @@ export const load: PageServerLoad = async (event) => {
 			id: r.id,
 			name: r.name,
 			slug: r.slug,
-			icon: r.icon,
 			color: r.color,
 			count: totalCounts.inside,
 			registeredCount: totalCounts.registered,

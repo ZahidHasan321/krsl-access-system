@@ -25,7 +25,12 @@
 	}
 </script>
 
-<div class={clsx('relative', level > 0 && 'ml-6 border-l-2 border-slate-200 pl-4')}>
+<div class={clsx('relative', level > 0 && 'ml-5 border-l-2 border-slate-100 pl-4')}>
+	<!-- Horizontal connector line for subcategories -->
+	{#if level > 0}
+		<div class="absolute top-7 -left-[2px] h-0.5 w-3 bg-slate-100"></div>
+	{/if}
+
 	<button
 		type="button"
 		class={clsx(
@@ -33,7 +38,7 @@
 			hasChildren ? 'cursor-pointer hover:bg-slate-50' : 'cursor-default',
 			level === 0
 				? 'mb-3 border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/50'
-				: 'mb-1 border-transparent'
+				: 'mb-1 border-transparent hover:bg-slate-50/50'
 		)}
 		onclick={toggle}
 	>
@@ -49,19 +54,13 @@
 					<Icon size={20} strokeWidth={2.5} />
 				</div>
 			{:else}
-				<div class="relative">
-					<CornerDownRight
-						size={14}
-						class="absolute top-1/2 -left-6 -translate-y-1/2 text-slate-400"
-					/>
-					<div
-						class={cn(
-							'flex size-8 items-center justify-center rounded-lg border shadow-sm',
-							getCategoryColorClass(category.color)
-						)}
-					>
-						<Icon size={16} strokeWidth={2} />
-					</div>
+				<div
+					class={cn(
+						'flex size-8 items-center justify-center rounded-lg border shadow-sm',
+						getCategoryColorClass(category.color)
+					)}
+				>
+					<Icon size={16} strokeWidth={2} />
 				</div>
 			{/if}
 
@@ -70,7 +69,7 @@
 					<span
 						class={clsx(
 							'text-slate-900',
-							level === 0 ? 'text-base font-bold capitalize' : 'text-sm font-bold',
+							level === 0 ? 'text-base font-black capitalize' : 'text-sm font-bold',
 							level === 0 && i18n.lang !== 'bn' && 'tracking-tighter'
 						)}>{i18n.t(category.slug as any) || category.name}</span
 					>
@@ -85,7 +84,7 @@
 					{/if}
 				</div>
 				{#if level === 0 && category.children.length > 0}
-					<div class="text-[10px] font-bold tracking-widest text-slate-500 capitalize">
+					<div class="text-[9px] font-black tracking-widest text-slate-400 uppercase">
 						{category.children.length} Sub-categories
 					</div>
 				{/if}

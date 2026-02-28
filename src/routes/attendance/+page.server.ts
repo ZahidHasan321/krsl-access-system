@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { attendanceLogs, people } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 import { format } from 'date-fns';
 import { fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
@@ -19,14 +19,28 @@ export const load: PageServerLoad = async (event) => {
 	// Default to 50 items for better performance with infinite scroll
 	const limit = Math.min(2000, Math.max(1, parseInt(event.url.searchParams.get('limit') || '50')));
 
-	const result = await getAttendanceLogs({
-		page,
-		limit,
-		query,
-		categoryId,
-		location,
-		sortBy
-	});
+	const [result, [totalInsideRes], [yardCountRes], [shipCountRes]] = await Promise.all([
+		getAttendanceLogs({
+			page,
+			limit,
+			query,
+			categoryId,
+			location,
+			sortBy
+		}),
+		db
+			.select({ value: count() })
+			.from(attendanceLogs)
+			.where(eq(attendanceLogs.status, 'on_premises')),
+		db
+			.select({ value: count() })
+			.from(attendanceLogs)
+			.where(and(eq(attendanceLogs.status, 'on_premises'), eq(attendanceLogs.location, 'yard'))),
+		db
+			.select({ value: count() })
+			.from(attendanceLogs)
+			.where(and(eq(attendanceLogs.status, 'on_premises'), eq(attendanceLogs.location, 'ship')))
+	]);
 
 	return {
 		logs: result.logs,
@@ -35,6 +49,11 @@ export const load: PageServerLoad = async (event) => {
 			categoryId,
 			location,
 			sortBy
+		},
+		summary: {
+			total: totalInsideRes?.value || 0,
+			yard: yardCountRes?.value || 0,
+			ship: shipCountRes?.value || 0
 		},
 		pagination: result.pagination
 	};

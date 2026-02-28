@@ -182,7 +182,7 @@ async function seedDatabase() {
 	for (const c of DEFAULT_CATEGORIES) {
 		await client.query(
 			`INSERT INTO person_categories (id, name, slug, parent_id, sort_order) VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (id) DO NOTHING`,
+             ON CONFLICT (id) DO UPDATE SET name = $2, slug = $3, parent_id = $4, sort_order = $5`,
 			[c.id, c.name, c.slug, c.parentId, c.sortOrder]
 		);
 	}

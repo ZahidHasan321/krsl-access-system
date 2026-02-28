@@ -68,115 +68,144 @@
 </svelte:head>
 
 <!-- Print Only Report -->
-<div class="print-only hidden">
-	<div
-		class="print-header"
-		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 3px solid #1c55a4; margin-bottom: 2rem;"
-	>
-		<div style="display: flex; align-items: center; gap: 20px;">
-			<img src="/kr_logo.svg" alt="Logo" style="height: 70px; width: auto;" />
-			<div style="border-left: 2px solid #e2e8f0; padding-left: 20px;">
-				<h1
-					style="font-family: 'HandelGothic', sans-serif; font-size: 32px; color: #0f172a; margin: 0; line-height: 1;"
-				>
-					<span style="color: #1c55a4;">KR</span> Steel Ltd.
-				</h1>
-				<p
-					style="font-size: 11px; font-weight: 900; color: #64748b; margin: 6px 0 0 0; letter-spacing: 0.3em; text-transform: uppercase;"
-				>
-					Access Management System
+<div class="print-only hidden" style="page-break-after: always;">
+	<div style="padding: 15px 30px; font-family: 'Inter', sans-serif; color: #000; background: #fff; max-height: 100vh; overflow: hidden;">
+		<!-- Official Header -->
+		<div
+			class="print-header"
+			style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1rem; border-bottom: 3px solid #1c55a4; margin-bottom: 1rem;"
+		>
+			<div style="display: flex; align-items: center; gap: 20px;">
+				<img src="/kr_logo.svg" alt="Logo" style="height: 70px; width: auto;" />
+				<div style="border-left: 2px solid #e2e8f0; padding-left: 20px;">
+					<h1 style="font-family: 'HandelGothic', sans-serif; font-size: 32px; color: #0f172a; margin: 0; line-height: 1;">
+						<span style="color: #1c55a4;">KR</span> Steel Ltd.
+					</h1>
+					<p style="font-size: 11px; font-weight: 900; color: #64748b; margin: 6px 0 0 0; letter-spacing: 0.3em; text-transform: uppercase;">
+						Access Management System
+					</p>
+				</div>
+			</div>
+			<div style="text-align: right;">
+				<h2 style="font-size: 18px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">
+					Operations Summary
+				</h2>
+				<p style="font-size: 12px; font-weight: 700; color: #64748b; margin: 4px 0 0 0;">
+					{format(new Date(), 'PPPP')} | {format(new Date(), 'hh:mm a')}
 				</p>
 			</div>
 		</div>
-		<div style="text-align: right;">
-			<h2
-				style="font-size: 18px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;"
-			>
-				Daily Operations Summary
-			</h2>
-			<p style="font-size: 12px; font-weight: 700; color: #64748b; margin: 4px 0 0 0;">
-				{format(new Date(), 'PPPP')} | {format(new Date(), 'hh:mm a')}
-			</p>
-		</div>
-	</div>
 
-	<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 2rem;">
-		<!-- Personnel Summary -->
-		<div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">
-			<h3
-				style="font-size: 14px; font-weight: 900; color: #1c55a4; text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;"
-			>
-				Personnel Status
-			</h3>
-			<table style="width: 100%; border-collapse: collapse;">
+		<!-- Quick Overview Bar -->
+		<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding: 1rem 2rem; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+			<div style="display: flex; flex-direction: column; gap: 2px;">
+				<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Personnel Inside</span>
+				<span style="font-size: 15px; font-weight: 900; color: #059669;">{data.currentlyInside.totalPeople} INDIVIDUALS</span>
+			</div>
+			
+			<div style="display: flex; flex-direction: column; gap: 2px; align-items: center; border-left: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; padding: 0 3rem;">
+				<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Total Registered</span>
+				<span style="font-size: 15px; font-weight: 900; color: #1c55a4;">{data.totalPeople} RECORDS</span>
+			</div>
+
+			<div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
+				<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Vehicles Inside</span>
+				<span style="font-size: 15px; font-weight: 900; color: #b45309;">{data.currentlyInside.totalVehicles} ON-PREMISES</span>
+			</div>
+		</div>
+
+		<!-- Section 1: Summary of Personnel -->
+		<div style="margin-bottom: 20px;">
+			<h3 style="font-size: 12px; background: #f8fafc; color: #1c55a4; padding: 6px 10px; border-left: 4px solid #1c55a4; margin-bottom: 10px; font-weight: 900; letter-spacing: 0.5px;">I. PERSONNEL STATUS SUMMARY</h3>
+			<table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+				<thead>
+					<tr style="border-bottom: 2px solid #1c55a4;">
+						<th style="text-align: left; padding: 8px; font-size: 11px; width: 40%; color: #1c55a4;">Category Description</th>
+						<th style="text-align: center; padding: 8px; font-size: 11px; color: #1c55a4;">Total Registered</th>
+						<th style="text-align: center; padding: 8px; font-size: 11px; color: #1c55a4;">Currently Inside</th>
+					</tr>
+				</thead>
 				<tbody>
-					<tr style="border-bottom: 1px solid #f1f5f9;">
-						<td style="padding: 8px 0; font-size: 12px; color: #64748b;">Total Registered</td>
-						<td style="padding: 8px 0; font-size: 14px; font-weight: 900; text-align: right; color: #0f172a;">{data.totalPeople}</td>
-					</tr>
-					<tr style="border-bottom: 1px solid #f1f5f9;">
-						<td style="padding: 8px 0; font-size: 12px; color: #64748b;">Currently Inside</td>
-						<td style="padding: 8px 0; font-size: 14px; font-weight: 900; text-align: right; color: #059669;">{data.currentlyInside.totalPeople}</td>
-					</tr>
 					{#each data.currentlyInside.categoryTree as cat}
-						<tr style="border-bottom: 1px solid #f8fafc;">
-							<td style="padding: 6px 0 6px 12px; font-size: 11px; color: #94a3b8;">{cat.name}</td>
-							<td style="padding: 6px 0; font-size: 12px; font-weight: 700; text-align: right; color: #475569;">{cat.count} / {cat.registeredCount}</td>
+						<tr style="border-bottom: 1px solid #f1f5f9; background: #fcfcfc;">
+							<td style="padding: 8px; font-size: 11px; font-weight: bold; color: #334155;">{cat.name}</td>
+							<td style="padding: 8px; font-size: 11px; text-align: center; color: #475569;">{cat.registeredCount}</td>
+							<td style="padding: 8px; font-size: 11px; text-align: center; font-weight: bold; color: #059669;">{cat.count}</td>
 						</tr>
+						{#each cat.children as sub}
+							<tr style="border-bottom: 1px solid #f8fafc; color: #64748b;">
+								<td style="padding: 6px 8px 6px 30px; font-size: 10px;">{sub.name}</td>
+								<td style="padding: 6px 8px; font-size: 10px; text-align: center;">{sub.registeredCount}</td>
+								<td style="padding: 6px 8px; font-size: 10px; text-align: center;">{sub.count}</td>
+							</tr>
+						{/each}
 					{/each}
 				</tbody>
 			</table>
 		</div>
 
-		<!-- Logistics Summary -->
-		<div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">
-			<h3
-				style="font-size: 14px; font-weight: 900; color: #1c55a4; text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;"
-			>
-				Logistics Status
-			</h3>
-			<table style="width: 100%; border-collapse: collapse;">
-				<tbody>
-					<tr style="border-bottom: 1px solid #f1f5f9;">
-						<td style="padding: 8px 0; font-size: 12px; color: #64748b;">Total Vehicles Inside</td>
-						<td style="padding: 8px 0; font-size: 14px; font-weight: 900; text-align: right; color: #0f172a;">{data.currentlyInside.totalVehicles}</td>
-					</tr>
-					<tr style="border-bottom: 1px solid #f1f5f9;">
-						<td style="padding: 8px 0; font-size: 12px; color: #64748b;">Transport Vehicles</td>
-						<td style="padding: 8px 0; font-size: 12px; font-weight: 700; text-align: right; color: #475569;">{data.currentlyInside.vehicleStats.transport}</td>
-					</tr>
-					<tr style="border-bottom: 1px solid #f1f5f9;">
-						<td style="padding: 8px 0; font-size: 12px; color: #64748b;">Regular Vehicles</td>
-						<td style="padding: 8px 0; font-size: 12px; font-weight: 700; text-align: right; color: #475569;">{data.currentlyInside.vehicleStats.regular}</td>
-					</tr>
-				</tbody>
-			</table>
-
-			<h3
-				style="font-size: 14px; font-weight: 900; color: #1c55a4; text-transform: uppercase; margin-top: 20px; margin-bottom: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;"
-			>
-				Location Distribution
-			</h3>
-			<table style="width: 100%; border-collapse: collapse;">
-				<tbody>
-					<tr style="border-bottom: 1px solid #f1f5f9;">
-						<td style="padding: 8px 0; font-size: 12px; color: #64748b;">Yard Operations</td>
-						<td style="padding: 8px 0; font-size: 14px; font-weight: 900; text-align: right; color: #0f172a;">{data.locationStats.yard}</td>
-					</tr>
-					<tr style="border-bottom: 1px solid #f1f5f9;">
-						<td style="padding: 8px 0; font-size: 12px; color: #64748b;">Ship Boarding</td>
-						<td style="padding: 8px 0; font-size: 14px; font-weight: 900; text-align: right; color: #0f172a;">{data.locationStats.ship}</td>
-					</tr>
-				</tbody>
-			</table>
+		<!-- Section 2: Logistics & Locations -->
+		<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+			<div>
+				<h3 style="font-size: 12px; background: #f8fafc; color: #1c55a4; padding: 6px 10px; border-left: 4px solid #1c55a4; margin-bottom: 10px; font-weight: 900; letter-spacing: 0.5px;">II. LOGISTICS STATUS</h3>
+				<table style="width: 100%; border-collapse: collapse;">
+					<tbody>
+						<tr style="border-bottom: 1px solid #f1f5f9;">
+							<td style="padding: 8px; font-size: 10px; color: #475569;">Transport Vehicles Inside</td>
+							<td style="padding: 8px; font-size: 11px; text-align: right; font-weight: 900; color: #1c55a4;">{data.currentlyInside.vehicleStats.transport}</td>
+						</tr>
+						<tr style="border-bottom: 1px solid #f1f5f9;">
+							<td style="padding: 8px; font-size: 10px; color: #475569;">Regular Vehicles Inside</td>
+							<td style="padding: 8px; font-size: 11px; text-align: right; font-weight: 900; color: #1c55a4;">{data.currentlyInside.vehicleStats.regular}</td>
+						</tr>
+						<tr style="background: #f8fafc;">
+							<td style="padding: 8px; font-size: 10px; font-weight: bold; color: #0f172a;">Total Vehicles On-Premises</td>
+							<td style="padding: 8px; font-size: 11px; text-align: right; font-weight: 900; color: #b45309; border-top: 1px solid #b45309;">{data.currentlyInside.totalVehicles}</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<div>
+				<h3 style="font-size: 12px; background: #f8fafc; color: #1c55a4; padding: 6px 10px; border-left: 4px solid #1c55a4; margin-bottom: 10px; font-weight: 900; letter-spacing: 0.5px;">III. LOCATION DISTRIBUTION</h3>
+				<table style="width: 100%; border-collapse: collapse;">
+					<tbody>
+						<tr style="border-bottom: 1px solid #f1f5f9;">
+							<td style="padding: 8px; font-size: 10px; color: #475569;">Yard Operations</td>
+							<td style="padding: 8px; font-size: 11px; text-align: right; font-weight: 900; color: #059669;">{data.locationStats.yard}</td>
+						</tr>
+						<tr style="border-bottom: 1px solid #f1f5f9;">
+							<td style="padding: 8px; font-size: 10px; color: #475569;">Ship Boarding</td>
+							<td style="padding: 8px; font-size: 11px; text-align: right; font-weight: 900; color: #0369a1;">{data.locationStats.ship}</td>
+						</tr>
+						<tr style="background: #f8fafc;">
+							<td style="padding: 8px; font-size: 10px; font-weight: bold; color: #0f172a;">Total Verified Personnel</td>
+							<td style="padding: 8px; font-size: 11px; text-align: right; font-weight: 900; color: #1c55a4; border-top: 1px solid #1c55a4;">{data.locationStats.yard + data.locationStats.ship}</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 		</div>
-	</div>
 
-	<div
-		style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em;"
-	>
-		<p>Generated by {i18n.t('appName')} Official Reporting System</p>
-		<p>Page 1 of 1</p>
+		<!-- Footer / Signatures -->
+		<div style="margin-top: 60px; display: flex; justify-content: space-between;">
+			<div style="width: 180px; border-top: 1px solid #000; text-align: center; padding-top: 5px;">
+				<p style="font-size: 10px; font-weight: bold; margin: 0;">Prepared By</p>
+				<p style="font-size: 8px; color: #666; margin: 2px 0;">System Generated</p>
+			</div>
+			<div style="width: 180px; border-top: 1px solid #000; text-align: center; padding-top: 5px;">
+				<p style="font-size: 10px; font-weight: bold; margin: 0;">Security Supervisor</p>
+				<p style="font-size: 8px; color: #666; margin: 2px 0;">KR Steel Ltd.</p>
+			</div>
+			<div style="width: 180px; border-top: 1px solid #000; text-align: center; padding-top: 5px;">
+				<p style="font-size: 10px; font-weight: bold; margin: 0;">Official Authorization</p>
+				<p style="font-size: 8px; color: #666; margin: 2px 0;">Date & Stamp</p>
+			</div>
+		</div>
+
+		<div style="margin-top: 40px; text-align: center; border-top: 1px solid #eee; padding-top: 8px;">
+			<p style="font-size: 8px; color: #999; margin: 0;">This is an electronically generated report. For security purposes, please verify all data against the live system logs.</p>
+			<p style="font-size: 8px; color: #999; margin: 2px 0;">© {new Date().getFullYear()} KR Steel Ltd. Access Management System v1.0</p>
+		</div>
 	</div>
 </div>
 
@@ -395,6 +424,7 @@
 				<Card.Content class="p-4">
 					<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 						{#each data.currentlyInside.categoryTree as root}
+							{@const Icon = getCategoryById(root.id)?.icon}
 							<div
 								class="flex flex-col gap-2 rounded-2xl border-2 border-slate-100 bg-white p-4 transition-all hover:border-indigo-200 hover:shadow-md"
 							>
@@ -405,7 +435,9 @@
 											getCategoryColorClass(root.color)
 										)}
 									>
-										<root.icon size={20} />
+										{#if Icon}
+											<Icon size={20} />
+										{/if}
 									</div>
 									<div class="text-right">
 										<p class="text-2xl font-black tracking-tighter text-slate-900">

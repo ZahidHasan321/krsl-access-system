@@ -446,7 +446,8 @@ const server = http.createServer(async (req, res) => {
 								photoUrl: person.photoUrl,
 								thumbUrl: person.thumbUrl,
 								logId: newLogId,
-								categoryId: person.categoryId
+								categoryId: person.categoryId,
+								isTrained: person.isTrained
 							});
 						} else {
 							console.log(`[ZK:Punch] CHECK-OUT for ${person.name} (${method})`);
@@ -461,7 +462,8 @@ const server = http.createServer(async (req, res) => {
 								photoUrl: person.photoUrl,
 								thumbUrl: person.thumbUrl,
 								logId: activeLog.id,
-								categoryId: person.categoryId
+								categoryId: person.categoryId,
+								isTrained: person.isTrained
 							});
 						}
 						await db

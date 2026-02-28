@@ -24,3 +24,34 @@ export const GET: RequestHandler = async (event) => {
 
 	return json(result);
 };
+
+export const PATCH: RequestHandler = async (event) => {
+	requirePermission(event.locals, 'people.create');
+	
+	try {
+		const { logId, purpose, location } = await event.request.json();
+
+		if (!logId) {
+			return json({ message: 'Log ID required' }, { status: 400 });
+		}
+
+		const { db } = await import('$lib/server/db');
+		const { attendanceLogs } = await import('$lib/server/db/schema');
+		const { eq } = await import('drizzle-orm');
+		const { notifyChange } = await import('$lib/server/events');
+
+		await db
+			.update(attendanceLogs)
+			.set({
+				purpose: purpose || null,
+				location: location || null
+			})
+			.where(eq(attendanceLogs.id, logId));
+
+		notifyChange();
+		return json({ success: true });
+	} catch (e: any) {
+		console.error('[API:Attendance:PATCH] Error:', e);
+		return json({ message: e.message || 'Internal Server Error' }, { status: 500 });
+	}
+};

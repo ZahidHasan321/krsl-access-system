@@ -198,7 +198,7 @@
 							<a
 								href={link.href}
 								class={clsx(
-									'nav-link-text flex items-center gap-1.5 rounded-full px-3 py-2 whitespace-nowrap transition-all',
+									'nav-link-text touch-feedback flex items-center gap-1.5 rounded-full px-3 py-2 whitespace-nowrap transition-all active:scale-95',
 									isActive(link.href)
 										? 'bg-primary text-white shadow-[0_5px_15px_rgba(28,85,164,0.2)]'
 										: isScrolled
@@ -214,7 +214,7 @@
 							<div class="group relative">
 								<button
 									class={clsx(
-										'nav-link-text flex items-center gap-1.5 rounded-full px-3 py-2 whitespace-nowrap transition-all',
+										'nav-link-text touch-feedback flex items-center gap-1.5 rounded-full px-3 py-2 whitespace-nowrap transition-all active:scale-95',
 										isSubActive
 											? 'bg-primary text-white shadow-[0_5px_15px_rgba(28,85,164,0.2)]'
 											: isScrolled
@@ -240,7 +240,7 @@
 											<a
 												href={sub.href}
 												class={clsx(
-													'nav-link-text flex items-center gap-2 px-5 py-3 transition-colors',
+													'nav-link-text touch-feedback flex items-center gap-2 px-5 py-3 transition-colors active:bg-slate-50',
 													isActive(sub.href)
 														? 'bg-primary/10 text-primary'
 														: 'text-slate-600 hover:bg-slate-50 hover:text-primary'
@@ -261,7 +261,7 @@
 			<div class="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2 xl:gap-4">
 				<div class="relative flex items-center">
 					<button
-						class="rounded-full p-2 text-gray-600 transition-colors hover:bg-gray-100 2xl:hidden"
+						class="touch-target touch-feedback flex items-center justify-center rounded-full p-2 text-gray-600 transition-colors hover:bg-gray-100 active:scale-90 2xl:hidden"
 						onclick={() => (isMobileSearchOpen = !isMobileSearchOpen)}
 						aria-label="Toggle search"
 					>

@@ -60,14 +60,50 @@
 	const isEmployee = $derived(rootCategory?.slug === 'employee');
 	const needsPurpose = $derived(!isEmployee);
 
+	async function handleSubmit(e: SubmitEvent) {
+		e.preventDefault();
+		if (!data || !location) return;
+
+		isLoading = true;
+		try {
+			const res = await fetch('/api/attendance', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					logId: data.logId,
+					location,
+					purpose: purpose || null
+				})
+			});
+
+			if (res.ok) {
+				appToast.success('Check-in details updated');
+				open = false;
+				data = null;
+			} else {
+				const error = await res.json();
+				appToast.error(error.message || 'Failed to update check-in details');
+			}
+		} catch (err) {
+			console.error(err);
+			appToast.error('An unexpected error occurred');
+		} finally {
+			isLoading = false;
+		}
+	}
+
 	function handleClose() {
 		open = false;
 		data = null;
 	}
 </script>
 
-<Dialog.Root bind:open onOpenChange={(v) => !v && handleClose()}>
-	<Dialog.Content class="gap-0 overflow-hidden p-0 sm:max-w-[500px]">
+<Dialog.Root bind:open onOpenChange={(v) => { if (!v) return; }}>
+	<Dialog.Content 
+		class="gap-0 overflow-hidden p-0 sm:max-w-[500px]"
+		onInteractOutside={(e) => e.preventDefault()}
+		onEscapeKeydown={(e) => e.preventDefault()}
+	>
 		{#if data}
 			<div class={cn('h-2 w-full', isEmployee ? 'bg-emerald-500' : 'bg-blue-500')}></div>
 
@@ -136,58 +172,40 @@
 				{/if}
 			</div>
 
-			<form
-				method="POST"
-				action="/attendance?/updatePurpose"
-				use:enhance={() => {
-					isLoading = true;
-					return async ({ result, update }) => {
-						isLoading = false;
-						if (result.type === 'success') {
-							appToast.success('Check-in details updated');
-							open = false;
-						} else {
-							appToast.error('Failed to update check-in details');
-						}
-					};
-				}}
-				class="space-y-6 p-6"
-			>
-				<input type="hidden" name="logId" value={data.logId} />
-				<input type="hidden" name="location" value={location} />
-
+			<form onsubmit={handleSubmit} class="space-y-6 p-6">
 				<div class="space-y-3">
 					<Label class="text-xs font-black tracking-widest text-slate-500 uppercase">
 						Assignment Location <span class="text-rose-500">*</span>
 					</Label>
-											<div class="grid grid-cols-2 gap-3">
-												<button
-													type="button"
-													class={cn(
-														'flex h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
-														location === 'yard'
-															? 'scale-[1.02] border-primary-500 bg-primary-500 text-white shadow-lg shadow-primary-500/20'
-															: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200 hover:bg-slate-50'
-													)}
-													onclick={() => (location = 'yard')}
-												>
-													<Warehouse size={24} strokeWidth={location === 'yard' ? 3 : 2} />
-													Yard
-												</button>
-												<button
-													type="button"
-													class={cn(
-														'flex h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
-														location === 'ship'
-															? 'scale-[1.02] border-primary-500 bg-primary-500 text-white shadow-lg shadow-primary-500/20'
-															: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200 hover:bg-slate-50'
-													)}
-													onclick={() => (location = 'ship')}
-												>
-													<Ship size={24} strokeWidth={location === 'ship' ? 3 : 2} />
-													Ship
-												</button>
-											</div>				</div>
+					<div class="grid grid-cols-2 gap-3">
+						<button
+							type="button"
+							class={cn(
+								'flex h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
+								location === 'yard'
+									? 'scale-[1.02] border-primary-500 bg-primary-500 text-white shadow-lg shadow-primary-500/20'
+									: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200 hover:bg-slate-50'
+							)}
+							onclick={() => (location = 'yard')}
+						>
+							<Warehouse size={24} strokeWidth={location === 'yard' ? 3 : 2} />
+							Yard
+						</button>
+						<button
+							type="button"
+							class={cn(
+								'flex h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
+								location === 'ship'
+									? 'scale-[1.02] border-primary-500 bg-primary-500 text-white shadow-lg shadow-primary-500/20'
+									: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200 hover:bg-slate-50'
+							)}
+							onclick={() => (location = 'ship')}
+						>
+							<Ship size={24} strokeWidth={location === 'ship' ? 3 : 2} />
+							Ship
+						</button>
+					</div>
+				</div>
 
 				{#if needsPurpose}
 					<div class="space-y-3">

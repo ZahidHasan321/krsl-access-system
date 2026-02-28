@@ -701,7 +701,7 @@
 									<div class="flex flex-wrap gap-1.5 py-1">
 										<button
 											class={clsx(
-												'cursor-pointer rounded-full border px-3 py-1.5 text-xs font-bold transition-all',
+												'touch-feedback cursor-pointer rounded-full border px-3 py-2 text-xs font-bold transition-all active:scale-95',
 												activeRootCategoryId() === selectedCategoryId
 													? 'border-primary-600 bg-primary-600 text-white shadow-sm'
 													: 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'
@@ -713,7 +713,7 @@
 
 										{#if activeParentCategory() && activeParentCategory()?.id !== activeRootCategoryId()}
 											<button
-												class="cursor-pointer rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600 transition-all hover:bg-slate-200"
+												class="touch-feedback cursor-pointer rounded-full bg-slate-100 px-3 py-2 text-[11px] font-bold text-slate-600 transition-all active:scale-95 hover:bg-slate-200"
 												onclick={() => changeCategory(activeParentCategory()?.id || '')}
 											>
 												<span class="mr-1 opacity-50">↑</span>
@@ -724,7 +724,7 @@
 										{#each availableSubCategories() as subCat (subCat.id)}
 											<button
 												class={clsx(
-													'cursor-pointer rounded-full border px-3 py-1.5 text-xs font-bold transition-all',
+													'touch-feedback cursor-pointer rounded-full border px-3 py-2 text-xs font-bold transition-all active:scale-95',
 													selectedCategoryId === subCat.id
 														? 'border-primary-600 bg-primary-600 text-white shadow-sm'
 														: 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'
@@ -854,12 +854,12 @@
 					{#if logs.length > 0}
 						<div class="flex flex-col gap-3 lg:p-4">
 							{#each logs as log (log.id)}
-								<Card.Root class="group overflow-hidden border-2 border-slate-100 bg-white transition-all hover:border-primary-200 hover:shadow-md">
-									<Card.Content class="p-3 sm:p-4">
-										<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+								<Card.Root class="group overflow-hidden border-2 border-slate-100 bg-white transition-all hover:border-primary-200 active:bg-slate-50/50 hover:shadow-md">
+									<Card.Content class="p-4 sm:p-5">
+										<div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
 											<div class="flex min-w-0 flex-1 items-center gap-4">
 												<!-- Avatar -->
-												<div class="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-50 bg-white shadow-sm sm:size-12">
+												<div class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-slate-50 bg-white shadow-sm">
 													{#if log.person.photoUrl}
 														<img
 															src={log.person.thumbUrl || log.person.photoUrl}
@@ -877,13 +877,13 @@
 												<!-- Primary Info -->
 												<div class="min-w-0 flex-1">
 													<div class="flex items-center gap-2">
-														<a href="/people/{log.person.id}" class="truncate text-base font-black text-slate-900 transition-colors hover:text-primary-600">
+														<a href="/people/{log.person.id}" class="truncate text-lg font-black text-slate-900 transition-colors hover:text-primary-600">
 															{log.person.name}
 														</a>
 														{#if log.verifyMethod}
 															<div
 																class={cn(
-																	'flex size-6 shrink-0 items-center justify-center rounded-full border shadow-sm',
+																	'flex size-7 shrink-0 items-center justify-center rounded-full border shadow-sm',
 																	log.verifyMethod === 'face'
 																		? 'border-indigo-100 bg-indigo-50 text-indigo-600'
 																		: log.verifyMethod === 'finger'
@@ -895,23 +895,23 @@
 																title={log.verifyMethod}
 															>
 																{#if log.verifyMethod === 'face'}
-																	<ScanFace size={12} />
+																	<ScanFace size={14} />
 																{:else if log.verifyMethod === 'finger'}
-																	<Fingerprint size={12} />
+																	<Fingerprint size={14} />
 																{:else if log.verifyMethod === 'card'}
-																	<IdCard size={12} />
+																	<IdCard size={14} />
 																{:else}
-																	<PenTool size={12} />
+																	<PenTool size={14} />
 																{/if}
 															</div>
 														{/if}
 													</div>
-													<div class="mt-1 flex flex-wrap gap-1.5">
+													<div class="mt-1.5 flex flex-wrap gap-1.5">
 														{#each getCategoryPath(log.person.categoryId).slice(-2) as cat (cat.id)}
 															<Badge
 																variant="outline"
 																class={cn(
-																	'h-5 px-1.5 text-[9px] font-black tracking-wider uppercase',
+																	'h-5 px-1.5 text-[10px] font-black tracking-wider uppercase',
 																	getCategoryBadgeClass(cat.slug)
 																)}
 															>
@@ -923,12 +923,12 @@
 											</div>
 
 											<!-- Metrics & Actions -->
-											<div class="flex flex-wrap items-center gap-4 border-t border-slate-50 pt-3 sm:border-none sm:pt-0 md:gap-8 lg:gap-12">
+											<div class="flex flex-wrap items-center gap-6 border-t border-slate-50 pt-4 sm:border-none sm:pt-0 md:gap-8 lg:gap-12">
 												<!-- Duration -->
 												<div class="space-y-0.5">
-													<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">Inside For</p>
+													<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Inside For</p>
 													<div class="flex items-center gap-1.5 text-sm font-black text-emerald-600">
-														<Clock size={14} />
+														<Clock size={16} />
 														<span>{formatDuration(log.durationSeconds)}</span>
 													</div>
 												</div>
@@ -936,9 +936,9 @@
 												<!-- Location -->
 												{#if log.location}
 													<div class="space-y-0.5">
-														<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('location')}</p>
+														<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('location')}</p>
 														<div class="flex items-center gap-1.5 text-sm font-black text-slate-900 uppercase">
-															<MapPin size={14} class={cn(log.location === 'ship' ? 'text-blue-500' : 'text-amber-500')} />
+															<MapPin size={16} class={cn(log.location === 'ship' ? 'text-blue-500' : 'text-amber-500')} />
 															<span>{log.location}</span>
 														</div>
 													</div>
@@ -946,9 +946,9 @@
 
 												<!-- Entry Time -->
 												<div class="space-y-0.5">
-													<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('entryTime')}</p>
+													<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('entryTime')}</p>
 													<div class="flex items-center gap-1.5 text-sm font-black text-slate-500">
-														<Clock size={14} class="opacity-50" />
+														<Clock size={16} class="opacity-50" />
 														<span>{format(log.entryTime, 'hh:mm a')}</span>
 													</div>
 												</div>
@@ -960,11 +960,11 @@
 														<Button
 															type="button"
 															variant="outline"
-															class="h-10 gap-2 border-2 border-rose-100 px-4 font-black text-rose-600 transition-all hover:bg-rose-50 hover:text-rose-700"
+															class="h-12 min-w-[120px] gap-2 border-2 border-rose-100 px-6 font-black text-rose-600 transition-all active:scale-95 hover:bg-rose-50 hover:text-rose-700"
 															onclick={(e) => triggerCheckOut((e.currentTarget as HTMLButtonElement).form as HTMLFormElement)}
 														>
-															<CheckCircle2 size={18} />
-															<span class="hidden xl:inline">{i18n.t('checkOut')}</span>
+															<CheckCircle2 size={20} />
+															<span>{i18n.t('checkOut')}</span>
 														</Button>
 													</form>
 												{/if}

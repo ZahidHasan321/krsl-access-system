@@ -23,7 +23,8 @@
 		ScanFace,
 		Fingerprint,
 		IdCard,
-		PenTool
+		PenTool,
+		Printer
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import { format, parseISO } from 'date-fns';
@@ -56,13 +57,130 @@
 		isCheckInTypeSelectOpen = false;
 		isVehicleCheckInOpen = true;
 	}
+
+	function printDashboard() {
+		window.print();
+	}
 </script>
 
 <svelte:head>
 	<title>{i18n.t('dashboard')} | {i18n.t('appName')}</title>
 </svelte:head>
 
-<div class="space-y-6 pb-10">
+<!-- Print Only Report -->
+<div class="print-only hidden">
+	<div
+		class="print-header"
+		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 3px solid #1c55a4; margin-bottom: 2rem;"
+	>
+		<div style="display: flex; align-items: center; gap: 20px;">
+			<img src="/kr_logo.svg" alt="Logo" style="height: 70px; width: auto;" />
+			<div style="border-left: 2px solid #e2e8f0; padding-left: 20px;">
+				<h1
+					style="font-family: 'HandelGothic', sans-serif; font-size: 32px; color: #0f172a; margin: 0; line-height: 1;"
+				>
+					<span style="color: #1c55a4;">KR</span> Steel Ltd.
+				</h1>
+				<p
+					style="font-size: 11px; font-weight: 900; color: #64748b; margin: 6px 0 0 0; letter-spacing: 0.3em; text-transform: uppercase;"
+				>
+					Access Management System
+				</p>
+			</div>
+		</div>
+		<div style="text-align: right;">
+			<h2
+				style="font-size: 18px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;"
+			>
+				Daily Operations Summary
+			</h2>
+			<p style="font-size: 12px; font-weight: 700; color: #64748b; margin: 4px 0 0 0;">
+				{format(new Date(), 'PPPP')} | {format(new Date(), 'hh:mm a')}
+			</p>
+		</div>
+	</div>
+
+	<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 2rem;">
+		<!-- Personnel Summary -->
+		<div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+			<h3
+				style="font-size: 14px; font-weight: 900; color: #1c55a4; text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;"
+			>
+				Personnel Status
+			</h3>
+			<table style="width: 100%; border-collapse: collapse;">
+				<tbody>
+					<tr style="border-bottom: 1px solid #f1f5f9;">
+						<td style="padding: 8px 0; font-size: 12px; color: #64748b;">Total Registered</td>
+						<td style="padding: 8px 0; font-size: 14px; font-weight: 900; text-align: right; color: #0f172a;">{data.totalPeople}</td>
+					</tr>
+					<tr style="border-bottom: 1px solid #f1f5f9;">
+						<td style="padding: 8px 0; font-size: 12px; color: #64748b;">Currently Inside</td>
+						<td style="padding: 8px 0; font-size: 14px; font-weight: 900; text-align: right; color: #059669;">{data.currentlyInside.totalPeople}</td>
+					</tr>
+					{#each data.currentlyInside.categoryTree as cat}
+						<tr style="border-bottom: 1px solid #f8fafc;">
+							<td style="padding: 6px 0 6px 12px; font-size: 11px; color: #94a3b8;">{cat.name}</td>
+							<td style="padding: 6px 0; font-size: 12px; font-weight: 700; text-align: right; color: #475569;">{cat.count} / {cat.registeredCount}</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+
+		<!-- Logistics Summary -->
+		<div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+			<h3
+				style="font-size: 14px; font-weight: 900; color: #1c55a4; text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;"
+			>
+				Logistics Status
+			</h3>
+			<table style="width: 100%; border-collapse: collapse;">
+				<tbody>
+					<tr style="border-bottom: 1px solid #f1f5f9;">
+						<td style="padding: 8px 0; font-size: 12px; color: #64748b;">Total Vehicles Inside</td>
+						<td style="padding: 8px 0; font-size: 14px; font-weight: 900; text-align: right; color: #0f172a;">{data.currentlyInside.totalVehicles}</td>
+					</tr>
+					<tr style="border-bottom: 1px solid #f1f5f9;">
+						<td style="padding: 8px 0; font-size: 12px; color: #64748b;">Transport Vehicles</td>
+						<td style="padding: 8px 0; font-size: 12px; font-weight: 700; text-align: right; color: #475569;">{data.currentlyInside.vehicleStats.transport}</td>
+					</tr>
+					<tr style="border-bottom: 1px solid #f1f5f9;">
+						<td style="padding: 8px 0; font-size: 12px; color: #64748b;">Regular Vehicles</td>
+						<td style="padding: 8px 0; font-size: 12px; font-weight: 700; text-align: right; color: #475569;">{data.currentlyInside.vehicleStats.regular}</td>
+					</tr>
+				</tbody>
+			</table>
+
+			<h3
+				style="font-size: 14px; font-weight: 900; color: #1c55a4; text-transform: uppercase; margin-top: 20px; margin-bottom: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;"
+			>
+				Location Distribution
+			</h3>
+			<table style="width: 100%; border-collapse: collapse;">
+				<tbody>
+					<tr style="border-bottom: 1px solid #f1f5f9;">
+						<td style="padding: 8px 0; font-size: 12px; color: #64748b;">Yard Operations</td>
+						<td style="padding: 8px 0; font-size: 14px; font-weight: 900; text-align: right; color: #0f172a;">{data.locationStats.yard}</td>
+					</tr>
+					<tr style="border-bottom: 1px solid #f1f5f9;">
+						<td style="padding: 8px 0; font-size: 12px; color: #64748b;">Ship Boarding</td>
+						<td style="padding: 8px 0; font-size: 14px; font-weight: 900; text-align: right; color: #0f172a;">{data.locationStats.ship}</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+	<div
+		style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em;"
+	>
+		<p>Generated by {i18n.t('appName')} Official Reporting System</p>
+		<p>Page 1 of 1</p>
+	</div>
+</div>
+
+<div class="no-print space-y-6 pb-10">
 	<!-- Header -->
 	<div class="content-container flex flex-col justify-between gap-4 md:flex-row md:items-end">
 		<div class="space-y-1">
@@ -94,6 +212,14 @@
 			</div>
 		</div>
 		<div class="flex items-center gap-2">
+			<Button
+				variant="outline"
+				class="h-10 gap-2 border-2 bg-white px-5 font-black text-slate-600"
+				onclick={printDashboard}
+			>
+				<Printer size={18} />
+				Print Report
+			</Button>
 			{#if data.user?.permissions.includes('people.create')}
 				<Button
 					variant="default"
@@ -240,6 +366,70 @@
 								</div>
 							</div>
 						</div>
+					</div>
+				</Card.Content>
+			</Card.Root>
+
+			<!-- Registration Summary -->
+			<Card.Root class="overflow-hidden border-2 border-slate-200 bg-white shadow-sm">
+				<Card.Header class="px-4 py-3 bg-slate-50/50 border-b-2 border-slate-100">
+					<div class="flex items-center justify-between">
+						<Card.Title
+							class="flex items-center gap-2 text-lg font-black tracking-tighter text-slate-900 capitalize"
+						>
+							<UserPlus size={20} class="text-indigo-600" />
+							Registration Summary
+						</Card.Title>
+						<div
+							class="flex flex-col items-end rounded-xl border-2 border-indigo-100 bg-indigo-50 px-3 py-1.5"
+						>
+							<span class="text-xl leading-none font-black tracking-tighter text-indigo-700"
+								><CountUp value={data.totalPeople || 0} /></span
+							>
+							<span class="text-[9px] font-black tracking-widest text-indigo-500 capitalize"
+								>Total Records</span
+							>
+						</div>
+					</div>
+				</Card.Header>
+				<Card.Content class="p-4">
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+						{#each data.currentlyInside.categoryTree as root}
+							<div
+								class="flex flex-col gap-2 rounded-2xl border-2 border-slate-100 bg-white p-4 transition-all hover:border-indigo-200 hover:shadow-md"
+							>
+								<div class="flex items-center justify-between">
+									<div
+										class={cn(
+											'flex size-10 items-center justify-center rounded-xl border-2',
+											getCategoryColorClass(root.color)
+										)}
+									>
+										<root.icon size={20} />
+									</div>
+									<div class="text-right">
+										<p class="text-2xl font-black tracking-tighter text-slate-900">
+											<CountUp value={root.registeredCount} />
+										</p>
+										<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">
+											{root.name}
+										</p>
+									</div>
+								</div>
+								{#if root.children.length > 0}
+									<div class="mt-2 space-y-1.5 border-t border-slate-50 pt-2">
+										{#each root.children as child}
+											<div class="flex items-center justify-between">
+												<span class="text-[10px] font-bold text-slate-500">{child.name}</span>
+												<span class="text-xs font-black text-slate-700"
+													>{child.registeredCount}</span
+												>
+											</div>
+										{/each}
+									</div>
+								{/if}
+							</div>
+						{/each}
 					</div>
 				</Card.Content>
 			</Card.Root>
@@ -405,9 +595,8 @@
 			</Card.Root>
 		</div>
 	</div>
-</div>
 
-<!-- Check-in Type Selection Dialog -->
+	<!-- Check-in Type Selection Dialog -->
 <Dialog.Root bind:open={isCheckInTypeSelectOpen}>
 	<Dialog.Content class="sm:max-w-112.5">
 		<Dialog.Header>
@@ -451,3 +640,4 @@
 <CheckInDialog bind:open={isPersonCheckInOpen} />
 <VehicleCheckInDialog bind:open={isVehicleCheckInOpen} />
 <RegisterDialog bind:open={isRegisterOpen} />
+</div>

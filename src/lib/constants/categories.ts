@@ -24,14 +24,6 @@ export interface Category {
 
 export const CATEGORIES: Category[] = [
 	{
-		id: 'card',
-		name: 'Card',
-		slug: 'card',
-		icon: IdCard,
-		color: 'purple',
-		parentId: null
-	},
-	{
 		id: 'customer',
 		name: 'Customer',
 		slug: 'customer',
@@ -46,22 +38,6 @@ export const CATEGORIES: Category[] = [
 		icon: Truck,
 		color: 'orange',
 		parentId: null
-	},
-	{
-		id: 'supplier',
-		name: 'Supplier',
-		slug: 'supplier',
-		icon: Store,
-		color: 'amber',
-		parentId: 'vendor'
-	},
-	{
-		id: '3rd-party',
-		name: '3rd Party',
-		slug: '3rd-party',
-		icon: Users,
-		color: 'orange',
-		parentId: 'vendor'
 	},
 	{
 		id: 'employee',
@@ -96,6 +72,22 @@ export const CATEGORIES: Category[] = [
 		parentId: 'customer'
 	},
 	{
+		id: 'supplier',
+		name: 'Supplier',
+		slug: 'supplier',
+		icon: Store,
+		color: 'amber',
+		parentId: 'vendor'
+	},
+	{
+		id: '3rd-party',
+		name: '3rd Party',
+		slug: '3rd-party',
+		icon: Users,
+		color: 'orange',
+		parentId: 'vendor'
+	},
+	{
 		id: 'management',
 		name: 'Management',
 		slug: 'management',
@@ -110,6 +102,14 @@ export const CATEGORIES: Category[] = [
 		icon: HardHat,
 		color: 'green',
 		parentId: 'employee'
+	},
+	{
+		id: 'card',
+		name: 'Card',
+		slug: 'card',
+		icon: IdCard,
+		color: 'purple',
+		parentId: null
 	}
 ];
 

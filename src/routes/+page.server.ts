@@ -27,6 +27,7 @@ export const load: PageServerLoad = async (event) => {
 	const [
 		allDevices,
 		insideByCategory,
+		registeredByCategory,
 		[totalPeopleCount],
 		[vehiclesInsideCount],
 		vehiclesByType,
@@ -43,6 +44,13 @@ export const load: PageServerLoad = async (event) => {
 			.from(attendanceLogs)
 			.innerJoin(people, eq(attendanceLogs.personId, people.id))
 			.where(eq(attendanceLogs.status, 'on_premises'))
+			.groupBy(people.categoryId),
+		db
+			.select({
+				categoryId: people.categoryId,
+				count: count()
+			})
+			.from(people)
 			.groupBy(people.categoryId),
 		db.select({ value: count() }).from(people),
 		db.select({ value: count() }).from(vehicles).where(eq(vehicles.status, 'on_premises')),
@@ -90,7 +98,8 @@ export const load: PageServerLoad = async (event) => {
 
 	const anyDeviceOnline = allDevices.some((d) => isDeviceOnline(d.lastHeartbeat));
 
-	const countMap = new Map(insideByCategory.map((r) => [r.categoryId, r.count]));
+	const insideCountMap = new Map(insideByCategory.map((r) => [r.categoryId, r.count]));
+	const registeredCountMap = new Map(registeredByCategory.map((r) => [r.categoryId, r.count]));
 
 	// Build category tree with counts rolling up using hardcoded CATEGORIES
 	const roots = CATEGORIES.filter((c) => !c.parentId);
@@ -99,32 +108,42 @@ export const load: PageServerLoad = async (event) => {
 		id: string;
 		name: string;
 		slug: string;
+		icon: any;
 		color: string;
-		count: number;
+		count: number; // Inside count
+		registeredCount: number; // Total registered count
 		directCount: number;
+		directRegisteredCount: number;
 		children: CategoryNode[];
 	};
 
-	function getDescendantCount(catId: string): number {
-		let total = countMap.get(catId) || 0;
+	function getDescendantCounts(catId: string): { inside: number; registered: number } {
+		let inside = insideCountMap.get(catId) || 0;
+		let registered = registeredCountMap.get(catId) || 0;
 		for (const child of CATEGORIES.filter((c) => c.parentId === catId)) {
-			total += getDescendantCount(child.id);
+			const childCounts = getDescendantCounts(child.id);
+			inside += childCounts.inside;
+			registered += childCounts.registered;
 		}
-		return total;
+		return { inside, registered };
 	}
 
 	function buildChildren(parentId: string): CategoryNode[] {
 		return CATEGORIES.filter((c) => c.parentId === parentId).map((c) => {
 			const children = buildChildren(c.id);
-			const directCount = countMap.get(c.id) || 0;
-			const totalCount = getDescendantCount(c.id);
+			const directCount = insideCountMap.get(c.id) || 0;
+			const directRegisteredCount = registeredCountMap.get(c.id) || 0;
+			const totalCounts = getDescendantCounts(c.id);
 			return {
 				id: c.id,
 				name: c.name,
 				slug: c.slug,
+				icon: c.icon,
 				color: c.color,
-				count: totalCount,
+				count: totalCounts.inside,
+				registeredCount: totalCounts.registered,
 				directCount,
+				directRegisteredCount,
 				children
 			};
 		});
@@ -132,20 +151,25 @@ export const load: PageServerLoad = async (event) => {
 
 	const categoryTree: CategoryNode[] = roots.map((r) => {
 		const children = buildChildren(r.id);
-		const totalCount = getDescendantCount(r.id);
-		const directCount = countMap.get(r.id) || 0;
+		const totalCounts = getDescendantCounts(r.id);
+		const directCount = insideCountMap.get(r.id) || 0;
+		const directRegisteredCount = registeredCountMap.get(r.id) || 0;
 		return {
 			id: r.id,
 			name: r.name,
 			slug: r.slug,
+			icon: r.icon,
 			color: r.color,
-			count: totalCount,
+			count: totalCounts.inside,
+			registeredCount: totalCounts.registered,
 			directCount,
+			directRegisteredCount,
 			children
 		};
 	});
 
 	const totalPeopleInside = categoryTree.reduce((acc, c) => acc + c.count, 0);
+	const totalPeopleRegistered = categoryTree.reduce((acc, c) => acc + c.registeredCount, 0);
 
 	const vehicleStats = {
 		total: vehiclesInsideCount.value,

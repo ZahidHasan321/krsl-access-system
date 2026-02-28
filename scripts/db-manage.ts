@@ -86,10 +86,10 @@ const ADMIN_USER = {
 };
 
 const DEFAULT_CATEGORIES = [
-	{ id: 'card', name: 'Card', slug: 'card', parentId: null, sortOrder: 0 },
 	{ id: 'customer', name: 'Customer', slug: 'customer', parentId: null, sortOrder: 1 },
 	{ id: 'vendor', name: 'Vendor', slug: 'vendor', parentId: null, sortOrder: 2 },
 	{ id: 'employee', name: 'Employee', slug: 'employee', parentId: null, sortOrder: 3 },
+	{ id: 'card', name: 'Card', slug: 'card', parentId: null, sortOrder: 4 },
 	{ id: 'dokandari', name: 'Dokandari', slug: 'dokandari', parentId: 'customer', sortOrder: 1 },
 	{ id: 'rolling', name: 'Rolling', slug: 'rolling', parentId: 'customer', sortOrder: 2 },
 	{ id: 'outfitting', name: 'Outfitting', slug: 'outfitting', parentId: 'customer', sortOrder: 3 },

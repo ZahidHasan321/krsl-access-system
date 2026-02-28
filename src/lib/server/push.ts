@@ -4,7 +4,7 @@ import { env as publicEnv } from '$env/dynamic/public';
 import { db } from '$lib/server/db';
 import { pushSubscriptions, notifications } from '$lib/server/db/schema';
 import { eq, lt } from 'drizzle-orm';
-import { notifyChange } from './events';
+import { eventHub } from './events';
 import { subDays } from 'date-fns';
 
 // Initialize web-push with VAPID keys from environment
@@ -43,7 +43,7 @@ export async function createNotification(data: {
 	});
 	
 	// Notify connected clients to refresh their notification UI via SSE
-	notifyChange();
+	eventHub.emit('change');
 
 	// Auto-cleanup: silently remove notifications older than 30 days
 	// Fire and forget, don't await so it doesn't block the critical path

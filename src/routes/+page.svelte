@@ -240,31 +240,31 @@
 				>
 			</div>
 		</div>
-		<div class="flex items-center gap-2">
+		<div class="flex flex-wrap items-center justify-end gap-2">
 			<Button
 				variant="outline"
-				class="h-10 gap-2 border-2 bg-white px-5 font-black text-slate-600"
+				class="h-10 gap-2 border-2 bg-white px-3 font-black text-slate-600 sm:px-5"
 				onclick={printDashboard}
 			>
 				<Printer size={18} />
-				Print Report
+				<span class="hidden sm:inline">Print Report</span>
 			</Button>
 			{#if data.user?.permissions.includes('people.create')}
 				<Button
 					variant="default"
-					class="h-10 gap-2 px-5 font-black shadow-lg"
+					class="h-10 gap-2 px-3 font-black shadow-lg sm:px-5"
 					onclick={() => (isCheckInTypeSelectOpen = true)}
 				>
 					<PlayCircle size={18} />
-					{i18n.t('checkIn')}
+					<span class="hidden sm:inline">{i18n.t('checkIn')}</span>
 				</Button>
 				<Button
 					variant="outline"
-					class="h-10 gap-2 border-2 bg-white px-5 font-black"
+					class="h-10 gap-2 border-2 bg-white px-3 font-black sm:px-5"
 					onclick={() => (isRegisterOpen = true)}
 				>
 					<PlusCircle size={18} />
-					{i18n.t('register')}
+					<span class="hidden sm:inline">{i18n.t('register')}</span>
 				</Button>
 			{/if}
 		</div>

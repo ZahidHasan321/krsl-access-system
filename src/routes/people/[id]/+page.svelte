@@ -105,6 +105,7 @@
 	let editName = $state('');
 	let editCategoryId = $state('');
 	let editCodeNo = $state('');
+	let editCardNo = $state('');
 	let editCompany = $state('');
 	let editContactNo = $state('');
 	let editDesignation = $state('');
@@ -130,6 +131,7 @@
 			editName = data.person.name;
 			editCategoryId = data.person.category.id;
 			editCodeNo = data.person.codeNo || '';
+			editCardNo = data.person.cardNo || '';
 			editCompany = data.person.company || '';
 			editContactNo = data.person.contactNo || '';
 			editDesignation = data.person.designation || '';
@@ -291,6 +293,22 @@
 										{i18n.t('codeNo')}
 									</p>
 									<p class="truncate font-bold text-slate-900">{data.person.codeNo}</p>
+								</div>
+							</div>
+						{/if}
+
+						{#if data.person.cardNo}
+							<div class="flex items-center gap-3 rounded-xl border-2 border-amber-100 bg-amber-50 p-3">
+								<div
+									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-200 text-amber-700"
+								>
+									<CreditCard size={20} />
+								</div>
+								<div class="min-w-0">
+									<p class="text-[10px] font-black tracking-widest text-amber-500 uppercase">
+										{i18n.t('cardNo')}
+									</p>
+									<p class="truncate font-black text-amber-900">{data.person.cardNo}</p>
 								</div>
 							</div>
 						{/if}
@@ -822,6 +840,8 @@
 					personId={data.person.id}
 					biometricId={data.person.biometricId}
 					personName={data.person.name}
+					categorySlug={data.person.category.slug}
+					initialCardNo={data.person.cardNo}
 					onDone={() => {
 						isEnrollOpen = false;
 						invalidateAll();
@@ -936,6 +956,36 @@
 							</Select.Content>
 						</Select.Root>
 					</div>
+				</div>
+
+				<!-- Access Card Hero Input (Edit Mode) -->
+				<div class="space-y-3 rounded-2xl border-2 border-amber-100 bg-amber-50/30 p-5 shadow-sm">
+					<div class="flex items-center gap-3">
+						<div class="flex size-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+							<CreditCard size={20} />
+						</div>
+						<div>
+							<Label
+								for="edit-cardNo"
+								class="text-[10px] font-black tracking-widest text-amber-700 uppercase"
+							>
+								{i18n.t('cardNo')}
+							</Label>
+							<p class="text-[10px] font-medium text-slate-400">
+								RFID/NFC Card ID for automated check-in
+							</p>
+						</div>
+					</div>
+					<Input
+						id="edit-cardNo"
+						name="cardNo"
+						bind:value={editCardNo}
+						class="h-14 border-2 bg-white text-lg font-black tracking-wider ring-amber-500 focus:ring-2"
+						placeholder="ENTER CARD NUMBER"
+					/>
+				</div>
+
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 					<div class="space-y-2">
 						<Label
 							for="edit-codeNo"

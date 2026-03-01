@@ -98,6 +98,22 @@
 			} catch {}
 		});
 
+		eventSource.addEventListener('vehicle-checkin', (e) => {
+			try {
+				const data = JSON.parse(e.data);
+				appToast.vehicle(`Vehicle ${data.vehicleNumber} entered the premises`);
+				window.dispatchEvent(new CustomEvent('vehicle-checkin-sse', { detail: e.data }));
+			} catch {}
+		});
+
+		eventSource.addEventListener('vehicle-checkout', (e) => {
+			try {
+				const data = JSON.parse(e.data);
+				appToast.vehicle(`Vehicle ${data.vehicleNumber} left the premises`);
+				window.dispatchEvent(new CustomEvent('vehicle-checkout-sse', { detail: e.data }));
+			} catch {}
+		});
+
 		eventSource.addEventListener('enrollment', (e) => {
 			window.dispatchEvent(new CustomEvent('enrollment-sse', { detail: e.data }));
 		});

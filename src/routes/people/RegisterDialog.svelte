@@ -22,7 +22,8 @@
 		AlertTriangle,
 		Ship,
 		Warehouse,
-		IdCard
+		IdCard,
+		CreditCard
 	} from 'lucide-svelte';
 	import { enhance } from '$app/forms';
 	import { appToast } from '$lib/utils';
@@ -84,11 +85,13 @@
 		name: string;
 		photoUrl: string | null;
 		categoryName: string;
+		categorySlug: string;
 		subCategoryName: string | null;
 		company: string | null;
 		contactNo: string | null;
 		designation: string | null;
 		codeNo: string | null;
+		cardNo: string | null;
 		isTrained: boolean;
 	} | null>(null);
 
@@ -357,6 +360,8 @@
 						personId={registeredPerson.id}
 						biometricId={registeredPerson.biometricId}
 						personName={registeredPerson.name}
+						categorySlug={registeredPerson.categorySlug}
+						initialCardNo={registeredPerson.cardNo}
 						onDone={(method, photoUrl) => {
 							enrolledMethod = method;
 							if (photoUrl && registeredPerson) registeredPerson.photoUrl = photoUrl;
@@ -476,11 +481,13 @@
 							const formContactNo = (formData.get('contactNo') as string) || null;
 							const formDesignation = (formData.get('designation') as string) || null;
 							const formCodeNo = (formData.get('codeNo') as string) || null;
+							const formCardNo = (formData.get('cardNo') as string) || null;
 							const capturedPhoto = photoPreview;
 							const capturedTrained = isTrained;
 							const rootCatName = selectedRootCategory
 								? i18n.t(selectedRootCategory.slug as any) || selectedRootCategory.name
 								: '';
+							const rootCatSlug = selectedRootCategory?.slug || '';
 							const subCatName = selectedSubCategory
 								? i18n.t(selectedSubCategory.slug as any) || selectedSubCategory.name
 								: null;
@@ -497,11 +504,13 @@
 										name: data.personName,
 										photoUrl: capturedPhoto,
 										categoryName: rootCatName,
+										categorySlug: rootCatSlug,
 										subCategoryName: subCatName,
 										company: formCompany,
 										contactNo: formContactNo,
 										designation: formDesignation,
 										codeNo: formCodeNo,
+										cardNo: formCardNo,
 										isTrained: capturedTrained
 									};
 								} else if (result.type === 'failure') {
@@ -582,6 +591,61 @@
 									placeholder="ID / Badge number"
 								/>
 							</div>
+						</div>
+
+						<!-- Access Card Hero Input -->
+						<div
+							class={cn(
+								'space-y-3 rounded-2xl border-2 p-5 transition-all',
+								selectedRootCategory?.slug === 'card'
+									? 'border-amber-200 bg-amber-50/50 shadow-sm'
+									: 'border-slate-100 bg-slate-50/30'
+							)}
+						>
+							<div class="flex items-center gap-3">
+								<div
+									class={cn(
+										'flex size-10 items-center justify-center rounded-xl transition-colors',
+										selectedRootCategory?.slug === 'card'
+											? 'bg-amber-100 text-amber-600'
+											: 'bg-slate-100 text-slate-400'
+									)}
+								>
+									<CreditCard size={20} />
+								</div>
+								<div>
+									<Label
+										for="reg-cardNo"
+										class={cn(
+											'text-[10px] font-black tracking-widest uppercase',
+											selectedRootCategory?.slug === 'card' ? 'text-amber-700' : 'text-slate-500'
+										)}
+									>
+										{i18n.t('cardNo')}
+										{selectedRootCategory?.slug === 'card' ? ' *' : ' (Optional)'}
+									</Label>
+									<p class="text-[10px] font-medium text-slate-400">
+										{selectedRootCategory?.slug === 'card'
+											? 'Manual input for Access Card category'
+											: 'Optionally link a card during registration'}
+									</p>
+								</div>
+							</div>
+							<Input
+								id="reg-cardNo"
+								name="cardNo"
+								required={selectedRootCategory?.slug === 'card'}
+								class={cn(
+									'h-14 border-2 text-lg font-black tracking-wider transition-all placeholder:text-slate-300',
+									selectedRootCategory?.slug === 'card'
+										? 'border-amber-200 bg-white ring-amber-500 focus:ring-2'
+										: 'bg-white'
+								)}
+								placeholder="ENTER CARD NUMBER (e.g. 0012345678)"
+							/>
+						</div>
+
+						<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<div class="space-y-2">
 								<Label
 									for="reg-company"

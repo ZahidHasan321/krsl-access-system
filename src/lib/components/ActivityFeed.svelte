@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { Bell, UserCheck, UserPlus, AlertCircle, Clock, ChevronRight } from 'lucide-svelte';
+	import { Bell, UserCheck, UserPlus, AlertCircle, Clock, ChevronRight, Truck } from 'lucide-svelte';
 	import { i18n } from '$lib/i18n.svelte';
 	import { clsx } from 'clsx';
 	import { formatDistanceToNow } from 'date-fns';
@@ -44,10 +44,14 @@
 		};
 		window.addEventListener('checkin-sse', handler);
 		window.addEventListener('checkout-sse', handler);
+		window.addEventListener('vehicle-checkin-sse', handler);
+		window.addEventListener('vehicle-checkout-sse', handler);
 		window.addEventListener('enrollment-sse', handler);
 		return () => {
 			window.removeEventListener('checkin-sse', handler);
 			window.removeEventListener('checkout-sse', handler);
+			window.removeEventListener('vehicle-checkin-sse', handler);
+			window.removeEventListener('vehicle-checkout-sse', handler);
 			window.removeEventListener('enrollment-sse', handler);
 		};
 	}
@@ -63,6 +67,8 @@
 			case 'checkin':
 			case 'checkout':
 				return UserCheck;
+			case 'vehicle':
+				return Truck;
 			case 'enrollment':
 				return UserPlus;
 			default:
@@ -76,6 +82,8 @@
 				return 'bg-emerald-100 text-emerald-600';
 			case 'checkout':
 				return 'bg-amber-100 text-amber-600';
+			case 'vehicle':
+				return 'bg-indigo-100 text-indigo-600';
 			case 'enrollment':
 				return 'bg-blue-100 text-blue-600';
 			default:
@@ -133,6 +141,8 @@
 								>
 									{#if item.type === 'checkin' || item.type === 'checkout'}
 										<UserCheck size={16} />
+									{:else if item.type === 'vehicle'}
+										<Truck size={16} />
 									{:else if item.type === 'enrollment'}
 										<UserPlus size={16} />
 									{:else}

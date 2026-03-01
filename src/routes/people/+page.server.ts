@@ -212,6 +212,7 @@ export const actions: Actions = {
 		const name = data.get('name') as string;
 		const categoryId = data.get('categoryId') as string;
 		const codeNo = (data.get('codeNo') as string) || null;
+		const cardNo = (data.get('cardNo') as string) || null;
 		const company = (data.get('company') as string) || null;
 		const contactNo = (data.get('contactNo') as string) || null;
 		const designation = (data.get('designation') as string) || null;
@@ -244,12 +245,14 @@ export const actions: Actions = {
 					name,
 					categoryId,
 					codeNo,
+					cardNo,
 					biometricId: nextId,
 					company,
 					contactNo,
 					designation,
 					isTrained,
 					notes,
+					enrolledMethods: cardNo ? JSON.stringify(['card']) : null,
 					photoUrl: photoResult?.photoUrl || null,
 					thumbUrl: photoResult?.thumbUrl || null,
 					createdAt: new Date()
@@ -257,6 +260,11 @@ export const actions: Actions = {
 
 				return nextId;
 			});
+
+			// Sync to device immediately if cardNo is provided
+			if (cardNo) {
+				await queueDeviceSync(nextBiometricId, name, cardNo);
+			}
 
 			// No device sync during registration — user is synced to device
 			// after enrollment succeeds (devicecmd handler) or when enrollment is skipped.
@@ -277,7 +285,7 @@ export const actions: Actions = {
 				notifyCheckIn({
 					personId: id,
 					personName: name,
-					verifyMethod: 'manual',
+					verifyMethod: cardNo ? 'card' : 'manual',
 					photoUrl: photoResult?.photoUrl || null,
 					thumbUrl: photoResult?.thumbUrl || null,
 					logId: logId,
@@ -289,7 +297,7 @@ export const actions: Actions = {
 			notifyEnrollment({
 				personId: id,
 				personName: name,
-				method: 'Web UI',
+				method: cardNo ? 'card' : 'Web UI',
 				photoUrl: photoResult?.photoUrl || null,
 				thumbUrl: photoResult?.thumbUrl || null
 			});
@@ -318,12 +326,14 @@ export const actions: Actions = {
 		const isTrained = data.get('isTrained') === 'true';
 		const notes = (data.get('notes') as string) || null;
 		const photo = data.get('photo') as File | null;
+		const cardNo = (data.get('cardNo') as string) || null;
 
 		if (!id || !name) return fail(400, { message: 'ID and Name required' });
 
 		const updates: Record<string, any> = {
 			name,
 			codeNo: (data.get('codeNo') as string) || null,
+			cardNo,
 			company: (data.get('company') as string) || null,
 			contactNo: (data.get('contactNo') as string) || null,
 			designation,
@@ -371,13 +381,27 @@ export const actions: Actions = {
 				updates.thumbUrl = photoResult.thumbUrl;
 			}
 
+			// If cardNo is provided, ensure 'card' is in enrolledMethods
+			const [existing] = await db.select().from(people).where(eq(people.id, id));
+			if (cardNo && existing) {
+				let methods: string[] = [];
+				try {
+					methods = existing.enrolledMethods ? JSON.parse(existing.enrolledMethods) : [];
+				} catch {
+					methods = [];
+				}
+				if (!methods.includes('card')) {
+					methods.push('card');
+					updates.enrolledMethods = JSON.stringify(methods);
+				}
+			}
+
 			await db.update(people).set(updates).where(eq(people.id, id));
 
 			// Auto-sync to device if person has biometricId
 			const [person] = await db.select().from(people).where(eq(people.id, id));
 			if (person?.biometricId) {
-				const cardNo = person.cardNo;
-				await queueDeviceSync(person.biometricId, name, cardNo);
+				await queueDeviceSync(person.biometricId, name, person.cardNo);
 			}
 
 			notifyChange();

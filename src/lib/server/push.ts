@@ -4,7 +4,7 @@ import { env as publicEnv } from '$env/dynamic/public';
 import { db } from '$lib/server/db';
 import { pushSubscriptions, notifications } from '$lib/server/db/schema';
 import { eq, lt } from 'drizzle-orm';
-import { eventHub } from './events';
+import { eventHub } from './event-hub';
 import { subDays } from 'date-fns';
 
 // Initialize web-push with VAPID keys from environment

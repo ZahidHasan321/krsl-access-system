@@ -1,13 +1,7 @@
-import { EventEmitter } from 'events';
+import { eventHub, notifyChange } from './event-hub';
 import { broadcastPushNotification } from './push';
 
-// A simple global emitter to broadcast changes across the server
-export const eventHub = new EventEmitter();
-
-// Helper to notify all connected clients that data has changed
-export function notifyChange() {
-	eventHub.emit('change');
-}
+export { eventHub, notifyChange };
 
 export interface CheckInData {
 	personId: string;
@@ -26,6 +20,21 @@ export function notifyCheckIn(data: CheckInData) {
 
 export function notifyCheckOut(data: CheckInData) {
 	eventHub.emit('checkout', data);
+}
+
+export interface VehicleEventData {
+	vehicleId: string;
+	vehicleNumber: string;
+	type: string;
+	driverName?: string | null;
+}
+
+export function notifyVehicleCheckIn(data: VehicleEventData) {
+	eventHub.emit('vehicle-checkin', data);
+}
+
+export function notifyVehicleCheckOut(data: VehicleEventData) {
+	eventHub.emit('vehicle-checkout', data);
 }
 
 export interface EnrollmentData {
@@ -71,6 +80,23 @@ eventHub.on('checkout', (data: CheckInData) => {
 	}, 'checkout').catch(console.error);
 });
 
+eventHub.on('vehicle-checkin', (data: VehicleEventData) => {
+	broadcastPushNotification({
+		title: 'Vehicle Check-In',
+		body: `${data.vehicleNumber} (${data.type}) entered the premises.`,
+		url: `/vehicles`
+	}, 'vehicle').catch(console.error);
+});
+
+eventHub.on('vehicle-checkout', (data: VehicleEventData) => {
+	broadcastPushNotification({
+		title: 'Vehicle Check-Out',
+		body: `${data.vehicleNumber} (${data.type}) left the premises.`,
+		url: `/vehicles/history`
+	}, 'vehicle').catch(console.error);
+});
+
+
 eventHub.on('enrollment', (data: EnrollmentData) => {
 	broadcastPushNotification({
 		title: 'New Registration',
@@ -86,3 +112,4 @@ eventHub.on('enrollment-failed', (data: EnrollmentFailedData) => {
 		url: `/people/${data.personId}`
 	}, 'enrollment').catch(console.error);
 });
+

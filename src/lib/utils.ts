@@ -20,7 +20,13 @@ export const appToast = {
 			style:
 				'background-color: #fff1f2; border: 1px solid #f43f5e; color: #9f1239; font-weight: 700; border-radius: 1rem;'
 		}),
+	vehicle: (message: string) =>
+		toast.success(message, {
+			style:
+				'background-color: #f5f3ff; border: 1px solid #8b5cf6; color: #4c1d95; font-weight: 700; border-radius: 1rem;'
+		}),
 	success: (message: string) =>
+
 		toast.success(message, {
 			style:
 				'background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; font-weight: 600; border-radius: 1rem;'

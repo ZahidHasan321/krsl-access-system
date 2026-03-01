@@ -21,12 +21,16 @@
 		personId,
 		biometricId,
 		personName,
+		categorySlug,
+		initialCardNo = '',
 		onDone,
 		onSkip
 	}: {
 		personId: string;
 		biometricId: string;
 		personName: string;
+		categorySlug?: string;
+		initialCardNo?: string | null;
 		onDone: (method: string | null, photoUrl?: string | null) => void;
 		onSkip: () => void;
 	} = $props();
@@ -42,6 +46,15 @@
 	let enrolledPhotoUrl = $state<string | null>(null);
 
 	onMount(async () => {
+		// Initialize state from props
+		if (categorySlug === 'card') {
+			step = 'card-input';
+			selectedMethod = 'card';
+		}
+		if (initialCardNo) {
+			cardNo = initialCardNo;
+		}
+
 		// Check device status
 		try {
 			const res = await fetch('/api/devices/status');
@@ -165,7 +178,15 @@
 				<p class="text-sm text-slate-500">
 					Choose enrollment method for <span class="font-bold text-slate-700">{personName}</span>
 				</p>
-				<p class="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
+				{#if categorySlug === 'card'}
+					<div class="mt-2 flex justify-center">
+						<span
+							class="rounded-full bg-purple-100 px-3 py-1 text-[10px] font-bold text-purple-700 uppercase tracking-widest"
+							>Card Only Category</span
+						>
+					</div>
+				{/if}
+				<p class="mt-2 text-[10px] font-bold tracking-widest text-slate-400 uppercase">
 					Biometric ID: {biometricId}
 				</p>
 			</div>
@@ -173,18 +194,19 @@
 			<!-- Method cards -->
 			<div class="grid grid-cols-3 gap-3">
 				<button
-					disabled={!deviceOnline || deviceLoading}
+					disabled={!deviceOnline || deviceLoading || categorySlug === 'card'}
 					onclick={() => startEnroll('face')}
 					class={cn(
 						'group cursor-pointer rounded-2xl border-2 p-5 text-center transition-all',
-						!deviceOnline || deviceLoading
+						!deviceOnline || deviceLoading || categorySlug === 'card'
 							? 'cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300'
 							: 'border-blue-100 text-slate-600 hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-700'
 					)}
 				>
 					<div
 						class="mx-auto mb-3 flex size-12 items-center justify-center rounded-xl {!deviceOnline ||
-						deviceLoading
+						deviceLoading ||
+						categorySlug === 'card'
 							? 'bg-slate-100'
 							: 'bg-blue-100 group-hover:bg-blue-200'} transition-colors"
 					>
@@ -194,18 +216,19 @@
 				</button>
 
 				<button
-					disabled={!deviceOnline || deviceLoading}
+					disabled={!deviceOnline || deviceLoading || categorySlug === 'card'}
 					onclick={() => startEnroll('finger')}
 					class={cn(
 						'group cursor-pointer rounded-2xl border-2 p-5 text-center transition-all',
-						!deviceOnline || deviceLoading
+						!deviceOnline || deviceLoading || categorySlug === 'card'
 							? 'cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300'
 							: 'border-emerald-100 text-slate-600 hover:border-emerald-300 hover:bg-emerald-50/50 hover:text-emerald-700'
 					)}
 				>
 					<div
 						class="mx-auto mb-3 flex size-12 items-center justify-center rounded-xl {!deviceOnline ||
-						deviceLoading
+						deviceLoading ||
+						categorySlug === 'card'
 							? 'bg-slate-100'
 							: 'bg-emerald-100 group-hover:bg-emerald-200'} transition-colors"
 					>
@@ -227,7 +250,11 @@
 				</button>
 			</div>
 
-			{#if !deviceOnline && !deviceLoading}
+			{#if categorySlug === 'card'}
+				<p class="mt-3 text-center text-[10px] font-bold text-purple-400">
+					This category only supports Card identification
+				</p>
+			{:else if !deviceOnline && !deviceLoading}
 				<p class="mt-3 text-center text-[10px] font-bold text-rose-400">
 					Face and Finger enrollment require a connected device
 				</p>
@@ -265,16 +292,17 @@
 			</div>
 
 			<div class="flex gap-3">
-				<Button
-					variant="outline"
-					onclick={() => {
-						step = 'choose';
-						cardNo = '';
-					}}
-					class="flex-1 border-2 font-bold"
-				>
-					Back
-				</Button>
+				{#if categorySlug !== 'card'}
+					<Button
+						variant="outline"
+						onclick={() => {
+							step = 'choose';
+						}}
+						class="flex-1 border-2 font-bold"
+					>
+						Back
+					</Button>
+				{/if}
 				<Button disabled={!cardNo.trim()} onclick={enrollCard} class="flex-1 font-bold">
 					Register Card
 				</Button>
@@ -353,7 +381,7 @@
 				<Button
 					variant="outline"
 					onclick={() => {
-						step = 'choose';
+						step = categorySlug === 'card' ? 'card-input' : 'choose';
 						failureCode = '';
 					}}
 					class="border-2 font-bold"

@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { fail, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { requirePermission } from '$lib/server/rbac';
-import { notifyChange } from '$lib/server/events';
+import { notifyChange, notifyVehicleCheckIn, notifyVehicleCheckOut } from '$lib/server/events';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	requirePermission(locals, 'vehicles.view');
@@ -128,7 +128,7 @@ export const actions: Actions = {
 		const today = format(now, 'yyyy-MM-dd');
 
 		try {
-			await db.insert(vehicles).values({
+			const [newVehicle] = await db.insert(vehicles).values({
 				id: crypto.randomUUID(),
 				vehicleNumber,
 				type,
@@ -141,10 +141,18 @@ export const actions: Actions = {
 				entryTime: now,
 				status: 'on_premises',
 				date: today
+			}).returning();
+
+			notifyVehicleCheckIn({
+				vehicleId: newVehicle.id,
+				vehicleNumber: newVehicle.vehicleNumber,
+				type: newVehicle.type,
+				driverName: newVehicle.driverName
 			});
 			notifyChange();
 			return { success: true };
 		} catch (error) {
+			console.error('Vehicle check-in error:', error);
 			return fail(500, { message: 'Database error' });
 		}
 	},
@@ -156,16 +164,27 @@ export const actions: Actions = {
 		if (!id) return fail(400, { message: 'Missing ID' });
 
 		try {
-			await db
+			const [updatedVehicle] = await db
 				.update(vehicles)
 				.set({
 					exitTime: new Date(),
 					status: 'checked_out'
 				})
-				.where(eq(vehicles.id, id));
+				.where(eq(vehicles.id, id))
+				.returning();
+
+			if (updatedVehicle) {
+				notifyVehicleCheckOut({
+					vehicleId: updatedVehicle.id,
+					vehicleNumber: updatedVehicle.vehicleNumber,
+					type: updatedVehicle.type,
+					driverName: updatedVehicle.driverName
+				});
+			}
 			notifyChange();
 			return { success: true };
 		} catch (error) {
+			console.error('Vehicle check-out error:', error);
 			return fail(500, { message: 'Database error' });
 		}
 	}

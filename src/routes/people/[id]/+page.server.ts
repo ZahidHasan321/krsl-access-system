@@ -171,12 +171,14 @@ export const actions: Actions = {
 		const name = data.get('name') as string;
 		const categoryId = data.get('categoryId') as string;
 		const photo = data.get('photo') as File | null;
+		const cardNo = (data.get('cardNo') as string) || null;
 
 		if (!name) return fail(400, { message: 'Name required' });
 
 		const updates: Record<string, any> = {
 			name,
 			codeNo: (data.get('codeNo') as string) || null,
+			cardNo,
 			company: (data.get('company') as string) || null,
 			contactNo: (data.get('contactNo') as string) || null,
 			designation: (data.get('designation') as string) || null,
@@ -221,6 +223,21 @@ export const actions: Actions = {
 				}
 				updates.photoUrl = photoResult.photoUrl;
 				updates.thumbUrl = photoResult.thumbUrl;
+			}
+
+			// If cardNo is provided, ensure 'card' is in enrolledMethods
+			const [existing] = await db.select().from(people).where(eq(people.id, id));
+			if (cardNo && existing) {
+				let methods: string[] = [];
+				try {
+					methods = existing.enrolledMethods ? JSON.parse(existing.enrolledMethods) : [];
+				} catch {
+					methods = [];
+				}
+				if (!methods.includes('card')) {
+					methods.push('card');
+					updates.enrolledMethods = JSON.stringify(methods);
+				}
 			}
 
 			await db.update(people).set(updates).where(eq(people.id, id));

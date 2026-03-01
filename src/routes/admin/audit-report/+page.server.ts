@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { auditEntries, attendanceLogs, people, personCategories } from '$lib/server/db/schema';
-import { eq, and, like, or, type SQL } from 'drizzle-orm';
+import { eq, and, like, or, inArray, type SQL } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { CATEGORIES } from '$lib/constants/categories';
@@ -188,7 +188,7 @@ export const actions: Actions = {
 		const peopleList = await db
 			.select({ id: people.id, isTrained: people.isTrained })
 			.from(people)
-			.where(and(...personIds.map((id) => eq(people.id, id))));
+			.where(inArray(people.id, personIds));
 		const trainingMap = Object.fromEntries(peopleList.map((p) => [p.id, p.isTrained]));
 
 		// Generate entries

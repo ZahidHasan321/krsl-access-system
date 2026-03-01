@@ -55,6 +55,10 @@
 	let useRealEntry = $state(false);
 	let isGenerating = $state(false);
 
+	// Visibility toggles for report columns
+	let showEntryTime = $state(true);
+	let showExitTime = $state(true);
+
 	// Warning thresholds (BD time hours)
 	let warnEntryBefore = $state('08:00');
 	let warnExitAfter = $state('18:00');
@@ -435,8 +439,12 @@
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">{i18n.t('category')}</th>
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Location</th>
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Training</th>
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">{i18n.t('entryTime')}</th>
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">{i18n.t('exitTime')}</th>
+				{#if showEntryTime}
+					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">{i18n.t('entryTime')}</th>
+				{/if}
+				{#if showExitTime}
+					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">{i18n.t('exitTime')}</th>
+				{/if}
 			</tr>
 		</thead>
 		<tbody>
@@ -450,8 +458,12 @@
 					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: {getIsTrained(entry) ? '#059669' : '#e11d48'};">
 						{getIsTrained(entry) ? 'TRAINED' : 'PENDING'}
 					</td>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{getPrintEntryTime(entry)}</td>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{getPrintExitTime(entry)}</td>
+					{#if showEntryTime}
+						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{getPrintEntryTime(entry)}</td>
+					{/if}
+					{#if showExitTime}
+						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{getPrintExitTime(entry)}</td>
+					{/if}
 				</tr>
 			{/each}
 		</tbody>
@@ -897,7 +909,7 @@
 
 			<!-- Results Table -->
 			<div class="space-y-4">
-				<div class="flex items-center justify-between gap-4 px-4 md:px-0">
+				<div class="flex flex-col gap-4 px-4 md:flex-row md:items-center md:justify-between md:px-0">
 					<div class="group relative max-w-md flex-1">
 						<div
 							class="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500"
@@ -923,23 +935,46 @@
 						{/if}
 					</div>
 
-					<Button
-						variant="outline"
-						class="h-11 shrink-0 gap-2 rounded-2xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 md:px-6"
-						onclick={printReport}
-					>
-						<Printer size={18} />
-						<span class="hidden sm:inline">{i18n.t('printReport')}</span>
-					</Button>
+					<div class="flex flex-wrap items-center gap-3">
+						<div class="flex items-center gap-1 rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-1">
+							<button
+								onclick={() => (showEntryTime = !showEntryTime)}
+								class={cn(
+									'rounded-xl px-3 py-1.5 text-[10px] font-black uppercase transition-all',
+									showEntryTime ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-100'
+								)}
+							>
+								Entry Time
+							</button>
+							<button
+								onclick={() => (showExitTime = !showExitTime)}
+								class={cn(
+									'rounded-xl px-3 py-1.5 text-[10px] font-black uppercase transition-all',
+									showExitTime ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-100'
+								)}
+							>
+								Exit Time
+							</button>
+						</div>
+
+						<Button
+							variant="outline"
+							class="h-11 shrink-0 gap-2 rounded-2xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 md:px-6"
+							onclick={printReport}
+						>
+							<Printer size={18} />
+							<span class="hidden sm:inline">{i18n.t('printReport')}</span>
+						</Button>
+					</div>
 				</div>
 
 				{#if data.entries.length > 0}
 					<div class="overflow-x-auto rounded-2xl border-2 border-slate-100 bg-white shadow-sm">
-						<table class="w-full text-sm">
+						<table class="w-full min-w-[1000px] text-sm">
 							<thead>
 								<tr class="border-b-2 border-slate-100 bg-slate-50">
 									<th
-										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+										class="w-12 px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
 										>#</th
 									>
 									<th
@@ -947,7 +982,7 @@
 										>{i18n.t('name')}</th
 									>
 									<th
-										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+										class="w-32 px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
 										>{i18n.t('codeNo')}</th
 									>
 									<th
@@ -955,23 +990,27 @@
 										>{i18n.t('category')}</th
 									>
 									<th
-										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+										class="w-32 px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
 										>Location</th
 									>
 									<th
-										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
-										>Training Status</th
+										class="w-40 px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+										>Training</th
 									>
+									{#if showEntryTime}
+										<th
+											class="w-36 px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+											>{i18n.t('entryTime')}</th
+										>
+									{/if}
+									{#if showExitTime}
+										<th
+											class="w-36 px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+											>{i18n.t('exitTime')}</th
+										>
+									{/if}
 									<th
-										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
-										>{i18n.t('entryTime')}</th
-									>
-									<th
-										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
-										>{i18n.t('exitTime')}</th
-									>
-									<th
-										class="px-4 py-3 text-right text-[10px] font-black tracking-widest text-slate-400 uppercase"
+										class="w-20 px-4 py-3 text-right text-[10px] font-black tracking-widest text-slate-400 uppercase"
 										>{i18n.t('actions')}</th
 									>
 								</tr>
@@ -980,7 +1019,7 @@
 								{#each data.entries as entry, index (entry.id)}
 									{@const entryWarning = hasEntryWarning(entry.entryTime)}
 									{@const exitWarning = hasExitWarning(entry.exitTime)}
-									{@const hasWarning = entryWarning || exitWarning}
+									{@const hasWarning = (showEntryTime && entryWarning) || (showExitTime && exitWarning)}
 									<tr
 										class={clsx(
 											'border-b border-slate-50 transition-colors hover:bg-slate-50',
@@ -989,16 +1028,16 @@
 									>
 										<td class="px-4 py-3 font-bold text-slate-500">{index + 1}</td>
 										<td class="px-4 py-3">
-											<span class="font-black text-slate-900">{entry.person.name}</span>
+											<span class="font-black text-slate-900 line-clamp-1">{entry.person.name}</span>
 										</td>
-										<td class="px-4 py-3 font-bold text-slate-600">{entry.person.codeNo || '-'}</td>
+										<td class="px-4 py-3 font-bold text-slate-600 whitespace-nowrap">{entry.person.codeNo || '-'}</td>
 										<td class="px-4 py-3">
-											<div class="flex gap-1">
+											<div class="flex flex-wrap gap-1">
 												{#each getCategoryPath(entry.person.categoryId) as cat, i (cat.id)}
 													<Badge
 														variant="outline"
 														class={cn(
-															'h-5 px-1.5 text-[9px] font-black tracking-wider uppercase',
+															'h-5 px-1.5 text-[9px] font-black tracking-wider uppercase whitespace-nowrap',
 															getCategoryLevelClass(i)
 														)}
 													>
@@ -1059,7 +1098,7 @@
 												</div>
 												<span
 													class={cn(
-														'text-xs font-black transition-colors',
+														'text-[10px] font-black uppercase transition-colors',
 														getIsTrained(entry) ? 'text-emerald-600' : 'text-slate-400'
 													)}
 												>
@@ -1067,59 +1106,63 @@
 												</span>
 											</label>
 										</td>
-										<td class="px-4 py-3">
-											<div class="flex items-center gap-1.5">
-												{#if entryWarning}
-													<span
-														title="Entry before {warnEntryBefore} BD time"
-														class="text-amber-500"
-													>
-														<AlertTriangle size={14} />
-													</span>
-												{/if}
-												<input
-													type="time"
-													value={getEntryTime(entry)}
-													onchange={(e) =>
-														updateEntryField(
-															entry.id,
-															'entryTime',
-															(e.target as HTMLInputElement).value
+										{#if showEntryTime}
+											<td class="px-4 py-3">
+												<div class="flex items-center gap-1.5">
+													{#if entryWarning}
+														<span
+															title="Entry before {warnEntryBefore} BD time"
+															class="text-amber-500"
+														>
+															<AlertTriangle size={14} />
+														</span>
+													{/if}
+													<input
+														type="time"
+														value={getEntryTime(entry)}
+														onchange={(e) =>
+															updateEntryField(
+																entry.id,
+																'entryTime',
+																(e.target as HTMLInputElement).value
+															)}
+														class={clsx(
+															'w-full max-w-[100px] rounded-lg border px-2 py-1 text-xs font-bold focus:border-primary-500 focus:outline-none',
+															entryWarning
+																? 'border-amber-300 bg-amber-50'
+																: 'border-slate-200 bg-white'
 														)}
-													class={clsx(
-														'w-28 rounded-lg border px-2 py-1 text-sm font-bold focus:border-primary-500 focus:outline-none',
-														entryWarning
-															? 'border-amber-300 bg-amber-50'
-															: 'border-slate-200 bg-white'
-													)}
-												/>
-											</div>
-										</td>
-										<td class="px-4 py-3">
-											<div class="flex items-center gap-1.5">
-												{#if exitWarning}
-													<span title="Exit after {warnExitAfter} BD time" class="text-amber-500">
-														<AlertTriangle size={14} />
-													</span>
-												{/if}
-												<input
-													type="time"
-													value={getExitTime(entry)}
-													onchange={(e) =>
-														updateEntryField(
-															entry.id,
-															'exitTime',
-															(e.target as HTMLInputElement).value
+													/>
+												</div>
+											</td>
+										{/if}
+										{#if showExitTime}
+											<td class="px-4 py-3">
+												<div class="flex items-center gap-1.5">
+													{#if exitWarning}
+														<span title="Exit after {warnExitAfter} BD time" class="text-amber-500">
+															<AlertTriangle size={14} />
+														</span>
+													{/if}
+													<input
+														type="time"
+														value={getExitTime(entry)}
+														onchange={(e) =>
+															updateEntryField(
+																entry.id,
+																'exitTime',
+																(e.target as HTMLInputElement).value
+															)}
+														class={clsx(
+															'w-full max-w-[100px] rounded-lg border px-2 py-1 text-xs font-bold focus:border-primary-500 focus:outline-none',
+															exitWarning
+																? 'border-amber-300 bg-amber-50'
+																: 'border-slate-200 bg-white'
 														)}
-													class={clsx(
-														'w-28 rounded-lg border px-2 py-1 text-sm font-bold focus:border-primary-500 focus:outline-none',
-														exitWarning
-															? 'border-amber-300 bg-amber-50'
-															: 'border-slate-200 bg-white'
-													)}
-												/>
-											</div>
-										</td>
+													/>
+												</div>
+											</td>
+										{/if}
 										<td class="px-4 py-3 text-right">
 											<button
 												class="cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500"

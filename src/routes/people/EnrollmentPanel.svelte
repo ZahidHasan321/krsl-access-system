@@ -53,6 +53,12 @@
 		}
 		if (initialCardNo) {
 			cardNo = initialCardNo;
+			
+			// If we have a card already from registration, auto-enroll/sync it
+			// to make the flow seamless like standard person enrollment
+			if (categorySlug === 'card') {
+				enrollCard();
+			}
 		}
 
 		// Check device status

@@ -281,6 +281,20 @@
 
 					<!-- Quick Info Grid -->
 					<div class="mt-4 grid grid-cols-1 gap-3">
+						<div class="flex items-center gap-3 rounded-xl border-2 border-primary-100 bg-primary-50 p-3">
+							<div
+								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-200 text-primary-700"
+							>
+								<Fingerprint size={20} />
+							</div>
+							<div class="min-w-0">
+								<p class="text-[10px] font-black tracking-widest text-primary-500 uppercase">
+									Biometric ID (PIN)
+								</p>
+								<p class="truncate font-black text-primary-900">{data.person.biometricId}</p>
+							</div>
+						</div>
+
 						{#if data.person.codeNo}
 							<div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
 								<div
@@ -956,6 +970,24 @@
 							</Select.Content>
 						</Select.Root>
 					</div>
+				</div>
+
+				<!-- Biometric ID (Read-only Info) -->
+				<div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 opacity-70">
+					<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-200 text-slate-500">
+						<Fingerprint size={16} />
+					</div>
+					<div class="min-w-0">
+						<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">
+							System Biometric ID (Machine PIN)
+						</p>
+						<p class="font-bold text-slate-700">{data.person.biometricId || 'Not assigned yet'}</p>
+					</div>
+					{#if !data.person.biometricId}
+						<div class="ml-auto text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-1 rounded-full uppercase tracking-tighter">
+							Will be generated on save
+						</div>
+					{/if}
 				</div>
 
 				<!-- Access Card Hero Input (Edit Mode) -->

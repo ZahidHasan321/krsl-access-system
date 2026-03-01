@@ -360,7 +360,7 @@
 				<div class="hidden sm:block">
 					<LangSwitch />
 				</div>
-				{#if page.data.user}
+				{#if page.data.user?.permissions?.includes('users.manage')}
 					<ActivityFeed />
 				{/if}
 

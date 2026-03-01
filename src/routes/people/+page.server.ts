@@ -7,6 +7,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { requirePermission } from '$lib/server/rbac';
 import { notifyChange, notifyCheckIn, notifyEnrollment } from '$lib/server/events';
 import { queueDeviceSync, queueDeviceDelete } from '$lib/server/device-sync';
+import { createNotification } from '$lib/server/push';
 import { ensureDesignation } from '$lib/server/db/designation-utils';
 import { writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
@@ -293,13 +294,20 @@ export const actions: Actions = {
 				});
 			}
 
-			// Add registration history
 			notifyEnrollment({
 				personId: id,
 				personName: name,
 				method: cardNo ? 'card' : 'Web UI',
 				photoUrl: photoResult?.photoUrl || null,
 				thumbUrl: photoResult?.thumbUrl || null
+			});
+
+			await createNotification({
+				userId: event.locals.user?.id,
+				type: 'registration',
+				title: 'Manual Registration',
+				message: `${event.locals.user?.username || 'Admin'} registered ${name}`,
+				link: `/people/${id}`
 			});
 
 			notifyChange();
@@ -381,8 +389,19 @@ export const actions: Actions = {
 				updates.thumbUrl = photoResult.thumbUrl;
 			}
 
-			// If cardNo is provided, ensure 'card' is in enrolledMethods
+			// Ensure person has a biometricId
 			const [existing] = await db.select().from(people).where(eq(people.id, id));
+			if (existing && !existing.biometricId) {
+				const nextBiometricId = await db.transaction(async (tx) => {
+					const [maxResult] = await tx
+						.select({ maxId: sql<number>`COALESCE(MAX(CAST(biometric_id AS INTEGER)), 0)` })
+						.from(people);
+					return String((maxResult.maxId || 0) + 1);
+				});
+				updates.biometricId = nextBiometricId;
+			}
+
+			// If cardNo is provided, ensure 'card' is in enrolledMethods
 			if (cardNo && existing) {
 				let methods: string[] = [];
 				try {
@@ -403,6 +422,14 @@ export const actions: Actions = {
 			if (person?.biometricId) {
 				await queueDeviceSync(person.biometricId, name, person.cardNo);
 			}
+
+			await createNotification({
+				userId: event.locals.user?.id,
+				type: 'edit',
+				title: 'Profile Updated',
+				message: `${event.locals.user?.username || 'Admin'} updated profile for ${name}`,
+				link: `/people/${id}`
+			});
 
 			notifyChange();
 			return { success: true };
@@ -455,6 +482,14 @@ export const actions: Actions = {
 			}
 
 			await db.delete(people).where(eq(people.id, id));
+
+			await createNotification({
+				userId: event.locals.user?.id,
+				type: 'delete',
+				title: 'Person Deleted',
+				message: `${event.locals.user?.username || 'Admin'} deleted record for ${person.name}`
+			});
+
 			notifyChange();
 			return { success: true };
 		} catch (e) {

@@ -5,6 +5,8 @@ import { error, fail } from '@sveltejs/kit';
 import { requirePermission } from '$lib/server/rbac';
 import { notifyChange } from '$lib/server/events';
 import { queueDeviceSync, queueDeviceDelete } from '$lib/server/device-sync';
+import { createNotification } from '$lib/server/push';
+import { ensureDesignation } from '$lib/server/db/designation-utils';
 import type { PageServerLoad, Actions } from './$types';
 import { writeFileSync, mkdirSync, existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
@@ -172,6 +174,7 @@ export const actions: Actions = {
 		const categoryId = data.get('categoryId') as string;
 		const photo = data.get('photo') as File | null;
 		const cardNo = (data.get('cardNo') as string) || null;
+		const designation = (data.get('designation') as string) || null;
 
 		if (!name) return fail(400, { message: 'Name required' });
 
@@ -181,7 +184,7 @@ export const actions: Actions = {
 			cardNo,
 			company: (data.get('company') as string) || null,
 			contactNo: (data.get('contactNo') as string) || null,
-			designation: (data.get('designation') as string) || null,
+			designation,
 			isTrained: data.get('isTrained') === 'true',
 			notes: (data.get('notes') as string) || null
 		};
@@ -191,6 +194,7 @@ export const actions: Actions = {
 		}
 
 		try {
+			await ensureDesignation(designation);
 			const photoResult = await savePhoto(photo);
 			if (photoResult) {
 				// Get old photo URL to delete it
@@ -225,8 +229,19 @@ export const actions: Actions = {
 				updates.thumbUrl = photoResult.thumbUrl;
 			}
 
-			// If cardNo is provided, ensure 'card' is in enrolledMethods
+			// Ensure person has a biometricId
 			const [existing] = await db.select().from(people).where(eq(people.id, id));
+			if (existing && !existing.biometricId) {
+				const nextBiometricId = await db.transaction(async (tx) => {
+					const [maxResult] = await tx
+						.select({ maxId: sql<number>`COALESCE(MAX(CAST(biometric_id AS INTEGER)), 0)` })
+						.from(people);
+					return String((maxResult.maxId || 0) + 1);
+				});
+				updates.biometricId = nextBiometricId;
+			}
+
+			// If cardNo is provided, ensure 'card' is in enrolledMethods
 			if (cardNo && existing) {
 				let methods: string[] = [];
 				try {
@@ -247,6 +262,14 @@ export const actions: Actions = {
 			if (person?.biometricId) {
 				await queueDeviceSync(person.biometricId, name, person.cardNo);
 			}
+
+			await createNotification({
+				userId: event.locals.user?.id,
+				type: 'edit',
+				title: 'Profile Updated',
+				message: `${event.locals.user?.username || 'Admin'} updated profile for ${name}`,
+				link: `/people/${id}`
+			});
 
 			notifyChange();
 			return { success: true };
@@ -292,6 +315,13 @@ export const actions: Actions = {
 			}
 
 			await db.delete(people).where(eq(people.id, id));
+
+			await createNotification({
+				userId: event.locals.user?.id,
+				type: 'delete',
+				title: 'Person Deleted',
+				message: `${event.locals.user?.username || 'Admin'} deleted record for ${person.name}`
+			});
 
 			// Remove user from all ZK devices so the PIN is fully cleared
 			if (person?.biometricId) {

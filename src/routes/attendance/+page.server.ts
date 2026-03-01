@@ -7,6 +7,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { requirePermission } from '$lib/server/rbac';
 import { notifyChange, notifyCheckIn, notifyCheckOut } from '$lib/server/events';
 import { getAttendanceLogs } from '$lib/server/attendance-service';
+import { createNotification } from '$lib/server/push';
 
 export const load: PageServerLoad = async (event) => {
 	requirePermission(event.locals, 'people.view');
@@ -70,46 +71,60 @@ export const actions: Actions = {
 		if (!personId) return fail(400, { message: 'Person ID required' });
 		if (!location) return fail(400, { message: 'Location (Ship/Yard) required' });
 
-		// 1. Verify person exists
-		const person = await db.query.people.findFirst({
-			where: eq(people.id, personId)
-		});
-		if (!person) return fail(404, { message: 'Person not found' });
+		try {
+			// 1. Verify person exists
+			const person = await db.query.people.findFirst({
+				where: eq(people.id, personId)
+			});
+			if (!person) return fail(404, { message: 'Person not found' });
 
-		// 2. Check if already on premises
-		const activeLog = await db.query.attendanceLogs.findFirst({
-			where: and(eq(attendanceLogs.personId, personId), eq(attendanceLogs.status, 'on_premises'))
-		});
+			// 2. Check if already on premises
+			const activeLog = await db.query.attendanceLogs.findFirst({
+				where: and(eq(attendanceLogs.personId, personId), eq(attendanceLogs.status, 'on_premises'))
+			});
 
-		if (activeLog) {
-			return fail(400, { message: 'Person must exit before entering again' });
+			if (activeLog) {
+				return fail(400, { message: 'Person must exit before entering again' });
+			}
+
+			const logId = crypto.randomUUID();
+			// 3. Create log
+			const now = new Date();
+			await db.insert(attendanceLogs).values({
+				id: logId,
+				personId,
+				entryTime: now,
+				verifyMethod: 'manual',
+				status: 'on_premises',
+				purpose,
+				location,
+				date: format(now, 'yyyy-MM-dd')
+			});
+
+			notifyCheckIn({
+				personId,
+				personName: person.name,
+				verifyMethod: 'manual',
+				photoUrl: person.photoUrl,
+				logId,
+				categoryId: person.categoryId,
+				isTrained: person.isTrained
+			});
+
+			await createNotification({
+				userId: event.locals.user?.id,
+				type: 'checkin',
+				title: 'Manual Check-In',
+				message: `${event.locals.user?.username || 'Admin'} checked in ${person.name}`,
+				link: `/people/${person.id}`
+			});
+
+			notifyChange();
+			return { success: true };
+		} catch (err) {
+			console.error('Check-in error:', err);
+			return fail(500, { message: 'Failed to process check-in' });
 		}
-
-		const logId = crypto.randomUUID();
-		// 3. Create log
-		const now = new Date();
-		await db.insert(attendanceLogs).values({
-			id: logId,
-			personId,
-			entryTime: now,
-			verifyMethod: 'manual',
-			status: 'on_premises',
-			purpose,
-			location,
-			date: format(now, 'yyyy-MM-dd')
-		});
-
-		notifyCheckIn({
-			personId,
-			personName: person.name,
-			verifyMethod: 'manual',
-			photoUrl: person.photoUrl,
-			logId,
-			categoryId: person.categoryId,
-			isTrained: person.isTrained
-		});
-		notifyChange();
-		return { success: true };
 	},
 
 	checkOut: async (event) => {
@@ -119,39 +134,52 @@ export const actions: Actions = {
 
 		if (!logId) return fail(400, { message: 'Log ID required' });
 
-		const log = await db.query.attendanceLogs.findFirst({
-			where: eq(attendanceLogs.id, logId)
-		});
-
-		if (!log || log.status !== 'on_premises') {
-			return fail(400, { message: 'Active log not found' });
-		}
-
-		// Fetch person for toast notification
-		const checkedOutPerson = await db.query.people.findFirst({
-			where: eq(people.id, log.personId)
-		});
-
-		await db
-			.update(attendanceLogs)
-			.set({
-				exitTime: new Date(),
-				status: 'checked_out'
-			})
-			.where(eq(attendanceLogs.id, logId));
-
-		if (checkedOutPerson) {
-			notifyCheckOut({
-				personId: checkedOutPerson.id,
-				personName: checkedOutPerson.name,
-				verifyMethod: 'manual',
-				photoUrl: checkedOutPerson.photoUrl,
-				logId,
-				categoryId: checkedOutPerson.categoryId
+		try {
+			const log = await db.query.attendanceLogs.findFirst({
+				where: eq(attendanceLogs.id, logId)
 			});
+
+			if (!log || log.status !== 'on_premises') {
+				return fail(400, { message: 'Active log not found' });
+			}
+
+			// Fetch person for toast notification
+			const checkedOutPerson = await db.query.people.findFirst({
+				where: eq(people.id, log.personId)
+			});
+
+			await db
+				.update(attendanceLogs)
+				.set({
+					exitTime: new Date(),
+					status: 'checked_out'
+				})
+				.where(eq(attendanceLogs.id, logId));
+
+			if (checkedOutPerson) {
+				notifyCheckOut({
+					personId: checkedOutPerson.id,
+					personName: checkedOutPerson.name,
+					verifyMethod: 'manual',
+					photoUrl: checkedOutPerson.photoUrl,
+					logId,
+					categoryId: checkedOutPerson.categoryId
+				});
+
+				await createNotification({
+					userId: event.locals.user?.id,
+					type: 'checkout',
+					title: 'Manual Check-Out',
+					message: `${event.locals.user?.username || 'Admin'} checked out ${checkedOutPerson.name}`,
+					link: `/people/${checkedOutPerson.id}`
+				});
+			}
+			notifyChange();
+			return { success: true };
+		} catch (err) {
+			console.error('Check-out error:', err);
+			return fail(500, { message: 'Failed to process check-out' });
 		}
-		notifyChange();
-		return { success: true };
 	},
 
 	updatePurpose: async (event) => {

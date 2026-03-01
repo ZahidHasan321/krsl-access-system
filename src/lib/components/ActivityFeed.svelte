@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { Bell, UserCheck, UserPlus, AlertCircle, Clock, ChevronRight, Truck } from 'lucide-svelte';
+	import { Bell, UserCheck, UserPlus, AlertCircle, Clock, ChevronRight, Truck, Edit, Trash2, Filter } from 'lucide-svelte';
 	import { i18n } from '$lib/i18n.svelte';
 	import { clsx } from 'clsx';
 	import { formatDistanceToNow } from 'date-fns';
@@ -9,6 +9,14 @@
 	import { page } from '$app/state';
 
 	let history = $state<any[]>([]);
+	let activeFilter = $state<string>('all');
+	
+	const filteredHistory = $derived(
+		activeFilter === 'all' 
+			? history 
+			: history.filter(n => n.type === activeFilter)
+	);
+
 	let unreadCount = $derived(history.filter((n) => !n.isRead).length);
 	let isOpen = $state(false);
 	let isAdmin = $derived(page.data.user?.permissions?.includes('users.manage'));
@@ -70,7 +78,12 @@
 			case 'vehicle':
 				return Truck;
 			case 'enrollment':
+			case 'registration':
 				return UserPlus;
+			case 'edit':
+				return Edit;
+			case 'delete':
+				return Trash2;
 			default:
 				return Bell;
 		}
@@ -85,7 +98,12 @@
 			case 'vehicle':
 				return 'bg-indigo-100 text-indigo-600';
 			case 'enrollment':
+			case 'registration':
 				return 'bg-blue-100 text-blue-600';
+			case 'edit':
+				return 'bg-cyan-100 text-cyan-600';
+			case 'delete':
+				return 'bg-rose-100 text-rose-600';
 			default:
 				return 'bg-slate-100 text-slate-600';
 		}
@@ -108,22 +126,40 @@
 		align="end"
 		sideOffset={8}
 	>
-		<div class="flex items-center justify-between border-b px-4 py-3">
-			<h3 class="font-bold text-slate-900">{i18n.t('activityHistory' as any) || 'Activity History'}</h3>
-			{#if history.length > 0}
-				<span class="text-xs text-slate-500">{history.length} recent</span>
-			{/if}
+		<div class="flex flex-col border-b bg-slate-50/50">
+			<div class="flex items-center justify-between px-4 py-3">
+				<h3 class="font-bold text-slate-900">{i18n.t('activityHistory' as any) || 'Activity History'}</h3>
+				{#if history.length > 0}
+					<span class="text-xs text-slate-500">{history.length} recent</span>
+				{/if}
+			</div>
+			
+			<div class="flex gap-1.5 overflow-x-auto px-4 pb-2 no-scrollbar">
+				{#each ['all', 'checkin', 'checkout', 'registration', 'edit', 'delete'] as filter}
+					<button
+						onclick={() => activeFilter = filter}
+						class={clsx(
+							'rounded-full px-3 py-1 text-[10px] font-bold tracking-widest uppercase transition-all',
+							activeFilter === filter 
+								? 'bg-primary text-white shadow-sm' 
+								: 'bg-white text-slate-500 border border-slate-200 hover:border-primary/30 hover:text-primary'
+						)}
+					>
+						{filter}
+					</button>
+				{/each}
+			</div>
 		</div>
 
 		<div class="max-h-[400px] overflow-y-auto">
-			{#if history.length === 0}
+			{#if filteredHistory.length === 0}
 				<div class="flex flex-col items-center justify-center py-12 text-center text-slate-400">
 					<Clock class="mb-2 size-8 opacity-20" />
-					<p class="text-sm">No recent activity</p>
+					<p class="text-sm">No recent activity matching filter</p>
 				</div>
 			{:else}
 				<div class="divide-y divide-slate-50">
-					{#each history as item}
+					{#each filteredHistory as item}
 						<a
 							href={item.link || '#'}
 							onclick={() => (isOpen = false)}
@@ -143,8 +179,12 @@
 										<UserCheck size={16} />
 									{:else if item.type === 'vehicle'}
 										<Truck size={16} />
-									{:else if item.type === 'enrollment'}
+									{:else if item.type === 'enrollment' || item.type === 'registration'}
 										<UserPlus size={16} />
+									{:else if item.type === 'edit'}
+										<Edit size={16} />
+									{:else if item.type === 'delete'}
+										<Trash2 size={16} />
 									{:else}
 										<Bell size={16} />
 									{/if}

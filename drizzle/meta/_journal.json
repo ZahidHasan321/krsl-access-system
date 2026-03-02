@@ -43,6 +43,13 @@
       "when": 1772103549611,
       "tag": "0005_enable_pg_trgm",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1772430095870,
+      "tag": "0006_daffy_blacklash",
+      "breakpoints": true
     }
   ]
 }

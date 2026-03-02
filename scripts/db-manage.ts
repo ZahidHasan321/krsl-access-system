@@ -187,6 +187,15 @@ async function seedDatabase() {
 		);
 	}
 
+	console.log('Updating existing audit entries with identityNo...');
+	await client.query(`
+		UPDATE audit_entries
+		SET identity_no = people.code_no
+		FROM people
+		WHERE audit_entries.person_id = people.id
+		  AND audit_entries.identity_no IS NULL;
+	`);
+
 	console.log('Done.');
 }
 

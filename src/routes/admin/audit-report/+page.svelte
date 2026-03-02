@@ -28,6 +28,7 @@
 	import type { PageData, ActionData } from './$types';
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
 	import VirtualList from 'svelte-virtual-list';
+	import { utils, writeFile } from 'xlsx';
 	import {
 		CATEGORIES,
 		ROOT_CATEGORIES,
@@ -36,6 +37,32 @@
 	} from '$lib/constants/categories';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
+
+	function getDescendantIds(categoryId: string): string[] {
+		const ids: string[] = [categoryId];
+		const queue = [categoryId];
+		while (queue.length > 0) {
+			const parentId = queue.shift()!;
+			for (const cat of CATEGORIES) {
+				if (cat.parentId === parentId) {
+					ids.push(cat.id);
+					queue.push(cat.id);
+				}
+			}
+		}
+		return ids;
+	}
+
+	const getCategoryPath = (categoryId: string) => {
+		const path: { id: string; name: string; slug: string }[] = [];
+		let current = getCategoryById(categoryId);
+		while (current) {
+			path.unshift({ id: current.id, name: current.name, slug: current.slug });
+			if (!current.parentId) break;
+			current = getCategoryById(current.parentId);
+		}
+		return path;
+	};
 
 	// State
 	let selectedDate = $state('');
@@ -88,13 +115,104 @@
 	let editableEntries = $state<
 		Map<
 			string,
-			{ entryTime: string; exitTime: string; purpose: string; isTrained: boolean; location: string }
+			{
+				entryTime: string;
+				exitTime: string;
+				purpose: string;
+				isTrained: boolean;
+				location: string;
+				identityNo: string;
+			}
 		>
 	>(new Map());
 
 	$effect(() => {
 		selectedDate = data.filters.date;
 		searchQuery = data.filters.query;
+	});
+
+	const isEmployeeFilter = $derived.by(() => {
+		// Show ID NO if there are any employees in the current list
+		return data.entries.some((entry) =>
+			getCategoryPath(entry.person.categoryId).some((c) => c.id === 'employee')
+		);
+	});
+
+	// Grouping and Sorting for Print
+	const groupedEntries = $derived.by(() => {
+		const entriesWithState = data.entries.map((entry) => ({
+			...entry,
+			currentIdentityNo: getIdentityNo(entry)
+		}));
+
+		// Sort all entries first: Root -> Subcategory -> identityNo
+		entriesWithState.sort((a, b) => {
+			const pathA = getCategoryPath(a.person.categoryId);
+			const pathB = getCategoryPath(b.person.categoryId);
+			const rootA = pathA[0]?.id || '';
+			const rootB = pathB[0]?.id || '';
+
+			// 1. Root Category Priority (Employee first)
+			const getRootOrder = (id: string) => {
+				if (id === 'employee') return 1;
+				if (id === 'customer') return 2;
+				if (id === 'vendor') return 3;
+				if (id === 'card') return 4;
+				return 99;
+			};
+			const rootOrderA = getRootOrder(rootA);
+			const rootOrderB = getRootOrder(rootB);
+			if (rootOrderA !== rootOrderB) return rootOrderA - rootOrderB;
+
+			// 2. Subcategory Priority (Management -> Frontliner -> Others)
+			const getSubOrder = (id: string) => {
+				if (id === 'management') return 1;
+				if (id === 'frontliner') return 2;
+				return 99;
+			};
+			const subOrderA = getSubOrder(a.person.categoryId);
+			const subOrderB = getSubOrder(b.person.categoryId);
+			if (subOrderA !== subOrderB) return subOrderA - subOrderB;
+
+			// If subcategory is still different, sort by name
+			if (a.person.categoryId !== b.person.categoryId) {
+				const nameA = getCategoryById(a.person.categoryId)?.name || '';
+				const nameB = getCategoryById(b.person.categoryId)?.name || '';
+				return nameA.localeCompare(nameB);
+			}
+
+			// 3. Identity Number Sorting (Numeric)
+			const idA = a.currentIdentityNo || '';
+			const idB = b.currentIdentityNo || '';
+			const numA = parseInt(idA.replace(/\D/g, ''));
+			const numB = parseInt(idB.replace(/\D/g, ''));
+
+			if (!isNaN(numA) && !isNaN(numB)) {
+				if (numA !== numB) return numA - numB;
+			}
+			return idA.localeCompare(idB, undefined, { numeric: true });
+		});
+
+		// Group them for logic consistency (even if flattened in UI)
+		const groups: {
+			categoryId: string;
+			categoryName: string;
+			entries: typeof entriesWithState;
+		}[] = [];
+		for (const entry of entriesWithState) {
+			let group = groups.find((g) => g.categoryId === entry.person.categoryId);
+			if (!group) {
+				const cat = getCategoryById(entry.person.categoryId);
+				group = {
+					categoryId: entry.person.categoryId,
+					categoryName: cat ? cat.name : 'Other',
+					entries: []
+				};
+				groups.push(group);
+			}
+			group.entries.push(entry);
+		}
+		return groups;
 	});
 
 	// Active root for generation panel subcategory display
@@ -111,21 +229,6 @@
 		if (!activeGenRoot) return [];
 		return getSubCategories(activeGenRoot);
 	});
-
-	function getDescendantIds(categoryId: string): string[] {
-		const ids: string[] = [categoryId];
-		const queue = [categoryId];
-		while (queue.length > 0) {
-			const parentId = queue.shift()!;
-			for (const cat of CATEGORIES) {
-				if (cat.parentId === parentId) {
-					ids.push(cat.id);
-					queue.push(cat.id);
-				}
-			}
-		}
-		return ids;
-	}
 
 	function selectAll() {
 		const newSet = new Set(selectedPersonIds);
@@ -168,17 +271,6 @@
 		selectedPersonIds = newSet;
 	}
 
-	const getCategoryPath = (categoryId: string) => {
-		const path: { id: string; name: string; slug: string }[] = [];
-		let current = getCategoryById(categoryId);
-		while (current) {
-			path.unshift({ id: current.id, name: current.name, slug: current.slug });
-			if (!current.parentId) break;
-			current = getCategoryById(current.parentId);
-		}
-		return path;
-	};
-
 	// Warning logic: BD time (UTC+6), using editable thresholds
 	function parseBDMinutes(timeStr: string): number {
 		const [h, m] = timeStr.split(':').map(Number);
@@ -205,6 +297,7 @@
 		if (searchQuery) url.searchParams.set('q', searchQuery);
 		else url.searchParams.delete('q');
 		if (selectedDate) url.searchParams.set('date', selectedDate);
+		url.searchParams.delete('category');
 		goto(url.toString(), { keepFocus: true, noScroll: true });
 	}
 
@@ -219,6 +312,12 @@
 	}
 
 	// Get editable value or original
+	function getIdentityNo(entry: any): string {
+		const edited = editableEntries.get(entry.id);
+		if (edited) return edited.identityNo;
+		return entry.identityNo || entry.person.codeNo || '';
+	}
+
 	function getEntryTime(entry: any): string {
 		const edited = editableEntries.get(entry.id);
 		if (edited) return edited.entryTime;
@@ -251,7 +350,7 @@
 
 	async function updateEntryField(
 		entryId: string,
-		field: 'entryTime' | 'exitTime' | 'purpose' | 'isTrained' | 'location',
+		field: 'entryTime' | 'exitTime' | 'purpose' | 'isTrained' | 'location' | 'identityNo',
 		value: any
 	) {
 		const entry = data.entries.find((e) => e.id === entryId);
@@ -264,7 +363,8 @@
 			exitTime: entry.exitTime ? format(entry.exitTime, 'HH:mm') : '',
 			purpose: entry.purpose || '',
 			isTrained: entry.isTrained,
-			location: entry.location || 'yard'
+			location: entry.location || 'yard',
+			identityNo: entry.identityNo || entry.person.codeNo || ''
 		};
 
 		const newMap = new Map(editableEntries);
@@ -294,21 +394,71 @@
 		window.print();
 	}
 
+	function exportToExcel() {
+		const flatEntries = groupedEntries.flatMap((g) => g.entries);
+		const dataRows = flatEntries.map((entry, index) => {
+			const rootCat = getCategoryPath(entry.person.categoryId)[0];
+			const isEmployeeEntry = getCategoryPath(entry.person.categoryId).some(
+				(c) => c.id === 'employee'
+			);
+			const subCat = getCategoryById(entry.person.categoryId);
+			const displayCategory = isEmployeeEntry
+				? i18n.t(subCat?.slug as any) || subCat?.name
+				: i18n.t(rootCat.slug as any) || rootCat.name;
+
+			const row: any = {
+				'#': index + 1,
+				Name: entry.person.name
+			};
+
+			row['Category'] = displayCategory;
+			row['Location'] = (entry.location || 'yard').toUpperCase();
+			row['Training'] = entry.isTrained ? 'TRAINED' : 'PENDING';
+
+			if (showEntryTime) {
+				row['Entry Time'] = getPrintEntryTime(entry);
+			}
+			if (showExitTime) {
+				row['Exit Time'] = getPrintExitTime(entry);
+			}
+
+			return row;
+		});
+
+		const worksheet = utils.json_to_sheet(dataRows);
+		const workbook = utils.book_new();
+		utils.book_append_sheet(workbook, worksheet, 'Audit Report');
+
+		// Set column widths
+		const wscols = [
+			{ wch: 5 },
+			{ wch: 25 },
+			{ wch: 15 },
+			{ wch: 20 },
+			{ wch: 10 },
+			{ wch: 10 },
+			{ wch: 15 },
+			{ wch: 15 }
+		];
+		worksheet['!cols'] = wscols;
+
+		writeFile(workbook, `Audit_Report_${selectedDate}.xlsx`);
+	}
+
 	function getPrintEntryTime(entry: any): string {
-		const edited = editableEntries.get(entry.id);
-		if (edited) {
-			return format(new Date(`${selectedDate}T${edited.entryTime}:00`), 'hh:mm a');
-		}
-		return format(entry.entryTime, 'hh:mm a');
+		const timeStr = getEntryTime(entry);
+		if (!selectedDate || !timeStr) return timeStr || '-';
+		const d = new Date(`${selectedDate}T${timeStr}:00`);
+		if (isNaN(d.getTime())) return timeStr;
+		return format(d, 'hh:mm a');
 	}
 
 	function getPrintExitTime(entry: any): string {
-		const edited = editableEntries.get(entry.id);
-		if (edited) {
-			if (!edited.exitTime) return '-';
-			return format(new Date(`${selectedDate}T${edited.exitTime}:00`), 'hh:mm a');
-		}
-		return entry.exitTime ? format(entry.exitTime, 'hh:mm a') : '-';
+		const timeStr = getExitTime(entry);
+		if (!selectedDate || !timeStr) return timeStr || '-';
+		const d = new Date(`${selectedDate}T${timeStr}:00`);
+		if (isNaN(d.getTime())) return timeStr;
+		return format(d, 'hh:mm a');
 	}
 
 	// Generate handler
@@ -388,7 +538,7 @@
 </svelte:head>
 
 <!-- Print-only section -->
-<div class="print-only hidden">
+<div class="print-only">
 	<div
 		class="print-header"
 		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 3px solid #1c55a4; margin-bottom: 2rem;"
@@ -431,38 +581,56 @@
 		</div>
 	</div>
 
-	<table style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: inherit;">
+	<table style="width: 100%; border-collapse: collapse; font-size: 10px; font-family: inherit; border: 1px solid #000;">
 		<thead>
-			<tr style="background: #f1f5f9;">
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">#</th>
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">{i18n.t('name')}</th>
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">{i18n.t('category')}</th>
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Location</th>
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Training</th>
+			<tr style="background: #eee; -webkit-print-color-adjust: exact;">
+				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">#</th>
+				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">{i18n.t('name')}</th>
+				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">{i18n.t('category')}</th>
+				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">Location</th>
+				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">Training</th>
 				{#if showEntryTime}
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">{i18n.t('entryTime')}</th>
+					<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">{i18n.t('entryTime')}</th>
 				{/if}
 				{#if showExitTime}
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">{i18n.t('exitTime')}</th>
+					<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">{i18n.t('exitTime')}</th>
 				{/if}
 			</tr>
 		</thead>
 		<tbody>
-			{#each data.entries as entry, index (entry.id)}
+			{#each groupedEntries.flatMap((g) => g.entries) as entry, index}
 				{@const rootCat = getCategoryPath(entry.person.categoryId)[0]}
-				<tr style={index % 2 === 0 ? '' : 'background: #f8fafc;'}>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #64748b;">{index + 1}</td>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: #0f172a;">{entry.person.name}</td>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{i18n.t(rootCat.slug as any) || rootCat.name}</td>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; text-transform: uppercase; font-weight: 800; color: #0f172a;">{getLocation(entry)}</td>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: {getIsTrained(entry) ? '#059669' : '#e11d48'};">
+				{@const isEmployeeEntry = getCategoryPath(entry.person.categoryId).some(
+					(c) => c.id === 'employee'
+				)}
+				{@const subCat = getCategoryById(entry.person.categoryId)}
+				{@const displayCategory = isEmployeeEntry
+					? i18n.t(subCat?.slug as any) || subCat?.name
+					: i18n.t(rootCat.slug as any) || rootCat.name}
+				<tr style="page-break-inside: avoid;">
+					<td style="border: 1px solid #000; padding: 6px; color: #000;">{index + 1}</td>
+					<td style="border: 1px solid #000; padding: 6px; font-weight: 800; color: #000;"
+						>{entry.person.name}</td
+					>
+					<td style="border: 1px solid #000; padding: 6px; color: #000;">{displayCategory}</td>
+					<td
+						style="border: 1px solid #000; padding: 6px; text-transform: uppercase; font-weight: 800; color: #000;"
+						>{getLocation(entry)}</td
+					>
+					<td
+						style="border: 1px solid #000; padding: 6px; font-weight: 800; color: #000;"
+					>
 						{getIsTrained(entry) ? 'TRAINED' : 'PENDING'}
 					</td>
 					{#if showEntryTime}
-						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{getPrintEntryTime(entry)}</td>
+						<td style="border: 1px solid #000; padding: 6px; color: #000;"
+							>{getPrintEntryTime(entry)}</td
+						>
 					{/if}
 					{#if showExitTime}
-						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{getPrintExitTime(entry)}</td>
+						<td style="border: 1px solid #000; padding: 6px; color: #000;"
+							>{getPrintExitTime(entry)}</td
+						>
 					{/if}
 				</tr>
 			{/each}
@@ -470,10 +638,10 @@
 	</table>
 
 	<div
-		style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em;"
+		style="margin-top: 3rem; padding-top: 1rem; border-top: 1px dashed #000; display: flex; justify-content: space-between; font-size: 9px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;"
 	>
-		<p>Generated by {i18n.t('appName')} Official Reporting System</p>
-		<p>Page 1 of 1</p>
+		<p>System Generated: {new Date().toISOString()}</p>
+		<p>{i18n.t('appName')} Official Report</p>
 	</div>
 </div>
 
@@ -491,18 +659,20 @@
 				</p>
 			</div>
 
-			<div
-				class="flex items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white p-2 shadow-sm"
-			>
-				<span class="pl-2 text-[10px] font-black tracking-widest text-slate-400 uppercase"
-					>Reporting Date</span
+			<div class="flex flex-wrap items-center gap-3">
+				<div
+					class="flex items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white p-2 shadow-sm"
 				>
-				<input
-					type="date"
-					value={selectedDate}
-					onchange={changeDate}
-					class="h-10 cursor-pointer rounded-xl border-2 border-slate-100 bg-slate-50 px-4 text-sm font-black transition-colors hover:bg-white focus:border-primary-500 focus:outline-none"
-				/>
+					<span class="pl-2 text-[10px] font-black tracking-widest text-slate-400 uppercase"
+						>Reporting Date</span
+					>
+					<input
+						type="date"
+						value={selectedDate}
+						onchange={changeDate}
+						class="h-10 cursor-pointer rounded-xl border-2 border-slate-100 bg-slate-50 px-4 text-sm font-black transition-colors hover:bg-white focus:border-primary-500 focus:outline-none"
+					/>
+				</div>
 			</div>
 		</div>
 
@@ -960,6 +1130,31 @@
 						<Button
 							variant="outline"
 							class="h-11 shrink-0 gap-2 rounded-2xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 md:px-6"
+							onclick={exportToExcel}
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								class="lucide lucide-file-spreadsheet"
+								><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path
+									d="M14 2v4a2 2 0 0 0 2 2h4"
+								/><path d="M8 13h2" /><path d="M14 13h2" /><path d="M8 17h2" /><path d="M14 17h2" /><path
+									d="M10 10h4v10h-4z"
+								/></svg
+							>
+							<span class="hidden sm:inline">Export Excel</span>
+						</Button>
+
+						<Button
+							variant="outline"
+							class="h-11 shrink-0 gap-2 rounded-2xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 md:px-6"
 							onclick={printReport}
 						>
 							<Printer size={18} />
@@ -981,10 +1176,12 @@
 										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
 										>{i18n.t('name')}</th
 									>
-									<th
-										class="w-32 px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
-										>{i18n.t('codeNo')}</th
-									>
+									{#if isEmployeeFilter}
+										<th
+											class="w-32 px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+											>ID NO</th
+										>
+									{/if}
 									<th
 										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
 										>{i18n.t('category')}</th
@@ -1016,10 +1213,19 @@
 								</tr>
 							</thead>
 							<tbody>
-								{#each data.entries as entry, index (entry.id)}
+								{#each groupedEntries.flatMap((g) => g.entries) as entry, index (entry.id)}
+									{@const rootCat = getCategoryPath(entry.person.categoryId)[0]}
+									{@const isEmployeeEntry = getCategoryPath(entry.person.categoryId).some(
+										(c) => c.id === 'employee'
+									)}
+									{@const subCat = getCategoryById(entry.person.categoryId)}
+									{@const displayCategory = isEmployeeEntry
+										? i18n.t(subCat?.slug as any) || subCat?.name
+										: i18n.t(rootCat.slug as any) || rootCat.name}
 									{@const entryWarning = hasEntryWarning(entry.entryTime)}
 									{@const exitWarning = hasExitWarning(entry.exitTime)}
-									{@const hasWarning = (showEntryTime && entryWarning) || (showExitTime && exitWarning)}
+									{@const hasWarning =
+										(showEntryTime && entryWarning) || (showExitTime && exitWarning)}
 									<tr
 										class={clsx(
 											'border-b border-slate-50 transition-colors hover:bg-slate-50',
@@ -1028,26 +1234,43 @@
 									>
 										<td class="px-4 py-3 font-bold text-slate-500">{index + 1}</td>
 										<td class="px-4 py-3">
-											<span class="font-black text-slate-900 line-clamp-1">{entry.person.name}</span>
+											<span class="font-black text-slate-900 line-clamp-1">{entry.person.name}</span
+											>
 										</td>
-										<td class="px-4 py-3 font-bold text-slate-600 whitespace-nowrap">{entry.person.codeNo || '-'}</td>
-										<td class="px-4 py-3">
-											<div class="flex flex-wrap gap-1">
-												{#each getCategoryPath(entry.person.categoryId) as cat, i (cat.id)}
-													<Badge
-														variant="outline"
-														class={cn(
-															'h-5 px-1.5 text-[9px] font-black tracking-wider uppercase whitespace-nowrap',
-															getCategoryLevelClass(i)
+										{#if isEmployeeFilter}
+											<td class="px-4 py-3">
+												<input
+													type="text"
+													value={getIdentityNo(entry)}
+													onchange={(e) =>
+														updateEntryField(
+															entry.id,
+															'identityNo',
+															(e.target as HTMLInputElement).value
 														)}
-													>
-														{i18n.t(cat.slug as any) || cat.name}
-													</Badge>
-												{/each}
-											</div>
-										</td>
+													class="w-full max-w-[100px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold focus:border-primary-500 focus:outline-none"
+												/>
+											</td>
+										{/if}
+											<td class="px-4 py-3">
+												<div class="flex flex-wrap gap-1">
+													{#each getCategoryPath(entry.person.categoryId) as cat, i (cat.id)}
+														<Badge
+															variant="outline"
+															class={cn(
+																'h-5 px-1.5 text-[9px] font-black tracking-wider uppercase whitespace-nowrap',
+																getCategoryLevelClass(i)
+															)}
+														>
+															{i18n.t(cat.slug as any) || cat.name}
+														</Badge>
+													{/each}
+												</div>
+											</td>
 										<td class="px-4 py-3">
-											<div class="flex w-fit rounded-lg border border-slate-200 bg-slate-100 p-0.5">
+											<div
+												class="flex w-fit rounded-lg border border-slate-200 bg-slate-100 p-0.5"
+											>
 												<button
 													class={cn(
 														'rounded-md px-2 py-0.5 text-[9px] font-black uppercase transition-all',
@@ -1140,7 +1363,10 @@
 											<td class="px-4 py-3">
 												<div class="flex items-center gap-1.5">
 													{#if exitWarning}
-														<span title="Exit after {warnExitAfter} BD time" class="text-amber-500">
+														<span
+															title="Exit after {warnExitAfter} BD time"
+															class="text-amber-500"
+														>
 															<AlertTriangle size={14} />
 														</span>
 													{/if}

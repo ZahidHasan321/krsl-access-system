@@ -281,6 +281,7 @@ export const auditEntries = pgTable(
 		purpose: text('purpose'),
 		location: text('location'), // 'ship' or 'yard'
 		isTrained: boolean('is_trained').notNull().default(false),
+		identityNo: text('identity_no'), // editable for print
 		date: text('date').notNull(), // 'YYYY-MM-DD'
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).default(sql`now()`)
 	},

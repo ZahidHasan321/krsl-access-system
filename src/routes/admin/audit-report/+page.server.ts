@@ -34,6 +34,21 @@ function getTodayDate(): string {
 	return bd.toISOString().slice(0, 10);
 }
 
+function getDescendantIds(categoryId: string): string[] {
+	const ids: string[] = [categoryId];
+	const queue = [categoryId];
+	while (queue.length > 0) {
+		const parentId = queue.shift()!;
+		for (const cat of CATEGORIES) {
+			if (cat.parentId === parentId) {
+				ids.push(cat.id);
+				queue.push(cat.id);
+			}
+		}
+	}
+	return ids;
+}
+
 export const load: PageServerLoad = async (event) => {
 	// Permission check inherited from /admin/+layout.server.ts (users.manage)
 
@@ -63,6 +78,7 @@ export const load: PageServerLoad = async (event) => {
 			purpose: auditEntries.purpose,
 			location: auditEntries.location,
 			isTrained: auditEntries.isTrained,
+			identityNo: auditEntries.identityNo,
 			date: auditEntries.date,
 			person: {
 				id: people.id,
@@ -184,12 +200,12 @@ export const actions: Actions = {
 				.where(and(eq(auditEntries.personId, personId), eq(auditEntries.date, date)));
 		}
 
-		// Fetch people details for isTrained status
+		// Fetch people details for isTrained status and default identityNo
 		const peopleList = await db
-			.select({ id: people.id, isTrained: people.isTrained })
+			.select({ id: people.id, isTrained: people.isTrained, codeNo: people.codeNo })
 			.from(people)
 			.where(inArray(people.id, personIds));
-		const trainingMap = Object.fromEntries(peopleList.map((p) => [p.id, p.isTrained]));
+		const peopleMap = Object.fromEntries(peopleList.map((p) => [p.id, p]));
 
 		// Generate entries
 		const newEntries = [];
@@ -205,6 +221,7 @@ export const actions: Actions = {
 			}
 
 			const exitTime = randomizeTime(exitStart, exitEnd);
+			const person = peopleMap[personId];
 
 			const entry = {
 				id: crypto.randomUUID(),
@@ -213,7 +230,8 @@ export const actions: Actions = {
 				exitTime,
 				purpose: null as string | null,
 				location: entryLocation,
-				isTrained: trainingMap[personId] ?? false,
+				isTrained: person?.isTrained ?? false,
+				identityNo: person?.codeNo ?? null,
 				date
 			};
 			newEntries.push(entry);
@@ -246,6 +264,8 @@ export const actions: Actions = {
 			}
 		} else if (field === 'isTrained') {
 			updateData[field] = value === 'true';
+		} else if (field === 'identityNo') {
+			updateData[field] = value;
 		} else {
 			updateData[field] = value;
 		}

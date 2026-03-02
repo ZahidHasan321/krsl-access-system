@@ -16,7 +16,9 @@
 		HardHat,
 		UserPlus,
 		ChevronDown,
-		ChevronUp
+		ChevronUp,
+		ChevronLeft,
+		ChevronRight
 	} from 'lucide-svelte';
 	import logo from '$lib/assets/kr_logo.svg';
 	import { format, parseISO } from 'date-fns';
@@ -106,6 +108,22 @@
 
 	function changeMonth(e: Event) {
 		selectedMonth = (e.target as HTMLInputElement).value;
+		applyFilters();
+	}
+
+	function goToPrevMonth() {
+		if (!selectedMonth) return;
+		const [year, month] = selectedMonth.split('-').map(Number);
+		const d = new Date(year, month - 2);
+		selectedMonth = format(d, 'yyyy-MM');
+		applyFilters();
+	}
+
+	function goToNextMonth() {
+		if (!selectedMonth) return;
+		const [year, month] = selectedMonth.split('-').map(Number);
+		const d = new Date(year, month);
+		selectedMonth = format(d, 'yyyy-MM');
 		applyFilters();
 	}
 
@@ -274,18 +292,36 @@
 			</div>
 
 			<div class="flex flex-wrap items-center gap-3">
-				<div
-					class="flex items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white p-2 shadow-sm"
-				>
-					<span class="pl-2 text-[10px] font-black tracking-widest text-slate-400 uppercase"
-						>Report Month</span
+				<div class="flex items-center gap-2">
+					<button
+						class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-500 transition-colors hover:bg-slate-50 focus:border-primary-500 focus:outline-none"
+						onclick={goToPrevMonth}
+						aria-label="Previous Month"
 					>
-					<input
-						type="month"
-						value={selectedMonth}
-						onchange={changeMonth}
-						class="h-10 cursor-pointer rounded-xl border-2 border-slate-100 bg-slate-50 px-4 text-sm font-black transition-colors hover:bg-white focus:border-primary-500 focus:outline-none"
-					/>
+						<ChevronLeft size={18} />
+					</button>
+
+					<div
+						class="flex items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white p-2 shadow-sm"
+					>
+						<span class="pl-2 text-[10px] font-black tracking-widest text-slate-400 uppercase"
+							>Report Month</span
+						>
+						<input
+							type="month"
+							value={selectedMonth}
+							onchange={changeMonth}
+							class="h-10 cursor-pointer rounded-xl border-2 border-slate-100 bg-slate-50 px-4 text-sm font-black transition-colors hover:bg-white focus:border-primary-500 focus:outline-none"
+						/>
+					</div>
+
+					<button
+						class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-500 transition-colors hover:bg-slate-50 focus:border-primary-500 focus:outline-none"
+						onclick={goToNextMonth}
+						aria-label="Next Month"
+					>
+						<ChevronRight size={18} />
+					</button>
 				</div>
 			</div>
 		</div>
@@ -360,10 +396,13 @@
 					<div class="p-5">
 						<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
 							{#each showAllDesignations ? sortedDesignations : sortedDesignations.slice(0, 12) as [desig, count]}
-								<div class="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-3 transition-colors hover:border-slate-200 hover:bg-slate-50">
+								<button 
+									class="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-left transition-colors hover:border-slate-200 hover:bg-slate-50 focus:border-primary-300 focus:outline-none focus:ring-4 focus:ring-primary-500/10"
+									onclick={() => searchQuery = desig}
+								>
 									<span class="truncate pr-2 text-[11px] font-bold text-slate-600 uppercase tracking-wide" title={desig}>{desig}</span>
 									<span class="shrink-0 rounded-lg bg-white px-2 py-1 text-xs font-black text-slate-900 shadow-sm ring-1 ring-slate-200/50">{count}</span>
-								</div>
+								</button>
 							{/each}
 						</div>
 						
@@ -489,7 +528,8 @@
 								{#each groupedEmployees.flatMap((g) => g.employees) as emp, index}
 									{@const displayCategory = emp.categoryId === 'frontliner' ? 'Frontliner' : emp.categoryId === 'management' ? 'Management' : 'Employee'}
 									<tr
-										class="border-b border-slate-50 transition-colors hover:bg-slate-50"
+										class="cursor-pointer border-b border-slate-50 transition-colors hover:bg-slate-50"
+										onclick={() => goto(`/people/${emp.id}`)}
 									>
 										<td class="px-4 py-3 font-bold text-slate-500">{index + 1}</td>
 										<td class="px-4 py-3">

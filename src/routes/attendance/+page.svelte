@@ -94,6 +94,25 @@
 	let checkOutFormElement = $state<HTMLFormElement | null>(null);
 	let debounceTimer: any;
 	let isPrintConfirmOpen = $state(false);
+	let isPrintMode = $derived(page.url.searchParams.has('print'));
+
+	$effect(() => {
+		if (isPrintMode) {
+			isPreparingPrint = true;
+			const timer = setTimeout(() => {
+				window.print();
+				isPreparingPrint = false;
+				// If this was a new tab, we don't need to go back, user will close it
+				// But we'll remove the param just in case
+				if (window.opener === null) {
+					const url = new URL(page.url);
+					url.searchParams.delete('print');
+					goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
+				}
+			}, 1500);
+			return () => clearTimeout(timer);
+		}
+	});
 
 	// Infinite scroll state
 	let logs = $state<any[]>([]);
@@ -167,21 +186,6 @@
 		checkOutFormElement = form;
 		confirmCheckOutOpen = true;
 	}
-
-	$effect(() => {
-		if (page.url.searchParams.has('print')) {
-			isPreparingPrint = true;
-			const timer = setTimeout(() => {
-				window.print();
-				isPreparingPrint = false;
-				// Remove 'print' param without refreshing to stay on page
-				const url = new URL(page.url);
-				url.searchParams.delete('print');
-				goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
-			}, 1500);
-			return () => clearTimeout(timer);
-		}
-	});
 
 	function applyFilters() {
 		const url = new URL(page.url);
@@ -296,7 +300,7 @@
 		url.searchParams.set('limit', '5000');
 		url.searchParams.set('page', '1');
 		url.searchParams.set('print', '1');
-		goto(url.toString(), { keepFocus: true, noScroll: true });
+		window.open(url.toString(), '_blank');
 	}
 
 	function formatDuration(seconds: number) {
@@ -315,10 +319,10 @@
 </svelte:head>
 
 <!-- Print-only section -->
-<div class="print-only hidden">
+<div class={cn('print-only', !isPrintMode && 'hidden')}>
 	<div
 		class="print-header"
-		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 3px solid #1c55a4; margin-bottom: 2rem;"
+		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 2px solid #000; margin-bottom: 2rem;"
 	>
 		<div style="display: flex; align-items: center; gap: 20px;">
 			<img src={logo} alt="Logo" style="height: 70px; width: auto;" />
@@ -341,46 +345,46 @@
 		</div>
 	</div>
 
-	<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.25rem 2rem; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+	<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.25rem 2rem; background: #fff; border: 1px solid #cbd5e1; border-radius: 0;">
 		<div style="display: flex; flex-direction: column; gap: 2px;">
 			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Current Status</span>
-			<span style="font-size: 15px; font-weight: 900; color: #059669;">ON PREMISES</span>
+			<span style="font-size: 15px; font-weight: 900; color: #000;">ON PREMISES</span>
 		</div>
 		
 		<div style="display: flex; flex-direction: column; gap: 2px; align-items: center; border-left: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; padding: 0 3rem;">
-			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Total Personnel</span>
+			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Personnel Count</span>
 			<span style="font-size: 15px; font-weight: 900; color: #1c55a4;">{data.pagination.totalCount} Individuals</span>
 		</div>
 
 		<div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
-			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Report Category</span>
-			<span style="font-size: 15px; font-weight: 900; color: #0f172a;">Real-time Registry</span>
+			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Report Type</span>
+			<span style="font-size: 15px; font-weight: 900; color: #0f172a;">Live Premises Audit</span>
 		</div>
 	</div>
 
 	<table style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: inherit;">
 		<thead>
-			<tr style="background: #f1f5f9;">
+			<tr style="background: #f0f0f0;">
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">#</th>
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Name</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Identity No.</th>
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Category</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Company</th>
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Entry Time</th>
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Inside For</th>
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Location</th>
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Training</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Duration</th>
 			</tr>
 		</thead>
 		<tbody>
 			{#each logs as log, index (log.id)}
-				<tr style={index % 2 === 0 ? '' : 'background: #f8fafc;'}>
+				<tr style={index % 2 === 0 ? '' : 'background: #fff;'}>
 					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #64748b;">{index + 1}</td>
 					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: #0f172a;">{log.person.name}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.person.codeNo || '-'}</td>
 					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.category.name}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.person.company || '-'}</td>
 					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{format(log.entryTime, 'hh:mm a')}</td>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 700; color: #059669;">{formatDuration(log.durationSeconds)}</td>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; text-transform: uppercase; font-weight: 800; color: #0f172a;">{log.location || '-'}</td>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: {log.person.isTrained ? '#059669' : '#e11d48'};">
-						{log.person.isTrained ? 'TRAINED' : 'PENDING'}
+					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 700; color: #000;">
+						{formatDuration(Math.floor((new Date().getTime() - log.entryTime.getTime()) / 1000))}
 					</td>
 				</tr>
 			{/each}
@@ -405,6 +409,7 @@
 {/if}
 
 <!-- Screen view -->
+{#if !isPrintMode}
 <div class="no-print pb-20">
 	<!-- Sticky Top Bar for Filters -->
 	<div class="sticky-filter-bar px-4 md:px-0">
@@ -495,7 +500,7 @@
 						<Button
 							variant="outline"
 							class="h-10 shrink-0 gap-2 rounded-xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 lg:h-12 lg:rounded-2xl lg:px-6"
-							onclick={() => window.print()}
+							onclick={confirmPrint}
 						>
 							<Printer size={18} />
 							<span class="hidden sm:inline">Print Log</span>
@@ -650,7 +655,7 @@
 	<div class="content-container flex flex-col gap-8 px-4 md:px-0 lg:flex-row">
 		<!-- Sidebar - Desktop Only -->
 		<aside
-			class="custom-scrollbar hidden max-h-[calc(100vh-10rem)] w-full shrink-0 self-start space-y-6 overflow-y-auto pr-2 pb-10 lg:sticky lg:top-36 lg:block lg:w-64"
+			class="custom-scrollbar hidden max-h-[calc(100vh-12rem)] w-full shrink-0 self-start space-y-6 overflow-y-auto pr-2 pb-20 lg:sticky lg:top-36 lg:block lg:w-64"
 		>
 			<!-- Category Filter -->
 			<div class="space-y-3">
@@ -964,16 +969,48 @@
 													</div>
 												</div>
 
-												<!-- Location -->
-												{#if log.location}
-													<div class="space-y-0.5">
-														<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('location')}</p>
-														<div class="flex items-center gap-1.5 text-sm font-black text-slate-900 uppercase">
-															<MapPin size={16} class={cn(log.location === 'ship' ? 'text-blue-500' : 'text-amber-500')} />
-															<span>{log.location}</span>
-														</div>
+												<!-- Location Toggle -->
+												<div class="space-y-1">
+													<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+														{i18n.t('location')}
+													</p>
+													<div class="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+														<form method="POST" action="?/updatePurpose" use:enhance>
+															<input type="hidden" name="logId" value={log.id} />
+															<input type="hidden" name="purpose" value={log.purpose || ''} />
+															<input type="hidden" name="location" value="ship" />
+															<button
+																type="submit"
+																class={cn(
+																	'flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-black transition-all',
+																	log.location === 'ship'
+																		? 'bg-blue-600 text-white shadow-sm'
+																		: 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+																)}
+															>
+																<Ship size={12} />
+																SHIP
+															</button>
+														</form>
+														<form method="POST" action="?/updatePurpose" use:enhance>
+															<input type="hidden" name="logId" value={log.id} />
+															<input type="hidden" name="purpose" value={log.purpose || ''} />
+															<input type="hidden" name="location" value="yard" />
+															<button
+																type="submit"
+																class={cn(
+																	'flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-black transition-all',
+																	log.location === 'yard'
+																		? 'bg-amber-600 text-white shadow-sm'
+																		: 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+																)}
+															>
+																<Warehouse size={12} />
+																YARD
+															</button>
+														</form>
 													</div>
-												{/if}
+												</div>
 
 												<!-- Entry Time -->
 												<div class="space-y-0.5">
@@ -1061,6 +1098,7 @@
 		</div>
 	{/if}
 </div>
+{/if}
 
 <CheckInDialog bind:open={isCheckInOpen} />
 <RegisterDialog bind:open={isRegisterOpen} />

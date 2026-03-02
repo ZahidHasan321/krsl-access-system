@@ -64,8 +64,7 @@ export const load: PageServerLoad = async (event) => {
 		entriesWhere.push(
 			or(
 				like(people.name, `%${query}%`),
-				like(people.codeNo, `%${query}%`),
-				like(people.company, `%${query}%`)
+				like(auditEntries.identityNo, `%${query}%`)
 			)
 		);
 	}

@@ -181,7 +181,7 @@ export const actions: Actions = {
 		const updates: Record<string, any> = {
 			name,
 			codeNo: (data.get('codeNo') as string) || null,
-			cardNo,
+			cardNo: (data.get('cardNo') as string) || null,
 			company: (data.get('company') as string) || null,
 			contactNo: (data.get('contactNo') as string) || null,
 			designation,
@@ -194,7 +194,7 @@ export const actions: Actions = {
 		}
 
 		try {
-			await ensureDesignation(designation);
+			updates.designation = await ensureDesignation(designation);
 			const photoResult = await savePhoto(photo);
 			if (photoResult) {
 				// Get old photo URL to delete it

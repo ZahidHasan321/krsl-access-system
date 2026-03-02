@@ -216,7 +216,7 @@ export const actions: Actions = {
 		const cardNo = (data.get('cardNo') as string) || null;
 		const company = (data.get('company') as string) || null;
 		const contactNo = (data.get('contactNo') as string) || null;
-		const designation = (data.get('designation') as string) || null;
+		const rawDesignation = (data.get('designation') as string) || null;
 		const isTrained = data.get('isTrained') === 'true';
 		const notes = (data.get('notes') as string) || null;
 		const photo = data.get('photo') as File | null;
@@ -231,8 +231,8 @@ export const actions: Actions = {
 			const photoResult = await savePhoto(photo);
 			const id = crypto.randomUUID();
 
-			// Save designation to master list
-			await ensureDesignation(designation);
+			// Save designation to master list and get unified casing
+			const designation = await ensureDesignation(rawDesignation);
 
 			// Auto-generate biometricId atomically
 			const nextBiometricId = await db.transaction(async (tx) => {
@@ -330,7 +330,7 @@ export const actions: Actions = {
 		const name = data.get('name') as string;
 		const categoryId = data.get('categoryId') as string;
 
-		const designation = (data.get('designation') as string) || null;
+		const rawDesignation = (data.get('designation') as string) || null;
 		const isTrained = data.get('isTrained') === 'true';
 		const notes = (data.get('notes') as string) || null;
 		const photo = data.get('photo') as File | null;
@@ -344,7 +344,7 @@ export const actions: Actions = {
 			cardNo,
 			company: (data.get('company') as string) || null,
 			contactNo: (data.get('contactNo') as string) || null,
-			designation,
+			designation: rawDesignation,
 			isTrained,
 			notes
 		};
@@ -354,7 +354,7 @@ export const actions: Actions = {
 		}
 
 		try {
-			await ensureDesignation(designation);
+			updates.designation = await ensureDesignation(rawDesignation);
 			const photoResult = await savePhoto(photo);
 			if (photoResult) {
 				// Get old photo URL to delete it

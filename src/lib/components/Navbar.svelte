@@ -15,7 +15,8 @@
 		LogOut,
 		Settings2,
 		Monitor,
-		ClipboardList
+		ClipboardList,
+		CalendarDays
 	} from 'lucide-svelte';
 	import { page } from '$app/state';
 	import { clsx } from 'clsx';
@@ -109,7 +110,8 @@
 				{ href: '/admin/roles', label: 'roleManagement', icon: Settings2 },
 				{ href: '/admin/activity', label: 'activityHistory', icon: History },
 				{ href: '/devices', label: 'devices', icon: Monitor },
-				{ href: '/admin/audit-report', label: 'auditReport', icon: ClipboardList }
+				{ href: '/admin/audit-report', label: 'auditReport', icon: ClipboardList },
+				{ href: '/admin/monthly-report', label: 'monthlyReport', icon: CalendarDays }
 			]
 		}
 	];

@@ -73,7 +73,7 @@
 		<!-- Official Header -->
 		<div
 			class="print-header"
-			style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1rem; border-bottom: 3px solid #1c55a4; margin-bottom: 1rem;"
+			style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1rem; border-bottom: 2px solid #000; margin-bottom: 1rem;"
 		>
 			<div style="display: flex; align-items: center; gap: 20px;">
 				<img src="/kr_logo.svg" alt="Logo" style="height: 70px; width: auto;" />
@@ -97,10 +97,10 @@
 		</div>
 
 		<!-- Quick Overview Bar -->
-		<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding: 1rem 2rem; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+		<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding: 1rem 2rem; background: #fff; border: 1px solid #cbd5e1; border-radius: 0;">
 			<div style="display: flex; flex-direction: column; gap: 2px;">
 				<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Personnel Inside</span>
-				<span style="font-size: 15px; font-weight: 900; color: #059669;">{data.currentlyInside.totalPeople} INDIVIDUALS</span>
+				<span style="font-size: 15px; font-weight: 900; color: #000;">{data.currentlyInside.totalPeople} INDIVIDUALS</span>
 			</div>
 			
 			<div style="display: flex; flex-direction: column; gap: 2px; align-items: center; border-left: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; padding: 0 3rem;">
@@ -116,7 +116,7 @@
 
 		<!-- Section 1: Summary of Personnel -->
 		<div style="margin-bottom: 20px;">
-			<h3 style="font-size: 12px; background: #f8fafc; color: #1c55a4; padding: 6px 10px; border-left: 4px solid #1c55a4; margin-bottom: 10px; font-weight: 900; letter-spacing: 0.5px;">I. PERSONNEL STATUS SUMMARY</h3>
+			<h3 style="font-size: 12px; background: #fff; color: #1c55a4; padding: 6px 10px; border-left: 4px solid #1c55a4; margin-bottom: 10px; font-weight: 900; letter-spacing: 0.5px;">I. PERSONNEL STATUS SUMMARY</h3>
 			<table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
 				<thead>
 					<tr style="border-bottom: 2px solid #1c55a4;">
@@ -127,13 +127,13 @@
 				</thead>
 				<tbody>
 					{#each data.currentlyInside.categoryTree as cat}
-						<tr style="border-bottom: 1px solid #f1f5f9; background: #fcfcfc;">
+						<tr style="border-bottom: 1px solid #e2e8f0; background: #fff;">
 							<td style="padding: 8px; font-size: 11px; font-weight: bold; color: #334155;">{cat.name}</td>
 							<td style="padding: 8px; font-size: 11px; text-align: center; color: #475569;">{cat.registeredCount}</td>
-							<td style="padding: 8px; font-size: 11px; text-align: center; font-weight: bold; color: #059669;">{cat.count}</td>
+							<td style="padding: 8px; font-size: 11px; text-align: center; font-weight: bold; color: #000;">{cat.count}</td>
 						</tr>
 						{#each cat.children as sub}
-							<tr style="border-bottom: 1px solid #f8fafc; color: #64748b;">
+							<tr style="border-bottom: 1px solid #e2e8f0; color: #64748b;">
 								<td style="padding: 6px 8px 6px 30px; font-size: 10px;">{sub.name}</td>
 								<td style="padding: 6px 8px; font-size: 10px; text-align: center;">{sub.registeredCount}</td>
 								<td style="padding: 6px 8px; font-size: 10px; text-align: center;">{sub.count}</td>
@@ -147,18 +147,18 @@
 		<!-- Section 2: Logistics & Locations -->
 		<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
 			<div>
-				<h3 style="font-size: 12px; background: #f8fafc; color: #1c55a4; padding: 6px 10px; border-left: 4px solid #1c55a4; margin-bottom: 10px; font-weight: 900; letter-spacing: 0.5px;">II. LOGISTICS STATUS</h3>
+				<h3 style="font-size: 12px; background: #fff; color: #1c55a4; padding: 6px 10px; border-left: 4px solid #1c55a4; margin-bottom: 10px; font-weight: 900; letter-spacing: 0.5px;">II. LOGISTICS STATUS</h3>
 				<table style="width: 100%; border-collapse: collapse;">
 					<tbody>
-						<tr style="border-bottom: 1px solid #f1f5f9;">
+						<tr style="border-bottom: 1px solid #e2e8f0;">
 							<td style="padding: 8px; font-size: 10px; color: #475569;">Transport Vehicles Inside</td>
 							<td style="padding: 8px; font-size: 11px; text-align: right; font-weight: 900; color: #1c55a4;">{data.currentlyInside.vehicleStats.transport}</td>
 						</tr>
-						<tr style="border-bottom: 1px solid #f1f5f9;">
+						<tr style="border-bottom: 1px solid #e2e8f0;">
 							<td style="padding: 8px; font-size: 10px; color: #475569;">Regular Vehicles Inside</td>
 							<td style="padding: 8px; font-size: 11px; text-align: right; font-weight: 900; color: #1c55a4;">{data.currentlyInside.vehicleStats.regular}</td>
 						</tr>
-						<tr style="background: #f8fafc;">
+						<tr style="background: #fff;">
 							<td style="padding: 8px; font-size: 10px; font-weight: bold; color: #0f172a;">Total Vehicles On-Premises</td>
 							<td style="padding: 8px; font-size: 11px; text-align: right; font-weight: 900; color: #b45309; border-top: 1px solid #b45309;">{data.currentlyInside.totalVehicles}</td>
 						</tr>
@@ -166,18 +166,18 @@
 				</table>
 			</div>
 			<div>
-				<h3 style="font-size: 12px; background: #f8fafc; color: #1c55a4; padding: 6px 10px; border-left: 4px solid #1c55a4; margin-bottom: 10px; font-weight: 900; letter-spacing: 0.5px;">III. LOCATION DISTRIBUTION</h3>
+				<h3 style="font-size: 12px; background: #fff; color: #1c55a4; padding: 6px 10px; border-left: 4px solid #1c55a4; margin-bottom: 10px; font-weight: 900; letter-spacing: 0.5px;">III. LOCATION DISTRIBUTION</h3>
 				<table style="width: 100%; border-collapse: collapse;">
 					<tbody>
-						<tr style="border-bottom: 1px solid #f1f5f9;">
+						<tr style="border-bottom: 1px solid #e2e8f0;">
 							<td style="padding: 8px; font-size: 10px; color: #475569;">Yard Operations</td>
-							<td style="padding: 8px; font-size: 11px; text-align: right; font-weight: 900; color: #059669;">{data.locationStats.yard}</td>
+							<td style="padding: 8px; font-size: 11px; text-align: right; font-weight: 900; color: #000;">{data.locationStats.yard}</td>
 						</tr>
-						<tr style="border-bottom: 1px solid #f1f5f9;">
+						<tr style="border-bottom: 1px solid #e2e8f0;">
 							<td style="padding: 8px; font-size: 10px; color: #475569;">Ship Boarding</td>
 							<td style="padding: 8px; font-size: 11px; text-align: right; font-weight: 900; color: #0369a1;">{data.locationStats.ship}</td>
 						</tr>
-						<tr style="background: #f8fafc;">
+						<tr style="background: #fff;">
 							<td style="padding: 8px; font-size: 10px; font-weight: bold; color: #0f172a;">Total Verified Personnel</td>
 							<td style="padding: 8px; font-size: 11px; text-align: right; font-weight: 900; color: #1c55a4; border-top: 1px solid #1c55a4;">{data.locationStats.yard + data.locationStats.ship}</td>
 						</tr>

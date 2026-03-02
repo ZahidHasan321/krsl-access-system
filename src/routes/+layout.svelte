@@ -16,6 +16,7 @@
 	let { children } = $props();
 
 	let isLoginPage = $derived(page.url.pathname === '/login');
+	let isPrintMode = $derived(page.url.searchParams.has('print'));
 	let eventSource: EventSource | null = null;
 	let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 	let isNavigating = false;
@@ -129,21 +130,23 @@
 <svelte:window bind:scrollY />
 
 <div class="relative flex min-h-screen flex-col overflow-x-clip bg-background">
-	{#if !isLoginPage}
+	{#if !isLoginPage && !isPrintMode}
 		<Navbar />
 	{/if}
 
-	<main class={isLoginPage ? 'w-full flex-1' : 'container w-full flex-1 py-8'}>
+	<main class={isLoginPage || isPrintMode ? 'w-full flex-1' : 'container w-full flex-1 py-8'}>
 		<ErrorBoundary>
 			{@render children()}
 		</ErrorBoundary>
 	</main>
 
-	<SecurityCheckDialog bind:this={securityDialog} />
+	{#if !isPrintMode}
+		<SecurityCheckDialog bind:this={securityDialog} />
+	{/if}
 	<Toaster position="top-right" richColors />
 
 	<!-- Scroll to Top Button -->
-	{#if showScrollTop}
+	{#if showScrollTop && !isPrintMode}
 		<button
 			onclick={scrollToTop}
 			transition:fade={{ duration: 200 }}

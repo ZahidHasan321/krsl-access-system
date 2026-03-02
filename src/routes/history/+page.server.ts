@@ -103,7 +103,8 @@ export const load: PageServerLoad = async (event) => {
 					isTrained: people.isTrained
 				},
 				category: {
-					name: personCategories.name
+					name: personCategories.name,
+					slug: personCategories.slug
 				}
 			})
 			.from(attendanceLogs)
@@ -126,7 +127,7 @@ export const load: PageServerLoad = async (event) => {
 			return {
 				...row,
 				durationSeconds,
-				rootCategory: root ? { name: root.name } : row.category
+				rootCategory: root ? { id: root.id, name: root.name, slug: root.slug } : row.category
 			};
 		});
 

@@ -541,7 +541,7 @@
 <div class="print-only">
 	<div
 		class="print-header"
-		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 3px solid #1c55a4; margin-bottom: 2rem;"
+		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 2px solid #000; margin-bottom: 2rem;"
 	>
 		<div style="display: flex; align-items: center; gap: 20px;">
 			<img src={logo} alt="Logo" style="height: 70px; width: auto;" />
@@ -564,7 +564,7 @@
 		</div>
 	</div>
 
-	<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.25rem 2rem; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+	<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.25rem 2rem; background: #fff; border: 1px solid #cbd5e1; border-radius: 0;">
 		<div style="display: flex; flex-direction: column; gap: 2px;">
 			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Log Date</span>
 			<span style="font-size: 15px; font-weight: 900; color: #0f172a;">{selectedDate}</span>
@@ -583,7 +583,7 @@
 
 	<table style="width: 100%; border-collapse: collapse; font-size: 10px; font-family: inherit; border: 1px solid #000;">
 		<thead>
-			<tr style="background: #eee; -webkit-print-color-adjust: exact;">
+			<tr style="background: #f0f0f0; -webkit-print-color-adjust: exact;">
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">#</th>
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">{i18n.t('name')}</th>
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">{i18n.t('category')}</th>
@@ -1089,7 +1089,7 @@
 						<Input
 							bind:value={searchQuery}
 							oninput={handleSearchInput}
-							placeholder={i18n.t('searchHistoryPlaceholder')}
+							placeholder="Search by name or identity number..."
 							class="h-11 w-full rounded-2xl border-2 border-slate-200 bg-white pr-10 pl-11 text-sm font-bold shadow-sm transition-all focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/10"
 						/>
 						{#if searchQuery}

@@ -43,6 +43,25 @@
 	let isPreparingPrint = $state(false);
 	let previousLimit = $state(20);
 	let isPrintConfirmOpen = $state(false);
+	let isPrintMode = $derived(page.url.searchParams.has('print'));
+
+	$effect(() => {
+		if (isPrintMode) {
+			isPreparingPrint = true;
+			const timer = setTimeout(() => {
+				window.print();
+				isPreparingPrint = false;
+				// If this was a new tab, we don't need to go back, user will close it
+				// But we'll remove the param just in case
+				if (window.opener === null) {
+					const url = new URL(page.url);
+					url.searchParams.delete('print');
+					goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
+				}
+			}, 1500);
+			return () => clearTimeout(timer);
+		}
+	});
 
 	function handleInput() {
 		clearTimeout(debounceTimer);
@@ -55,21 +74,6 @@
 		dateFrom = data.filters.dateFrom;
 		dateTo = data.filters.dateTo;
 		typeFilter = data.filters.typeFilter;
-	});
-
-	$effect(() => {
-		if (page.url.searchParams.has('print')) {
-			isPreparingPrint = true;
-			const timer = setTimeout(() => {
-				window.print();
-				isPreparingPrint = false;
-				const url = new URL(page.url);
-				url.searchParams.delete('print');
-				url.searchParams.set('limit', previousLimit.toString());
-				goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
-			}, 1500);
-			return () => clearTimeout(timer);
-		}
 	});
 
 	function updateFilters() {
@@ -122,7 +126,7 @@
 		url.searchParams.set('limit', '5000');
 		url.searchParams.set('page', '1');
 		url.searchParams.set('print', '1');
-		goto(url.toString(), { keepFocus: true, noScroll: true });
+		window.open(url.toString(), '_blank');
 	}
 
 	const hasActiveFilters = $derived(
@@ -137,10 +141,10 @@
 	<title>{i18n.t('vehicles')} - {i18n.t('history')} | {i18n.t('appName')}</title>
 </svelte:head>
 
-<div class="print-only hidden">
+<div class={cn('print-only', !isPrintMode && 'hidden')}>
 	<div
 		class="print-header"
-		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 3px solid #1c55a4; margin-bottom: 2rem;"
+		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 2px solid #000; margin-bottom: 2rem;"
 	>
 		<div style="display: flex; align-items: center; gap: 20px;">
 			<img src={logo} alt="Logo" style="height: 70px; width: auto;" />
@@ -163,7 +167,7 @@
 		</div>
 	</div>
 
-	<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.25rem 2rem; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+	<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.25rem 2rem; background: #fff; border: 1px solid #cbd5e1; border-radius: 0;">
 		<div style="display: flex; flex-direction: column; gap: 2px;">
 			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Scope</span>
 			<span style="font-size: 15px; font-weight: 900; color: #0f172a;">HISTORICAL DATA</span>
@@ -182,7 +186,7 @@
 
 	<table style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: inherit;">
 		<thead>
-			<tr style="background: #f1f5f9;">
+			<tr style="background: #f0f0f0;">
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">#</th>
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Vehicle No.</th>
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Type</th>
@@ -196,7 +200,7 @@
 		</thead>
 		<tbody>
 			{#each data.vehicles as vehicle, index (vehicle.id)}
-				<tr style={index % 2 === 0 ? '' : 'background: #f8fafc;'}>
+				<tr style={index % 2 === 0 ? '' : 'background: #fff;'}>
 					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #64748b;">{index + 1}</td>
 					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: #0f172a;">{vehicle.vehicleNumber}</td>
 					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">
@@ -232,6 +236,7 @@
 {/if}
 
 <!-- Screen view -->
+{#if !isPrintMode}
 <div class="no-print pb-20">
 	<!-- Sticky Top Bar for Filters -->
 	<div class="sticky-filter-bar">
@@ -301,7 +306,7 @@
 					<Button
 						variant="outline"
 						class="h-12 cursor-pointer gap-2 rounded-2xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 md:px-6"
-						onclick={() => window.print()}
+						onclick={confirmPrint}
 					>
 						<Printer size={18} />
 						<span class="hidden sm:inline">Print Report</span>
@@ -326,7 +331,7 @@
 	<div class="content-container flex flex-col items-start gap-8 md:flex-row">
 		<!-- Sidebar - Sticky -->
 		<aside
-			class="custom-scrollbar max-h-[calc(100vh-10rem)] w-full shrink-0 space-y-6 overflow-y-auto pr-2 pb-10 md:sticky md:top-36 md:w-64 print:hidden"
+			class="custom-scrollbar max-h-[calc(100vh-12rem)] w-full shrink-0 space-y-6 overflow-y-auto pr-2 pb-20 md:sticky md:top-36 md:w-64 print:hidden"
 		>
 			<!-- Vehicle Type Filter -->
 			<div class="space-y-3">
@@ -676,6 +681,7 @@
 		</main>
 	</div>
 </div>
+{/if}
 
 <ConfirmModal
 	bind:open={isPrintConfirmOpen}

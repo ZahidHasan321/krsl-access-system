@@ -156,10 +156,10 @@
 
 <nav
 	class={clsx(
-		'no-print sticky top-0 z-40 transition-all duration-300',
+		'no-print sticky top-0 z-40 border-b bg-white py-0 shadow-sm xl:transition-all xl:duration-300',
 		isScrolled
-			? 'border-b border-slate-200/60 bg-white/95 py-0 shadow-sm'
-			: 'border-b border-transparent bg-transparent py-2'
+			? 'xl:border-slate-200/60 xl:bg-white/95 xl:py-0 xl:shadow-sm'
+			: 'xl:border-transparent xl:bg-transparent xl:py-2 xl:shadow-none'
 	)}
 >
 	<div class="container">

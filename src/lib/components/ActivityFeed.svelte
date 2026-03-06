@@ -124,7 +124,9 @@
 	<Popover.Content
 		class="z-50 w-[calc(100vw-2rem)] max-w-[400px] overflow-hidden p-0 shadow-2xl sm:w-96"
 		align="end"
+		alignOffset={0}
 		sideOffset={8}
+		collisionPadding={{ right: 8, left: 8 }}
 	>
 		<div class="flex flex-col border-b bg-slate-50/50">
 			<div class="flex items-center justify-between px-4 py-3">

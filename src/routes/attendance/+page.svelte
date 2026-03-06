@@ -166,7 +166,8 @@
 					entryTime: new Date(l.entryTime),
 					exitTime: l.exitTime ? new Date(l.exitTime) : null
 				}));
-				logs = [...logs, ...newLogs];
+				const existingIds = new Set(logs.map((l) => l.id));
+			logs = [...logs, ...newLogs.filter((l: any) => !existingIds.has(l.id))];
 				pageNum = nextPage;
 			}
 		} catch (e) {

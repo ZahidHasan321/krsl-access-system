@@ -138,7 +138,7 @@
 										<p class="font-bold text-amber-800">This vehicle is currently inside</p>
 										<p class="mt-1 text-sm text-amber-700">
 											Entered at {format(new Date(vehicleLookup.currentEntry.entryTime), 'hh:mm a')} on
-											{format(new Date(vehicleLookup.currentEntry.date), 'PP')}
+											{format(new Date(vehicleLookup.currentEntry.date), 'dd-MM-yyyy')}
 										</p>
 										{#if vehicleLookup.currentEntry.driverName}
 											<p class="text-sm text-amber-700">
@@ -162,7 +162,7 @@
 												Last Visit
 											</p>
 											<p class="font-bold text-blue-900">
-												{format(new Date(vehicleLookup.lastVisit.date), 'PP')}
+												{format(new Date(vehicleLookup.lastVisit.date), 'dd-MM-yyyy')}
 											</p>
 										</div>
 										{#if vehicleLookup.lastVisit.driverName}

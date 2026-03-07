@@ -87,6 +87,8 @@
 	let showEntryTime = $state(true);
 	let showExitTime = $state(true);
 	let showJoinDate = $state(true);
+	let showDepartment = $state(true);
+	let showDesignation = $state(true);
 
 	// Warning thresholds (BD time hours)
 	let warnEntryBefore = $state('08:00');
@@ -414,6 +416,14 @@
 			};
 
 			row['Category'] = displayCategory;
+			
+			if (showDepartment) {
+				row['Department'] = entry.person.department || '-';
+			}
+			if (showDesignation) {
+				row['Designation'] = entry.person.designation || '-';
+			}
+
 			row['Location'] = (entry.location || 'yard').toUpperCase();
 			row['Training'] = entry.isTrained ? 'TRAINED' : 'PENDING';
 
@@ -589,7 +599,12 @@
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">#</th>
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">{i18n.t('name')}</th>
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">{i18n.t('category')}</th>
-				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">Dept.</th>
+				{#if showDepartment}
+					<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">Dept.</th>
+				{/if}
+				{#if showDesignation}
+					<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">Desig.</th>
+				{/if}
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">Location</th>
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">Training</th>
 				{#if showJoinDate}
@@ -619,7 +634,12 @@
 						>{entry.person.name}</td
 					>
 					<td style="border: 1px solid #000; padding: 6px; color: #000;">{displayCategory}</td>
-					<td style="border: 1px solid #000; padding: 6px; color: #000;">{entry.person.department || '-'}</td>
+					{#if showDepartment}
+						<td style="border: 1px solid #000; padding: 6px; color: #000;">{entry.person.department || '-'}</td>
+					{/if}
+					{#if showDesignation}
+						<td style="border: 1px solid #000; padding: 6px; color: #000;">{entry.person.designation || '-'}</td>
+					{/if}
 					<td
 						style="border: 1px solid #000; padding: 6px; text-transform: uppercase; font-weight: 800; color: #000;"
 						>{getLocation(entry)}</td
@@ -1119,6 +1139,26 @@
 
 					<div class="flex flex-wrap items-center gap-3">
 						<div class="flex items-center gap-1 rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-1">
+							{#if isEmployeeFilter}
+								<button
+									onclick={() => (showDepartment = !showDepartment)}
+									class={cn(
+										'rounded-xl px-3 py-1.5 text-[10px] font-black uppercase transition-all',
+										showDepartment ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-100'
+									)}
+								>
+									Dept.
+								</button>
+								<button
+									onclick={() => (showDesignation = !showDesignation)}
+									class={cn(
+										'rounded-xl px-3 py-1.5 text-[10px] font-black uppercase transition-all',
+										showDesignation ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-100'
+									)}
+								>
+									Desig.
+								</button>
+							{/if}
 							<button
 								onclick={() => (showJoinDate = !showJoinDate)}
 								class={cn(
@@ -1186,7 +1226,7 @@
 
 				{#if data.entries.length > 0}
 					<div class="overflow-x-auto rounded-2xl border-2 border-slate-100 bg-white shadow-sm">
-						<table class="w-full min-w-[1000px] text-sm">
+						<table class="w-full min-w-[1200px] text-sm">
 							<thead>
 								<tr class="border-b-2 border-slate-100 bg-slate-50">
 									<th
@@ -1202,6 +1242,18 @@
 											class="w-32 px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
 											>ID NO</th
 										>
+										{#if showDepartment}
+											<th
+												class="w-32 px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+												>Department</th
+											>
+										{/if}
+										{#if showDesignation}
+											<th
+												class="w-32 px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+												>Designation</th
+											>
+										{/if}
 									{/if}
 									<th
 										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
@@ -1272,6 +1324,16 @@
 													class="w-full max-w-[100px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold focus:border-primary-500 focus:outline-none"
 												/>
 											</td>
+											{#if showDepartment}
+												<td class="px-4 py-3">
+													<span class="text-[10px] font-black tracking-widest text-slate-500 uppercase truncate block max-w-[120px]" title={entry.person.department || '-'}>{entry.person.department || '-'}</span>
+												</td>
+											{/if}
+											{#if showDesignation}
+												<td class="px-4 py-3">
+													<span class="text-[10px] font-black tracking-widest text-slate-500 uppercase truncate block max-w-[120px]" title={entry.person.designation || '-'}>{entry.person.designation || '-'}</span>
+												</td>
+											{/if}
 										{/if}
 											<td class="px-4 py-3">
 												<div class="flex flex-wrap gap-1">

@@ -298,8 +298,8 @@
 						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">
 							{log.person.auditJoinDate ? format(log.person.auditJoinDate, 'dd-MM-yyyy') : '-'}
 						</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{format(parseISO(log.date), 'PP')}</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{format(log.entryTime, 'hh:mm a')}</td>
+						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #64748b;">{format(parseISO(log.date), 'dd-MM-yyyy')}</td>
+						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #64748b;">{format(log.entryTime, 'hh:mm a')}</td>
 						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.exitTime ? format(log.exitTime, 'hh:mm a') : 'Inside'}</td>
 						<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 700; color: #000;">{formatDuration(log.durationSeconds)}</td>
 					</tr>
@@ -459,14 +459,14 @@
 								bind:value={startDate}
 								onchange={applyFilters}
 								placeholder="Start"
-								className="w-[140px]"
+								className="w-[180px]"
 							/>
 							<div class="h-0.5 w-2 rounded-full bg-slate-200 shrink-0"></div>
 							<DatePicker
 								bind:value={endDate}
 								onchange={applyFilters}
 								placeholder="End"
-								className="w-[140px]"
+								className="w-[180px]"
 							/>
 						</div>
 
@@ -911,7 +911,7 @@
 									<div class="grid grid-cols-3 gap-2 text-xs">
 										<div>
 											<p class="font-medium text-slate-400">{i18n.t('date')}</p>
-											<p class="font-bold text-slate-600">{format(parseISO(log.date), 'PP')}</p>
+											<p class="font-bold text-slate-600">{format(parseISO(log.date), 'dd-MM-yyyy')}</p>
 										</div>
 										<div>
 											<p class="font-medium text-slate-400">{i18n.t('entryTime')}</p>
@@ -964,7 +964,7 @@
 							<Card.Root class="bg-white">
 								<Card.Content class="p-4">
 									<div class="mb-2 font-bold text-slate-900">
-										{format(parseISO(day.date), 'PP')}
+										{format(parseISO(day.date), 'dd-MM-yyyy')}
 									</div>
 									<div class="grid grid-cols-3 gap-2 text-center">
 										<div class="rounded-lg bg-primary-50 p-2">
@@ -1074,7 +1074,7 @@
 												</Badge>
 											</Table.Cell>
 											<Table.Cell class="py-4 font-medium text-slate-600"
-												>{format(parseISO(log.date), 'PP')}</Table.Cell
+												>{format(parseISO(log.date), 'dd-MM-yyyy')}</Table.Cell
 											>
 											<Table.Cell class="py-4 font-black text-slate-700"
 												>{format(log.entryTime, 'hh:mm a')}</Table.Cell
@@ -1126,7 +1126,7 @@
 									{#each data.data as day}
 										<Table.Row>
 											<Table.Cell class="py-4 font-bold text-slate-900"
-												>{format(parseISO(day.date), 'PP')}</Table.Cell
+												>{format(parseISO(day.date), 'dd-MM-yyyy')}</Table.Cell
 											>
 											<Table.Cell class="py-4 font-black text-primary-600"
 												>{day.totalEntries}</Table.Cell

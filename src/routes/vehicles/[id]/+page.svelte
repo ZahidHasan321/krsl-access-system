@@ -175,7 +175,7 @@
 							{#each data.history as log (log.id)}
 								<Table.Row>
 									<Table.Cell class="font-bold text-slate-700"
-										>{format(parseISO(log.date), 'PP')}</Table.Cell
+										>{format(parseISO(log.date), 'dd-MM-yyyy')}</Table.Cell
 									>
 									<Table.Cell class="font-black text-slate-900"
 										>{format(log.entryTime, 'hh:mm a')}</Table.Cell

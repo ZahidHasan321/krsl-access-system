@@ -209,7 +209,7 @@
 					</td>
 					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{vehicle.driverName || '-'}</td>
 					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{vehicle.vendorName || '-'}</td>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{format(parseISO(vehicle.date), 'PP')}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{format(parseISO(vehicle.date), 'dd-MM-yyyy')}</td>
 					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{format(new Date(vehicle.entryTime), 'hh:mm a')}</td>
 					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{vehicle.exitTime ? format(new Date(vehicle.exitTime), 'hh:mm a') : '-'}</td>
 					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 700; color: {vehicle.status === 'on_premises' ? '#059669' : '#64748b'};">
@@ -287,14 +287,14 @@
 						bind:value={dateFrom}
 						onchange={updateFilters}
 						placeholder="Start"
-						className="w-[140px]"
+						className="w-[180px]"
 					/>
 					<div class="h-0.5 w-2 shrink-0 rounded-full bg-slate-200"></div>
 					<DatePicker
 						bind:value={dateTo}
 						onchange={updateFilters}
 						placeholder="End"
-						className="w-[140px]"
+						className="w-[180px]"
 					/>
 				</div>
 
@@ -451,7 +451,7 @@
 									</div>
 									<div class="shrink-0 text-right">
 										<div class="text-[10px] font-black text-slate-400 uppercase">
-											{format(parseISO(vehicle.date), 'PP')}
+											{format(parseISO(vehicle.date), 'dd-MM-yyyy')}
 										</div>
 										{#if vehicle.status === 'on_premises'}
 											<Badge
@@ -547,7 +547,7 @@
 											>{vehicle.vendorName || '-'}</Table.Cell
 										>
 										<Table.Cell class="font-bold text-slate-600">
-											{format(parseISO(vehicle.date), 'PP')}
+											{format(parseISO(vehicle.date), 'dd-MM-yyyy')}
 										</Table.Cell>
 										<Table.Cell class="font-black text-slate-700">
 											{format(new Date(vehicle.entryTime), 'hh:mm a')}

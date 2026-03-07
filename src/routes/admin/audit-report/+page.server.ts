@@ -85,6 +85,7 @@ export const load: PageServerLoad = async (event) => {
 				codeNo: people.codeNo,
 				company: people.company,
 				department: people.department,
+				designation: people.designation,
 				categoryId: people.categoryId,
 				isTrained: people.isTrained,
 				auditJoinDate: people.auditJoinDate

@@ -203,7 +203,7 @@
 									</div>
 									<div class="flex min-w-0 items-center gap-1.5">
 										<Calendar size={14} class="shrink-0 opacity-50" />
-										<span class="truncate">{u.createdAt ? format(new Date(u.createdAt), 'PP') : 'N/A'}</span>
+										<span class="truncate">{u.createdAt ? format(new Date(u.createdAt), 'dd-MM-yyyy') : 'N/A'}</span>
 									</div>
 								</div>
 							</div>

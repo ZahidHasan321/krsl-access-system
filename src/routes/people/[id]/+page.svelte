@@ -713,7 +713,7 @@
 							<div class="p-4 transition-colors hover:bg-primary-50/50">
 								<div class="mb-2 flex items-center justify-between">
 									<span class="text-sm font-bold text-slate-700"
-										>{format(parseISO(log.date), 'PP')}</span
+										>{format(parseISO(log.date), 'dd-MM-yyyy')}</span
 									>
 									{#if !log.exitTime}
 										<Badge
@@ -783,7 +783,7 @@
 										<Table.Cell class="font-bold text-slate-700"
 											>{format(
 												typeof log.date === 'string' ? parseISO(log.date) : log.date,
-												'PP'
+												'dd-MM-yyyy'
 											)}</Table.Cell
 										>
 										<Table.Cell class="font-black text-slate-900"

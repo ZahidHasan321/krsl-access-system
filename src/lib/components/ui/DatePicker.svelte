@@ -5,6 +5,7 @@
 	import Calendar from './Calendar.svelte';
 	import { cn, toCalendarDate } from '$lib/utils';
 	import { i18n } from '$lib/i18n.svelte';
+	import { format, parseISO } from 'date-fns';
 
 	interface Props {
 		value?: string; // YYYY-MM-DD
@@ -37,6 +38,18 @@
 		toCalendarDate(value || new Date().toISOString().split('T')[0])
 	);
 	let placeholderDate = $state(today(getLocalTimeZone()));
+
+	// Formatted value for display
+	const displayValue = $derived.by(() => {
+		if (!value) return placeholder;
+		try {
+			const d = typeof value === 'string' ? parseISO(value) : value;
+			if (isNaN(d.getTime())) return value; // Fallback to raw if invalid
+			return format(d, 'dd-MM-yyyy');
+		} catch (e) {
+			return value;
+		}
+	});
 
 	function handleSelect(v: any) {
 		const newValue = v ? v.toString() : '';
@@ -71,8 +84,8 @@
 		>
 			<div class="flex items-center gap-2 overflow-hidden">
 				<CalendarIcon class="size-4 shrink-0 opacity-50" />
-				<span class="truncate">
-					{value ? value : placeholder}
+				<span class="truncate font-black">
+					{displayValue}
 				</span>
 			</div>
 

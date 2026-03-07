@@ -34,8 +34,10 @@
 	// Fetch when opening or query changes
 	$effect(() => {
 		if (open) {
+			// Access searchQuery here to ensure it's tracked by the effect
+			const currentQuery = searchQuery;
 			const timer = setTimeout(() => {
-				fetchItems(searchQuery);
+				fetchItems(currentQuery);
 			}, 200);
 			return () => clearTimeout(timer);
 		}

@@ -1,30 +1,55 @@
 import { db } from './index';
-import { people } from './schema';
-import { sql, eq } from 'drizzle-orm';
+import { people, departments } from './schema';
+import { sql, eq, ilike } from 'drizzle-orm';
 
 /**
- * Ensures a department exists in the people table (as a distinct value)
- * and returns it in a consistent format (Title Case).
+ * Ensures a department exists in the master table.
+ * If it doesn't exist, it's created.
+ * Returns the properly capitalized existing department if it exists.
  */
 export async function ensureDepartment(name: string | null): Promise<string | null> {
-	if (!name || !name.trim()) return null;
+	if (!name) return null;
 
-	const normalized = name.trim();
-	
-	// We don't have a separate table for departments yet to keep it simple,
-	// but we can query distinct values from the people table for the combobox.
-	return normalized;
+	const trimmedName = name.trim();
+	if (!trimmedName) return null;
+
+	try {
+		// First try exact case-insensitive match
+		const existing = await db
+			.select()
+			.from(departments)
+			.where(ilike(departments.name, trimmedName))
+			.limit(1);
+
+		if (existing.length > 0) {
+			return existing[0].name;
+		}
+
+		// Title Case fallback for new inserts
+		const titleCased = trimmedName
+			.split(' ')
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+			.join(' ');
+
+		await db.insert(departments).values({
+			name: titleCased
+		}).onConflictDoNothing();
+
+		return titleCased;
+	} catch (err) {
+		console.error('Failed to ensure department:', err);
+		return trimmedName;
+	}
 }
 
 /**
- * Gets all unique departments currently in use
+ * Gets all unique departments from the master table
  */
 export async function getUniqueDepartments(): Promise<string[]> {
 	const results = await db
-		.selectDistinct({ department: people.department })
-		.from(people)
-		.where(sql`${people.department} IS NOT NULL`)
-		.orderBy(people.department);
+		.select({ name: departments.name })
+		.from(departments)
+		.orderBy(departments.name);
 
-	return results.map(r => r.department).filter((d): d is string => !!d);
+	return results.map(r => r.name);
 }

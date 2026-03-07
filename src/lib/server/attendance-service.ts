@@ -40,6 +40,7 @@ export interface GetAttendanceLogsParams {
 	query?: string;
 	categoryId?: string;
 	location?: string;
+	department?: string;
 	sortBy?: 'recent' | 'duration';
 }
 
@@ -49,6 +50,7 @@ export async function getAttendanceLogs({
 	query = '',
 	categoryId = '',
 	location = '',
+	department = '',
 	sortBy = 'recent'
 }: GetAttendanceLogsParams) {
 	const trimmedQuery = query.trim();
@@ -62,10 +64,14 @@ export async function getAttendanceLogs({
 				sql`COALESCE(${people.name}, '') % ${trimmedQuery}`,
 				sql`COALESCE(${people.codeNo}, '') % ${trimmedQuery}`,
 				sql`COALESCE(${people.company}, '') % ${trimmedQuery}`,
+				sql`COALESCE(${people.department}, '') % ${trimmedQuery}`,
+				sql`COALESCE(${people.designation}, '') % ${trimmedQuery}`,
 				ilike(people.name, `%${trimmedQuery}%`),
 				ilike(people.codeNo, `%${trimmedQuery}%`),
 				ilike(people.company, `%${trimmedQuery}%`),
-				ilike(people.contactNo, `%${trimmedQuery}%`)
+				ilike(people.contactNo, `%${trimmedQuery}%`),
+				ilike(people.department, `%${trimmedQuery}%`),
+				ilike(people.designation, `%${trimmedQuery}%`)
 			)
 		);
 	}
@@ -77,6 +83,10 @@ export async function getAttendanceLogs({
 
 	if (location && location !== 'all') {
 		whereClauses.push(eq(attendanceLogs.location, location));
+	}
+
+	if (department) {
+		whereClauses.push(eq(people.department, department));
 	}
 
 	const where = and(...whereClauses.filter((c): c is SQL => !!c));

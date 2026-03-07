@@ -207,6 +207,13 @@ export const designations = pgTable('designations', {
 	createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).default(sql`now()`)
 });
 
+// --- Master Departments ---
+export const departments = pgTable('departments', {
+	id: serial('id').primaryKey(),
+	name: text('name').notNull().unique(),
+	createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).default(sql`now()`)
+});
+
 // --- Device Commands ---
 export const deviceCommands = pgTable(
 	'device_commands',

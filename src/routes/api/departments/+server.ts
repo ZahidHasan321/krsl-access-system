@@ -1,8 +1,26 @@
 import { json } from '@sveltejs/kit';
-import { getUniqueDepartments } from '$lib/server/db/department-utils';
 import type { RequestHandler } from './$types';
+import { db } from '$lib/server/db';
+import { departments } from '$lib/server/db/schema';
+import { asc, sql, desc } from 'drizzle-orm';
 
-export const GET: RequestHandler = async () => {
-	const departments = await getUniqueDepartments();
-	return json(departments);
+export const GET: RequestHandler = async ({ url, locals }) => {
+	if (!locals.user) {
+		return json({ error: 'Unauthorized' }, { status: 401 });
+	}
+
+	const q = url.searchParams.get('q') || '';
+
+	try {
+		const results = await db
+			.select()
+			.from(departments)
+			.where(q ? sql`${departments.name} % ${q}` : undefined)
+			.orderBy(q ? desc(sql`${departments.name} <-> ${q}`) : asc(departments.name))
+			.limit(50);
+
+		return json(results);
+	} catch (err) {
+		return json({ error: 'Database error' }, { status: 500 });
+	}
 };

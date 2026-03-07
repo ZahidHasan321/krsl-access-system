@@ -8,6 +8,7 @@ import { requirePermission } from '$lib/server/rbac';
 import { notifyChange, notifyCheckIn, notifyCheckOut } from '$lib/server/events';
 import { getAttendanceLogs } from '$lib/server/attendance-service';
 import { createNotification } from '$lib/server/push';
+import { getUniqueDepartments } from '$lib/server/db/department-utils';
 
 export const load: PageServerLoad = async (event) => {
 	requirePermission(event.locals, 'people.view');
@@ -15,18 +16,20 @@ export const load: PageServerLoad = async (event) => {
 	const query = (event.url.searchParams.get('q') || '').trim();
 	const categoryId = event.url.searchParams.get('category') || '';
 	const location = event.url.searchParams.get('location') || '';
+	const department = event.url.searchParams.get('department') || '';
 	const sortBy = (event.url.searchParams.get('sort') || 'recent') as 'recent' | 'duration';
 	const page = parseInt(event.url.searchParams.get('page') || '1');
 	// Default to 50 items for better performance with infinite scroll
 	const limit = Math.min(2000, Math.max(1, parseInt(event.url.searchParams.get('limit') || '50')));
 
-	const [result, [totalInsideRes], [yardCountRes], [shipCountRes]] = await Promise.all([
+	const [result, [totalInsideRes], [yardCountRes], [shipCountRes], departments] = await Promise.all([
 		getAttendanceLogs({
 			page,
 			limit,
 			query,
 			categoryId,
 			location,
+			department,
 			sortBy
 		}),
 		db
@@ -40,15 +43,18 @@ export const load: PageServerLoad = async (event) => {
 		db
 			.select({ value: count() })
 			.from(attendanceLogs)
-			.where(and(eq(attendanceLogs.status, 'on_premises'), eq(attendanceLogs.location, 'ship')))
+			.where(and(eq(attendanceLogs.status, 'on_premises'), eq(attendanceLogs.location, 'ship'))),
+		getUniqueDepartments()
 	]);
 
 	return {
 		logs: result.logs,
+		departments,
 		filters: {
 			query,
 			categoryId,
 			location,
+			department,
 			sortBy
 		},
 		summary: {

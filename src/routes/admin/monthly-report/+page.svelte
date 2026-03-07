@@ -13,6 +13,7 @@
 		Printer,
 		CalendarDays,
 		Briefcase,
+		Building2,
 		HardHat,
 		UserPlus,
 		ChevronDown,
@@ -30,14 +31,13 @@
 
 	let selectedMonth = $state('');
 	let searchQuery = $state('');
-	let showAllDesignations = $state(false);
 	let hideZeroHours = $state(false);
 
 	$effect(() => {
 		selectedMonth = data.month;
 	});
 
-	const groupedEmployees = $derived.by(() => {
+	const filteredEmployees = $derived.by(() => {
 		const q = searchQuery.trim().toLowerCase();
 		let emps = data.employees;
 		
@@ -50,54 +50,21 @@
 				(emp) =>
 					emp.name.toLowerCase().includes(q) ||
 					(emp.codeNo && emp.codeNo.toLowerCase().includes(q)) ||
-					(emp.designation && emp.designation.toLowerCase().includes(q))
+					(emp.designation && emp.designation.toLowerCase().includes(q)) ||
+					(emp.department && emp.department.toLowerCase().includes(q))
 			);
 		}
 
-		// Sort all employees first
-		const sorted = [...emps].sort((a, b) => {
-			// 1. Subcategory Priority (Management -> Frontliner -> Others)
-			const getSubOrder = (id: string) => {
-				if (id === 'management') return 1;
-				if (id === 'frontliner') return 2;
-				return 99;
-			};
-			const subOrderA = getSubOrder(a.categoryId);
-			const subOrderB = getSubOrder(b.categoryId);
-			if (subOrderA !== subOrderB) return subOrderA - subOrderB;
+		// Flat sort: Department -> ID No
+		return [...emps].sort((a, b) => {
+			const deptA = a.department || 'Unassigned';
+			const deptB = b.department || 'Unassigned';
+			if (deptA !== deptB) return deptA.localeCompare(deptB);
 
-			// 2. Identity Number Sorting (Numeric)
 			const idA = a.codeNo || '';
 			const idB = b.codeNo || '';
-			const numA = parseInt(idA.replace(/\D/g, ''));
-			const numB = parseInt(idB.replace(/\D/g, ''));
-
-			if (!isNaN(numA) && !isNaN(numB)) {
-				if (numA !== numB) return numA - numB;
-			}
 			return idA.localeCompare(idB, undefined, { numeric: true });
 		});
-
-		// Group them for rendering logic
-		const groups: {
-			categoryId: string;
-			categoryName: string;
-			employees: typeof sorted;
-		}[] = [];
-		for (const emp of sorted) {
-			let group = groups.find((g) => g.categoryId === emp.categoryId);
-			if (!group) {
-				const catName = emp.categoryId === 'frontliner' ? 'Frontliner' : emp.categoryId === 'management' ? 'Management' : 'Employee';
-				group = {
-					categoryId: emp.categoryId,
-					categoryName: catName,
-					employees: []
-				};
-				groups.push(group);
-			}
-			group.employees.push(emp);
-		}
-		return groups;
 	});
 
 	function applyFilters() {
@@ -132,14 +99,14 @@
 	}
 
 	function exportToExcel() {
-		const flatEmployees = groupedEmployees.flatMap((g) => g.employees);
-		const dataRows = flatEmployees.map((emp, index) => {
+		const dataRows = filteredEmployees.map((emp, index) => {
 			const displayCategory = emp.categoryId === 'frontliner' ? 'Frontliner' : emp.categoryId === 'management' ? 'Management' : 'Employee';
 			
 			return {
 				'#': index + 1,
 				'Name': emp.name,
 				'ID No': emp.codeNo || '-',
+				'Department': emp.department || 'Unassigned',
 				'Category': displayCategory,
 				'Designation': emp.designation || 'Unknown',
 				'Total Hours': emp.totalHours
@@ -155,6 +122,7 @@
 			{ wch: 5 },
 			{ wch: 30 },
 			{ wch: 15 },
+			{ wch: 20 },
 			{ wch: 15 },
 			{ wch: 20 },
 			{ wch: 15 }
@@ -225,13 +193,13 @@
 		</div>
 	</div>
 
-	{#if Object.keys(data.designationCounts).length > 0}
+	{#if Object.keys(data.departmentCounts).length > 0}
 		<div style="margin-bottom: 2rem;">
-			<h3 style="font-size: 12px; font-weight: 900; color: #0f172a; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 1px solid #000; padding-bottom: 4px;">Employees By Designation</h3>
+			<h3 style="font-size: 12px; font-weight: 900; color: #0f172a; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 1px solid #000; padding-bottom: 4px;">Employees By Department</h3>
 			<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background-color: #cbd5e1; border: 1px solid #000;">
-				{#each Object.entries(data.designationCounts).sort((a, b) => b[1] - a[1]) as [desig, count]}
+				{#each Object.entries(data.departmentCounts).sort((a, b) => b[1] - a[1]) as [dept, count]}
 					<div style="display: flex; justify-content: space-between; padding: 4px 8px; font-size: 9px; background-color: #fff;">
-						<span style="font-weight: 800; color: #475569; text-transform: uppercase;">{desig}</span>
+						<span style="font-weight: 800; color: #475569; text-transform: uppercase;">{dept}</span>
 						<span style="font-weight: 900; color: #000;">{count}</span>
 					</div>
 				{/each}
@@ -245,13 +213,14 @@
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">#</th>
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">Name</th>
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">ID No</th>
+				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">Department</th>
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">Category</th>
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">Designation</th>
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">Total Hours</th>
 			</tr>
 		</thead>
 		<tbody>
-			{#each groupedEmployees.flatMap((g) => g.employees) as emp, index}
+			{#each filteredEmployees as emp, index}
 				{@const displayCategory = emp.categoryId === 'frontliner' ? 'Frontliner' : emp.categoryId === 'management' ? 'Management' : 'Employee'}
 				<tr style="page-break-inside: avoid;">
 					<td style="border: 1px solid #000; padding: 6px; color: #000;">{index + 1}</td>
@@ -259,6 +228,7 @@
 						>{emp.name}</td
 					>
 					<td style="border: 1px solid #000; padding: 6px; color: #000;">{emp.codeNo || '-'}</td>
+					<td style="border: 1px solid #000; padding: 6px; color: #000;">{emp.department || 'Unassigned'}</td>
 					<td style="border: 1px solid #000; padding: 6px; color: #000;">{displayCategory}</td>
 					<td style="border: 1px solid #000; padding: 6px; color: #000;">{emp.designation || 'Unknown'}</td>
 					<td style="border: 1px solid #000; padding: 6px; font-weight: 800; color: #000;">
@@ -382,46 +352,29 @@
 				</Card.Root>
 			</div>
 
-			<!-- Designation Breakdown -->
-			{#if Object.keys(data.designationCounts).length > 0}
-				{@const sortedDesignations = Object.entries(data.designationCounts).sort((a, b) => b[1] - a[1])}
+			<!-- Department Breakdown -->
+			{#if Object.keys(data.departmentCounts).length > 0}
+				{@const sortedDepts = Object.entries(data.departmentCounts).sort((a, b) => b[1] - a[1])}
 				<Card.Root class="mx-4 overflow-hidden border-2 border-slate-100 bg-white shadow-sm md:mx-0">
 					<div class="flex items-center justify-between border-b-2 border-slate-100 bg-slate-50/50 px-5 py-4">
 						<h3 class="flex items-center gap-2 text-sm font-black text-slate-900">
-							<Briefcase size={16} class="text-slate-400" />
-							Employees by Designation
+							<Building2 size={16} class="text-slate-400" />
+							Employees by Department
 						</h3>
-						<Badge variant="outline" class="bg-white">{sortedDesignations.length} Roles</Badge>
+						<Badge variant="outline" class="bg-white">{sortedDepts.length} Departments</Badge>
 					</div>
 					<div class="p-5">
 						<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-							{#each showAllDesignations ? sortedDesignations : sortedDesignations.slice(0, 12) as [desig, count]}
+							{#each sortedDepts as [dept, count]}
 								<button 
 									class="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-left transition-colors hover:border-slate-200 hover:bg-slate-50 focus:border-primary-300 focus:outline-none focus:ring-4 focus:ring-primary-500/10"
-									onclick={() => searchQuery = desig}
+									onclick={() => searchQuery = dept}
 								>
-									<span class="truncate pr-2 text-[11px] font-bold text-slate-600 uppercase tracking-wide" title={desig}>{desig}</span>
+									<span class="truncate pr-2 text-[11px] font-bold text-slate-600 uppercase tracking-wide" title={dept}>{dept}</span>
 									<span class="shrink-0 rounded-lg bg-white px-2 py-1 text-xs font-black text-slate-900 shadow-sm ring-1 ring-slate-200/50">{count}</span>
 								</button>
 							{/each}
 						</div>
-						
-						{#if sortedDesignations.length > 12}
-							<div class="mt-4 flex justify-center">
-								<Button 
-									variant="outline" 
-									size="sm"
-									class="h-9 gap-1.5 rounded-xl border-2 border-slate-200 font-bold text-slate-600 transition-all hover:bg-slate-50"
-									onclick={() => showAllDesignations = !showAllDesignations}
-								>
-									{#if showAllDesignations}
-										Show Less <ChevronUp size={14} />
-									{:else}
-										Show All ({sortedDesignations.length - 12} more) <ChevronDown size={14} />
-									{/if}
-								</Button>
-							</div>
-						{/if}
 					</div>
 				</Card.Root>
 			{/if}
@@ -493,7 +446,7 @@
 					</div>
 				</div>
 
-				{#if groupedEmployees.flatMap((g) => g.employees).length > 0}
+				{#if filteredEmployees.length > 0}
 					<div class="overflow-x-auto rounded-2xl border-2 border-slate-100 bg-white shadow-sm">
 						<table class="w-full min-w-[800px] text-sm">
 							<thead>
@@ -512,6 +465,10 @@
 									>
 									<th
 										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
+										>Department</th
+									>
+									<th
+										class="px-4 py-3 text-left text-[10px] font-black tracking-widest text-slate-400 uppercase"
 										>Category</th
 									>
 									<th
@@ -525,7 +482,7 @@
 								</tr>
 							</thead>
 							<tbody>
-								{#each groupedEmployees.flatMap((g) => g.employees) as emp, index}
+								{#each filteredEmployees as emp, index}
 									{@const displayCategory = emp.categoryId === 'frontliner' ? 'Frontliner' : emp.categoryId === 'management' ? 'Management' : 'Employee'}
 									<tr
 										class="cursor-pointer border-b border-slate-50 transition-colors hover:bg-slate-50"
@@ -536,6 +493,9 @@
 											<span class="font-black text-slate-900">{emp.name}</span>
 										</td>
 										<td class="px-4 py-3 font-bold text-slate-600">{emp.codeNo || '-'}</td>
+										<td class="px-4 py-3">
+											<span class="text-[10px] font-black tracking-widest text-slate-500 uppercase">{emp.department || 'Unassigned'}</span>
+										</td>
 										<td class="px-4 py-3">
 											<Badge
 												variant="outline"

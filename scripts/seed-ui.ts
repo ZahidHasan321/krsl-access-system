@@ -72,6 +72,18 @@ const COMPANIES = [
 	'Industrial Hub'
 ];
 
+const DEPARTMENTS = [
+	'Production',
+	'Quality Control',
+	'Logistics',
+	'Maintenance',
+	'Human Resources',
+	'Security',
+	'Accounts',
+	'Information Technology',
+	'Admin'
+];
+
 async function run() {
 	console.log('Starting UI Seed...');
 	const now = new Date();
@@ -178,18 +190,20 @@ async function run() {
 	const people = [];
 	for (let i = 0; i < 20; i++) {
 		const cat = CATEGORIES[i % CATEGORIES.length];
+		const isEmployee = cat.id.includes('employee') || cat.parentId === 'employee';
 		const p = {
 			id: crypto.randomUUID(),
 			name: NAMES[i],
 			categoryId: cat.id,
 			codeNo: `C-${1000 + i}`,
-			company: cat.id.includes('employee') ? 'KR Steel Ltd' : COMPANIES[i % COMPANIES.length],
-			designation: cat.id.toUpperCase()
+			company: isEmployee ? 'KR Steel Ltd' : COMPANIES[i % COMPANIES.length],
+			designation: cat.id.toUpperCase(),
+			department: isEmployee ? DEPARTMENTS[i % DEPARTMENTS.length] : null
 		};
 		await client.query(
-			`INSERT INTO people (id, name, category_id, code_no, company, designation, is_trained, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-			[p.id, p.name, p.categoryId, p.codeNo, p.company, p.designation, true, subDays(now, 30)]
+			`INSERT INTO people (id, name, category_id, code_no, company, designation, department, is_trained, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			[p.id, p.name, p.categoryId, p.codeNo, p.company, p.designation, p.department, true, subDays(now, 30)]
 		);
 		people.push(p);
 	}

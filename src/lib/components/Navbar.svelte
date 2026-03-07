@@ -16,7 +16,8 @@
 		Settings2,
 		Monitor,
 		ClipboardList,
-		CalendarDays
+		CalendarDays,
+		Database
 	} from 'lucide-svelte';
 	import { page } from '$app/state';
 	import { clsx } from 'clsx';
@@ -114,7 +115,8 @@
 				{ href: '/admin/activity', label: 'activityHistory', icon: History },
 				{ href: '/devices', label: 'devices', icon: Monitor },
 				{ href: '/admin/audit-report', label: 'auditReport', icon: ClipboardList },
-				{ href: '/admin/monthly-report', label: 'monthlyReport', icon: CalendarDays }
+				{ href: '/admin/monthly-report', label: 'monthlyReport', icon: CalendarDays },
+				{ href: '/admin/master-data', label: 'masterData', icon: Database }
 			]
 		}
 	];

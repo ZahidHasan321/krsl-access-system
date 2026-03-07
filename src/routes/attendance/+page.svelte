@@ -68,6 +68,7 @@
 	let searchInputEl = $state<HTMLInputElement | null>(null);
 	let selectedCategoryId = $state('');
 	let selectedLocation = $state('');
+	let selectedDepartment = $state('');
 	let selectedSort = $state<'recent' | 'duration'>('recent');
 
 	// Initialize state from data prop once
@@ -76,6 +77,7 @@
 			if (!searchQuery && data.filters.query) searchQuery = data.filters.query;
 			if (!selectedCategoryId && data.filters.categoryId) selectedCategoryId = data.filters.categoryId;
 			if (!selectedLocation && data.filters.location) selectedLocation = data.filters.location;
+			if (!selectedDepartment && data.filters.department) selectedDepartment = data.filters.department;
 			if (data.filters.sortBy) selectedSort = data.filters.sortBy;
 		});
 	});
@@ -199,6 +201,9 @@
 		if (selectedLocation) url.searchParams.set('location', selectedLocation);
 		else url.searchParams.delete('location');
 
+		if (selectedDepartment) url.searchParams.set('department', selectedDepartment);
+		else url.searchParams.delete('department');
+
 		if (selectedSort !== 'recent') url.searchParams.set('sort', selectedSort);
 		else url.searchParams.delete('sort');
 
@@ -273,17 +278,23 @@
 		applyFilters();
 	}
 
+	function changeDepartment(dept: string) {
+		selectedDepartment = dept;
+		applyFilters();
+	}
+
 	function changeSort(s: 'recent' | 'duration') {
 		selectedSort = s;
 		applyFilters();
 	}
 
-	const hasActiveFilters = $derived(!!searchQuery || !!selectedCategoryId || !!selectedLocation || selectedSort !== 'recent');
+	const hasActiveFilters = $derived(!!searchQuery || !!selectedCategoryId || !!selectedLocation || !!selectedDepartment || selectedSort !== 'recent');
 
 	function clearFilters() {
 		searchQuery = '';
 		selectedCategoryId = '';
 		selectedLocation = '';
+		selectedDepartment = '';
 		selectedSort = 'recent';
 		applyFilters();
 	}
@@ -570,6 +581,40 @@
 						</div>
 					{/if}
 
+					{#if activeRootCategoryId() === 'employee' && data.departments.length > 0}
+						<div class="mt-4 space-y-2">
+							<p class="ml-1 text-[9px] font-black tracking-widest text-slate-400 uppercase">
+								Department
+							</p>
+							<div class="custom-scrollbar flex gap-2 overflow-x-auto pb-2">
+								<button
+									class={cn(
+										'shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+										!selectedDepartment
+											? 'border-primary-600 bg-primary-50 text-primary-700'
+											: 'border-slate-100 bg-white text-slate-500'
+									)}
+									onclick={() => changeDepartment('')}
+								>
+									All Departments
+								</button>
+								{#each data.departments as dept}
+									<button
+										class={cn(
+											'shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+											selectedDepartment === dept
+												? 'border-primary-600 bg-primary-50 text-primary-700'
+												: 'border-slate-100 bg-white text-slate-500'
+										)}
+										onclick={() => changeDepartment(dept)}
+									>
+										{dept}
+									</button>
+								{/each}
+							</div>
+						</div>
+					{/if}
+
 					<!-- Mobile Location Toggle -->
 					<div class="mt-4 flex gap-4">
 						<div class="flex-1 space-y-2">
@@ -750,6 +795,53 @@
 						{/each}
 					</div>
 				</div>
+
+				<!-- Department Filter (Only for Employees) -->
+				{#if activeRootCategoryId() === 'employee'}
+					<div class="space-y-3" transition:slide>
+						<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+							Department
+						</p>
+						<div class="flex flex-col gap-1">
+							<Button
+								variant={!selectedDepartment ? 'secondary' : 'ghost'}
+								class={cn(
+									'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+									!selectedDepartment
+										? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+										: 'text-slate-600'
+								)}
+								onclick={() => changeDepartment('')}
+							>
+								<div class="flex items-center gap-2">
+									{#if !selectedDepartment}
+										<div class="size-1.5 rounded-full bg-white"></div>
+									{/if}
+									All Departments
+								</div>
+							</Button>
+							{#each data.departments as dept}
+								<Button
+									variant={selectedDepartment === dept ? 'secondary' : 'ghost'}
+									class={cn(
+										'h-10 cursor-pointer justify-start px-3 font-bold transition-all text-left',
+										selectedDepartment === dept
+											? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+											: 'text-slate-600'
+									)}
+									onclick={() => changeDepartment(dept)}
+								>
+									<div class="flex items-center gap-2 truncate">
+										{#if selectedDepartment === dept}
+											<div class="size-1.5 rounded-full bg-white"></div>
+										{/if}
+										<span class="truncate">{dept}</span>
+									</div>
+								</Button>
+							{/each}
+						</div>
+					</div>
+				{/if}
 
 				<!-- Location Filter -->
 				<div class="space-y-3">

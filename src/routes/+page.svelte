@@ -299,17 +299,54 @@
 					</div>
 				</Card.Header>
 				<Card.Content class="p-4 pt-0">
-					<div class="space-y-1">
-						{#each data.currentlyInside.categoryTree as root (root.id)}
-							<DashboardCategoryRow category={root} level={0} />
-						{:else}
-							<div
-								class="py-10 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50"
-							>
-								<UserCheck size={40} class="mx-auto text-slate-300 mb-2" />
-								<p class="text-slate-500 font-bold text-sm">No one currently on premises</p>
+					<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+						<!-- Category Distribution -->
+						<div class="space-y-3">
+							<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Category Breakdown</p>
+							<div class="space-y-1">
+								{#each data.currentlyInside.categoryTree as root (root.id)}
+									<DashboardCategoryRow category={root} level={0} />
+								{:else}
+									<div
+										class="py-10 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50"
+									>
+										<UserCheck size={40} class="mx-auto text-slate-300 mb-2" />
+										<p class="text-slate-500 font-bold text-sm">No one currently on premises</p>
+									</div>
+								{/each}
 							</div>
-						{/each}
+						</div>
+
+						<!-- Department Distribution -->
+						<div class="space-y-3">
+							<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Department Breakdown</p>
+							<div class="space-y-2">
+								{#each data.currentlyInside.insideByDepartment.filter(d => d.department) as dept}
+									{@const percentage = Math.round((dept.count / data.currentlyInside.totalPeople) * 100)}
+									<button 
+										class="group space-y-1.5 rounded-xl border border-slate-100 bg-white/50 p-2.5 transition-all hover:border-primary-200 hover:bg-white hover:shadow-sm w-full text-left"
+										onclick={() => goto(`/attendance?category=employee&department=${encodeURIComponent(dept.department || '')}`)}
+									>
+										<div class="flex items-center justify-between text-xs">
+											<span class="font-black text-slate-700 uppercase tracking-tight">{dept.department}</span>
+											<div class="flex items-center gap-2">
+												<span class="font-black text-primary-700">{dept.count}</span>
+											</div>
+										</div>
+										<div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+											<div 
+												class="h-full rounded-full bg-gradient-to-r from-primary-500 to-primary-600 transition-all duration-1000" 
+												style="width: {percentage}%"
+											></div>
+										</div>
+									</button>
+								{:else}
+									<div class="flex h-32 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-100 bg-slate-50/30 text-center">
+										<p class="text-[10px] font-bold text-slate-400 uppercase">No department data available</p>
+									</div>
+								{/each}
+							</div>
+						</div>
 					</div>
 
 					<!-- Vehicles Section -->

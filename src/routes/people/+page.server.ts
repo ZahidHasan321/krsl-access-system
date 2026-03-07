@@ -248,8 +248,9 @@ export const actions: Actions = {
 			const photoResult = await savePhoto(photo);
 			const id = crypto.randomUUID();
 
-			// Save designation to master list and get unified casing
+			// Save to master list and get unified casing
 			const designation = await ensureDesignation(rawDesignation);
+			const unifiedDepartment = await ensureDepartment(department);
 
 			// Auto-generate biometricId atomically
 			const nextBiometricId = await db.transaction(async (tx) => {
@@ -268,7 +269,7 @@ export const actions: Actions = {
 					company,
 					contactNo,
 					designation,
-					department,
+					department: unifiedDepartment,
 					joinDate,
 					auditJoinDate,
 					isTrained,

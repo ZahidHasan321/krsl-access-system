@@ -54,10 +54,10 @@ export const load: PageServerLoad = async ({ url }) => {
 	const startD = new Date(`${month}-01T00:00:00`);
 	const endD = new Date(`${endDateStr}T00:00:00`);
 
-	let frontlineCount = 0;
 	let managementCount = 0;
+	let frontlineCount = 0;
 	let newRegistrationCount = 0;
-	const designationCounts: Record<string, number> = {};
+	const departmentCounts: Record<string, number> = {};
 
 	const employeeStats = employees.map((emp) => {
 		if (emp.categoryId === 'frontliner') frontlineCount++;
@@ -68,8 +68,8 @@ export const load: PageServerLoad = async ({ url }) => {
 			newRegistrationCount++;
 		}
 
-		const desig = emp.designation || 'Unknown';
-		designationCounts[desig] = (designationCounts[desig] || 0) + 1;
+		const dept = emp.department || 'Unassigned';
+		departmentCounts[dept] = (departmentCounts[dept] || 0) + 1;
 
 		const empLogs = logs.filter((l) => l.personId === emp.id);
 		let totalMs = 0;
@@ -86,6 +86,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			codeNo: emp.codeNo,
 			categoryId: emp.categoryId,
 			designation: emp.designation,
+			department: emp.department || 'Unassigned',
 			totalHours: parseFloat(totalHours)
 		};
 	});
@@ -99,6 +100,6 @@ export const load: PageServerLoad = async ({ url }) => {
 		frontlineCount,
 		managementCount,
 		newRegistrationCount,
-		designationCounts
+		departmentCounts
 	};
 };

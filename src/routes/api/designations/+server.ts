@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
 import { designations } from '$lib/server/db/schema';
-import { asc, like } from 'drizzle-orm';
+import { asc, sql, desc } from 'drizzle-orm';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	if (!locals.user) {
@@ -15,9 +15,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const results = await db
 			.select()
 			.from(designations)
-			.where(like(designations.name, `%${q}%`))
-			.orderBy(asc(designations.name))
-			.limit(20);
+			.where(q ? sql`${designations.name} % ${q}` : undefined)
+			.orderBy(q ? desc(sql`${designations.name} <-> ${q}`) : asc(designations.name))
+			.limit(50);
 
 		return json(results);
 	} catch (err) {

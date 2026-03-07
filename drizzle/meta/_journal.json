@@ -50,6 +50,13 @@
       "when": 1772430095870,
       "tag": "0006_daffy_blacklash",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1772865868579,
+      "tag": "0007_jazzy_meltdown",
+      "breakpoints": true
     }
   ]
 }

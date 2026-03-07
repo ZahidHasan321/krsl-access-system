@@ -40,6 +40,7 @@
 	} from '$lib/constants/categories';
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
 	import Pagination from '$lib/components/ui/Pagination.svelte';
+	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -452,26 +453,21 @@
 					<div class="flex items-center gap-2">
 						<!-- Desktop Only Date Range -->
 						<div
-							class="mr-2 hidden h-12 items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white px-4 shadow-sm lg:flex"
+							class="mr-2 hidden h-12 items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white px-2 shadow-sm lg:flex"
 						>
-							<Calendar size={18} class="text-slate-400" />
-							<div class="flex items-center gap-3">
-								<input
-									type="date"
-									bind:value={startDate}
-									onchange={applyFilters}
-									max={new Date().toISOString().split('T')[0]}
-									class="cursor-pointer bg-transparent text-sm font-black text-slate-700 focus:outline-none"
-								/>
-								<div class="h-0.5 w-4 rounded-full bg-slate-200"></div>
-								<input
-									type="date"
-									bind:value={endDate}
-									onchange={applyFilters}
-									max={new Date().toISOString().split('T')[0]}
-									class="cursor-pointer bg-transparent text-sm font-black text-slate-700 focus:outline-none"
-								/>
-							</div>
+							<DatePicker
+								bind:value={startDate}
+								onchange={applyFilters}
+								placeholder="Start"
+								className="w-[140px]"
+							/>
+							<div class="h-0.5 w-2 rounded-full bg-slate-200 shrink-0"></div>
+							<DatePicker
+								bind:value={endDate}
+								onchange={applyFilters}
+								placeholder="End"
+								className="w-[140px]"
+							/>
 						</div>
 
 						<Button
@@ -509,21 +505,19 @@
 							class="flex h-12 items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white px-4 shadow-sm"
 						>
 							<Calendar size={18} class="text-slate-400" />
-							<div class="flex flex-1 items-center justify-between gap-3">
-								<input
-									type="date"
+							<div class="flex flex-1 items-center justify-between gap-2">
+								<DatePicker
 									bind:value={startDate}
 									onchange={applyFilters}
-									max={new Date().toISOString().split('T')[0]}
-									class="flex-1 cursor-pointer bg-transparent text-sm font-black text-slate-700 focus:outline-none"
+									placeholder="Start"
+									className="flex-1"
 								/>
 								<div class="h-0.5 w-4 shrink-0 rounded-full bg-slate-200"></div>
-								<input
-									type="date"
+								<DatePicker
 									bind:value={endDate}
 									onchange={applyFilters}
-									max={new Date().toISOString().split('T')[0]}
-									class="flex-1 cursor-pointer bg-transparent text-sm font-black text-slate-700 focus:outline-none"
+									placeholder="End"
+									className="flex-1"
 								/>
 							</div>
 						</div>
@@ -649,7 +643,7 @@
 					>
 						<div class="flex items-center gap-2">
 							{#if !selectedCategoryId}
-								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+								<div class="size-1.5 rounded-full bg-white"></div>
 							{/if}
 							{i18n.t('all')}
 						</div>
@@ -747,7 +741,7 @@
 						>
 							<div class="flex items-center gap-2">
 								{#if !selectedDepartment}
-									<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+									<div class="size-1.5 rounded-full bg-white"></div>
 								{/if}
 								All Departments
 							</div>
@@ -769,7 +763,7 @@
 							>
 								<div class="flex items-center gap-2 truncate">
 									{#if selectedDepartment === dept}
-										<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+										<div class="size-1.5 rounded-full bg-white"></div>
 									{/if}
 									<span class="truncate">{dept}</span>
 								</div>
@@ -795,7 +789,7 @@
 					>
 						<div class="flex items-center gap-2">
 							{#if data.view === 'detailed'}
-								<div class="size-1.5 animate-pulse rounded-full bg-primary-600"></div>
+								<div class="size-1.5 rounded-full bg-primary-600"></div>
 							{/if}
 							<Clock size={16} />
 							{i18n.t('detailed')}
@@ -813,7 +807,7 @@
 					>
 						<div class="flex items-center gap-2">
 							{#if data.view === 'daily'}
-								<div class="size-1.5 animate-pulse rounded-full bg-primary-600"></div>
+								<div class="size-1.5 rounded-full bg-primary-600"></div>
 							{/if}
 							<Calendar size={16} />
 							{i18n.t('dailySummary')}
@@ -831,7 +825,7 @@
 					>
 						<div class="flex items-center gap-2">
 							{#if data.view === 'monthly'}
-								<div class="size-1.5 animate-pulse rounded-full bg-primary-600"></div>
+								<div class="size-1.5 rounded-full bg-primary-600"></div>
 							{/if}
 							<TrendingUp size={16} />
 							{i18n.t('monthlySummary')}

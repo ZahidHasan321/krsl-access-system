@@ -105,7 +105,7 @@
 	}
 
 	let editName = $state('');
-	let editCategoryId = $state('');
+	let editCategoryId = $state<string>('');
 	let editCodeNo = $state('');
 	let editCardNo = $state('');
 	let editCompany = $state('');
@@ -152,7 +152,7 @@
 	const isEmployee = $derived(data.rootCategorySlug === 'employee');
 
 	const selectedCategoryName = $derived(
-		data.allCategoriesFlat.find((c) => c.id === editCategoryId)?.name ?? 'Select Category'
+		editCategoryId ? (data.allCategoriesFlat.find((c) => c.id === editCategoryId)?.name ?? 'Select Category') : 'Select Category'
 	);
 
 	function handlePhotoChange(e: Event) {
@@ -269,7 +269,7 @@
 						</div>
 						{#if data.isInside}
 							<div
-								class="absolute -right-1 -bottom-1 flex h-8 w-8 items-center justify-center rounded-full border-4 border-white bg-emerald-500 lg:animate-pulse"
+								class="absolute -right-1 -bottom-1 flex h-8 w-8 items-center justify-center rounded-full border-4 border-white bg-emerald-500"
 							>
 								<CheckCircle2 size={16} class="text-white" />
 							</div>
@@ -282,7 +282,7 @@
 					{#if data.isInside}
 						<div class="flex items-center justify-center">
 							<Badge
-								class="border-emerald-200 bg-emerald-100 px-4 py-1.5 text-xs font-black tracking-wider text-emerald-700 uppercase lg:animate-pulse"
+								class="border-emerald-200 bg-emerald-100 px-4 py-1.5 text-xs font-black tracking-wider text-emerald-700 uppercase"
 							>
 								Currently Inside
 							</Badge>
@@ -654,7 +654,7 @@
 					<div class="flex w-full items-center gap-3 md:w-auto">
 						{#if data.isInside}
 							<Badge
-								class="flex h-11 animate-pulse items-center gap-2 border-2 border-emerald-200 bg-emerald-100 px-4 font-bold tracking-wider text-emerald-700 uppercase"
+								class="flex h-11 items-center gap-2 border-2 border-emerald-200 bg-emerald-100 px-4 font-bold tracking-wider text-emerald-700 uppercase"
 							>
 								<div class="h-2 w-2 rounded-full bg-emerald-500"></div>
 								Currently Inside
@@ -717,7 +717,7 @@
 									>
 									{#if !log.exitTime}
 										<Badge
-											class="animate-pulse border-emerald-200 bg-emerald-100 text-xs font-bold text-emerald-700 uppercase"
+											class="border-emerald-200 bg-emerald-100 text-xs font-bold text-emerald-700 uppercase"
 											>Inside</Badge
 										>
 									{:else}
@@ -825,7 +825,7 @@
 										<Table.Cell>
 											{#if !log.exitTime}
 												<Badge
-													class="animate-pulse border-emerald-200 bg-emerald-100 text-xs font-bold text-emerald-700 uppercase"
+													class="border-emerald-200 bg-emerald-100 text-xs font-bold text-emerald-700 uppercase"
 													>Inside</Badge
 												>
 											{:else}

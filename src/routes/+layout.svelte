@@ -4,7 +4,7 @@
 	import { fade } from 'svelte/transition';
 	import { Toaster, toast } from 'svelte-sonner';
 	import { initI18n } from '$lib/i18n.svelte';
-	import { appToast } from '$lib/utils';
+	import { appToast, cn } from '$lib/utils';
 	import Navbar from '$lib/components/Navbar.svelte';
 	import { page } from '$app/state';
 	import { goto, invalidateAll } from '$app/navigation';

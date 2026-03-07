@@ -411,7 +411,7 @@
 
 <!-- Screen view -->
 {#if !isPrintMode}
-<div class="no-print pb-20">
+<div class="no-print">
 	<!-- Sticky Top Bar for Filters -->
 	<div class="sticky-filter-bar px-4 md:px-0">
 		<div class="content-container">
@@ -652,234 +652,227 @@
 		</div>
 	</div>
 
-	<!-- Main Content Area -->
 	<div class="content-container flex flex-col gap-8 px-4 md:px-0 lg:flex-row">
 		<!-- Sidebar - Desktop Only -->
 		<aside
-			class="custom-scrollbar hidden max-h-[calc(100vh-12rem)] w-full shrink-0 self-start space-y-6 overflow-y-auto pr-2 pb-20 lg:sticky lg:top-36 lg:block lg:w-64"
+			class="hidden w-64 shrink-0 flex-col gap-6 lg:sticky lg:top-36 lg:flex lg:h-[calc(100vh-12rem)]"
 		>
-			<!-- Category Filter -->
-			<div class="space-y-3">
-				<p class="text-[10px] font-black tracking-widest text-slate-400 capitalize">
-					{i18n.t('category')}
-				</p>
-				<div class="flex flex-col gap-1">
-					<Button
-						variant={selectedCategoryId === '' ? 'secondary' : 'ghost'}
-						class={cn(
-							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-							selectedCategoryId === ''
-								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
-								: 'text-slate-600'
-						)}
-						onclick={() => changeCategory('')}
-					>
-						<div class="flex items-center gap-2">
-							{#if selectedCategoryId === ''}
-								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
-							{/if}
-							{i18n.t('all')}
-						</div>
-					</Button>
-					{#each ROOT_CATEGORIES as cat (cat.id)}
-						{@const isActive = activeRootCategoryId() === cat.id}
-						<div>
-							<Button
-								variant={isActive ? 'secondary' : 'ghost'}
-								class={cn(
-									'h-10 w-full cursor-pointer justify-start px-3 font-bold transition-all',
-									isActive
-										? 'rounded-l-none border-l-4 border-primary-600 bg-primary-50 text-primary-700'
-										: 'text-slate-600'
-								)}
-								onclick={() => changeCategory(cat.id)}
-							>
-								<div class="flex items-center gap-2">
-									{#if isActive}
-										<div class="size-1.5 rounded-full bg-primary-600"></div>
-									{/if}
-									{i18n.t(cat.slug as any) || cat.name}
-								</div>
-							</Button>
-
-							{#if isActive && availableSubCategories().length > 0}
-								<div
-									class="mt-1 mb-2 ml-3 border-l-2 border-primary-100 pl-3"
-									transition:slide={{ duration: 250, easing: sineInOut }}
+			<div class="custom-scrollbar flex-1 space-y-6 overflow-y-auto pr-2">
+				<!-- Category Filter -->
+				<div class="space-y-3">
+					<p class="text-[10px] font-black tracking-widest text-slate-400 capitalize">
+						{i18n.t('category')}
+					</p>
+					<div class="flex flex-col gap-1">
+						<Button
+							variant={selectedCategoryId === '' ? 'secondary' : 'ghost'}
+							class={cn(
+								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+								selectedCategoryId === ''
+									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+									: 'text-slate-600'
+							)}
+							onclick={() => changeCategory('')}
+						>
+							<div class="flex items-center gap-2">
+								{#if selectedCategoryId === ''}
+									<div class="size-1.5 rounded-full bg-white"></div>
+								{/if}
+								{i18n.t('all')}
+							</div>
+						</Button>
+						{#each ROOT_CATEGORIES as cat (cat.id)}
+							{@const isActive = activeRootCategoryId() === cat.id}
+							<div>
+								<Button
+									variant={isActive ? 'secondary' : 'ghost'}
+									class={cn(
+										'h-10 w-full cursor-pointer justify-start px-3 font-bold transition-all',
+										isActive
+											? 'rounded-l-none border-l-4 border-primary-600 bg-primary-50 text-primary-700'
+											: 'text-slate-600'
+									)}
+									onclick={() => changeCategory(cat.id)}
 								>
-									<div class="flex flex-wrap gap-1.5 py-1">
-										<button
-											class={clsx(
-												'touch-feedback cursor-pointer rounded-full border px-3 py-2 text-xs font-bold transition-all active:scale-95',
-												activeRootCategoryId() === selectedCategoryId
-													? 'border-primary-600 bg-primary-600 text-white shadow-sm'
-													: 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'
-											)}
-											onclick={() => changeCategory(activeRootCategoryId())}
-										>
-											All {activeRootCategoryName()}
-										</button>
-
-										{#if activeParentCategory() && activeParentCategory()?.id !== activeRootCategoryId()}
-											<button
-												class="touch-feedback cursor-pointer rounded-full bg-slate-100 px-3 py-2 text-[11px] font-bold text-slate-600 transition-all active:scale-95 hover:bg-slate-200"
-												onclick={() => changeCategory(activeParentCategory()?.id || '')}
-											>
-												<span class="mr-1 opacity-50">↑</span>
-												{activeParentCategory()?.name}
-											</button>
+									<div class="flex items-center gap-2">
+										{#if isActive}
+											<div class="size-1.5 rounded-full bg-primary-600"></div>
 										{/if}
+										{i18n.t(cat.slug as any) || cat.name}
+									</div>
+								</Button>
 
-										{#each availableSubCategories() as subCat (subCat.id)}
+								{#if isActive && availableSubCategories().length > 0}
+									<div
+										class="mt-1 mb-2 ml-3 border-l-2 border-primary-100 pl-3"
+										transition:slide={{ duration: 250, easing: sineInOut }}
+									>
+										<div class="flex flex-wrap gap-1.5 py-1">
 											<button
 												class={clsx(
 													'touch-feedback cursor-pointer rounded-full border px-3 py-2 text-xs font-bold transition-all active:scale-95',
-													selectedCategoryId === subCat.id
+													activeRootCategoryId() === selectedCategoryId
 														? 'border-primary-600 bg-primary-600 text-white shadow-sm'
 														: 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'
 												)}
-												onclick={() => changeCategory(subCat.id)}
+												onclick={() => changeCategory(activeRootCategoryId())}
 											>
-												{i18n.t(subCat.slug as any) || subCat.name}
+												All {activeRootCategoryName()}
 											</button>
-										{/each}
+
+											{#if activeParentCategory() && activeParentCategory()?.id !== activeRootCategoryId()}
+												<button
+													class="touch-feedback cursor-pointer rounded-full bg-slate-100 px-3 py-2 text-[11px] font-bold text-slate-600 transition-all active:scale-95 hover:bg-slate-200"
+													onclick={() => changeCategory(activeParentCategory()?.id || '')}
+												>
+													<span class="mr-1 opacity-50">↑</span>
+													{activeParentCategory()?.name}
+												</button>
+											{/if}
+
+											{#each availableSubCategories() as subCat (subCat.id)}
+												<button
+													class={clsx(
+														'touch-feedback cursor-pointer rounded-full border px-3 py-2 text-xs font-bold transition-all active:scale-95',
+														selectedCategoryId === subCat.id
+															? 'border-primary-600 bg-primary-600 text-white shadow-sm'
+															: 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'
+													)}
+													onclick={() => changeCategory(subCat.id)}
+												>
+													{i18n.t(subCat.slug as any) || subCat.name}
+												</button>
+											{/each}
+										</div>
 									</div>
-								</div>
-							{/if}
-						</div>
-					{/each}
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</div>
+
+				<!-- Location Filter -->
+				<div class="space-y-3">
+					<p class="text-[10px] font-black tracking-widest text-slate-400 capitalize">
+						{i18n.t('location')}
+					</p>
+					<div class="flex flex-col gap-1">
+						<Button
+							variant={selectedLocation === '' ? 'secondary' : 'ghost'}
+							class={cn(
+								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+								selectedLocation === ''
+									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+									: 'text-slate-600'
+							)}
+							onclick={() => changeLocation('')}
+						>
+							<div class="flex items-center gap-2">
+								{#if selectedLocation === ''}
+									<div class="size-1.5 rounded-full bg-white"></div>
+								{/if}
+								{i18n.t('all')}
+							</div>
+						</Button>
+						<Button
+							variant={selectedLocation === 'yard' ? 'secondary' : 'ghost'}
+							class={cn(
+								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+								selectedLocation === 'yard'
+									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+									: 'text-slate-600'
+							)}
+							onclick={() => changeLocation('yard')}
+						>
+							<div class="flex items-center gap-2">
+								{#if selectedLocation === 'yard'}
+									<div class="size-1.5 rounded-full bg-white"></div>
+								{/if}
+								Yard
+							</div>
+						</Button>
+						<Button
+							variant={selectedLocation === 'ship' ? 'secondary' : 'ghost'}
+							class={cn(
+								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+								selectedLocation === 'ship'
+									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+									: 'text-slate-600'
+							)}
+							onclick={() => changeLocation('ship')}
+						>
+							<div class="flex items-center gap-2">
+								{#if selectedLocation === 'ship'}
+									<div class="size-1.5 rounded-full bg-white"></div>
+								{/if}
+								Ship
+							</div>
+						</Button>
+					</div>
+				</div>
+
+				<!-- Sort Filter -->
+				<div class="space-y-3">
+					<p class="text-[10px] font-black tracking-widest text-slate-400 capitalize">
+						Sort By
+					</p>
+					<div class="flex flex-col gap-1">
+						<Button
+							variant={selectedSort === 'recent' ? 'secondary' : 'ghost'}
+							class={cn(
+								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+								selectedSort === 'recent'
+									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+									: 'text-slate-600'
+							)}
+							onclick={() => changeSort('recent')}
+						>
+							<div class="flex items-center gap-2">
+								{#if selectedSort === 'recent'}
+									<div class="size-1.5 rounded-full bg-white"></div>
+								{/if}
+								Recent (Default)
+							</div>
+						</Button>
+						<Button
+							variant={selectedSort === 'duration' ? 'secondary' : 'ghost'}
+							class={cn(
+								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+								selectedSort === 'duration'
+									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+									: 'text-slate-600'
+							)}
+							onclick={() => changeSort('duration')}
+						>
+							<div class="flex items-center gap-2">
+								{#if selectedSort === 'duration'}
+									<div class="size-1.5 rounded-full bg-white"></div>
+								{/if}
+								Inside For (Longest)
+							</div>
+						</Button>
+					</div>
 				</div>
 			</div>
 
-			<!-- Location Filter -->
-			<div class="space-y-3">
-				<p class="text-[10px] font-black tracking-widest text-slate-400 capitalize">
-					{i18n.t('location')}
+			<!-- Sidebar Branding - Fixed at bottom of sticky aside -->
+			<div
+				class="mt-auto flex flex-col items-center gap-1 pt-4 pb-2 border-t border-slate-50/50 opacity-40 transition-opacity hover:opacity-100"
+			>
+				<p class="text-[8px] font-black tracking-[0.3em] text-slate-400 uppercase">
+					System Developed By
 				</p>
-				<div class="flex flex-col gap-1">
-					<Button
-						variant={selectedLocation === '' ? 'secondary' : 'ghost'}
-						class={cn(
-							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-							selectedLocation === ''
-								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
-								: 'text-slate-600'
-						)}
-						onclick={() => changeLocation('')}
+				<a
+					href="https://autolinium.com"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="group flex items-center gap-1.5"
+				>
+					<span
+						class="text-[10px] font-black tracking-widest text-slate-500 transition-colors group-hover:text-primary-600 uppercase"
+						>Autolinium</span
 					>
-						<div class="flex items-center gap-2">
-							{#if selectedLocation === ''}
-								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
-							{/if}
-							{i18n.t('all')}
-						</div>
-					</Button>
-					<Button
-						variant={selectedLocation === 'yard' ? 'secondary' : 'ghost'}
-						class={cn(
-							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-							selectedLocation === 'yard'
-								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
-								: 'text-slate-600'
-						)}
-						onclick={() => changeLocation('yard')}
-					>
-						<div class="flex items-center gap-2">
-							{#if selectedLocation === 'yard'}
-								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
-							{/if}
-							Yard
-						</div>
-					</Button>
-					<Button
-						variant={selectedLocation === 'ship' ? 'secondary' : 'ghost'}
-						class={cn(
-							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-							selectedLocation === 'ship'
-								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
-								: 'text-slate-600'
-						)}
-						onclick={() => changeLocation('ship')}
-					>
-						<div class="flex items-center gap-2">
-							{#if selectedLocation === 'ship'}
-								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
-							{/if}
-							Ship
-						</div>
-					</Button>
-				</div>
-			</div>
-
-			<!-- Sort Filter -->
-			<div class="space-y-3">
-				<p class="text-[10px] font-black tracking-widest text-slate-400 capitalize">
-					Sort By
-				</p>
-				<div class="flex flex-col gap-1">
-					<Button
-						variant={selectedSort === 'recent' ? 'secondary' : 'ghost'}
-						class={cn(
-							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-							selectedSort === 'recent'
-								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
-								: 'text-slate-600'
-						)}
-						onclick={() => changeSort('recent')}
-					>
-						<div class="flex items-center gap-2">
-							{#if selectedSort === 'recent'}
-								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
-							{/if}
-							Recent (Default)
-						</div>
-					</Button>
-					<Button
-						variant={selectedSort === 'duration' ? 'secondary' : 'ghost'}
-						class={cn(
-							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-							selectedSort === 'duration'
-								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
-								: 'text-slate-600'
-						)}
-						onclick={() => changeSort('duration')}
-					>
-						<div class="flex items-center gap-2">
-							{#if selectedSort === 'duration'}
-								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
-							{/if}
-							Inside For (Longest)
-						</div>
-					</Button>
-				</div>
-			</div>
-
-			<!-- Summary Stats -->
-			<div class="space-y-3 rounded-xl border-2 border-slate-100 bg-white p-4 shadow-sm">
-				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Summary</p>
-				<div class="grid grid-cols-2 gap-3">
-					<div class="col-span-2 flex items-center justify-between rounded-lg bg-primary-50 p-2.5">
-						<div class="flex items-center gap-2">
-							<Users size={16} class="text-primary-600" />
-							<span class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('total')}</span>
-						</div>
-						<span class="text-xl font-black text-primary-700">{data.summary.total}</span>
-					</div>
-					<div class="rounded-lg border border-blue-100 bg-white p-2">
-						<div class="mb-1 flex items-center gap-1.5 text-blue-600">
-							<Ship size={12} />
-							<span class="text-[9px] font-bold uppercase">Ship</span>
-						</div>
-						<p class="text-lg font-black text-slate-900">{data.summary.ship}</p>
-					</div>
-					<div class="rounded-lg border border-amber-100 bg-white p-2">
-						<div class="mb-1 flex items-center gap-1.5 text-amber-600">
-							<Warehouse size={12} />
-							<span class="text-[9px] font-bold uppercase">Yard</span>
-						</div>
-						<p class="text-lg font-black text-slate-900">{data.summary.yard}</p>
-					</div>
-				</div>
+				</a>
 			</div>
 		</aside>
 
@@ -955,6 +948,15 @@
 																{i18n.t(cat.slug as any) || cat.name}
 															</Badge>
 														{/each}
+
+														{#if log.person.department}
+															<Badge
+																variant="outline"
+																class="h-5 border-slate-200 bg-slate-50 px-1.5 text-[10px] font-black tracking-wider text-slate-600 uppercase"
+															>
+																{log.person.department}
+															</Badge>
+														{/if}
 													</div>
 												</div>
 											</div>

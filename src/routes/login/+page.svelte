@@ -141,11 +141,32 @@
 			</Card.Content>
 		</Card.Root>
 
-		<div
-			class="flex items-center justify-center gap-2 text-[11px] font-black tracking-[0.3em] text-slate-400 uppercase"
-		>
-			<Shield size={12} class="opacity-50" />
-			Secure Enterprise Gateway
+		<div class="space-y-4">
+			<div
+				class="flex items-center justify-center gap-2 text-[11px] font-black tracking-[0.3em] text-slate-400 uppercase"
+			>
+				<Shield size={12} class="opacity-50" />
+				Secure Enterprise Gateway
+			</div>
+
+			<div class="flex flex-col items-center gap-1.5 pt-2">
+				<p class="text-[9px] font-bold tracking-widest text-slate-300 uppercase">Developed By</p>
+				<a
+					href="https://autolinium.com"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="group flex items-center gap-2 transition-all hover:scale-105"
+				>
+					<span
+						class="text-xs font-black tracking-[0.2em] text-slate-400 uppercase transition-colors group-hover:text-primary-600"
+						>Autolinium</span
+					>
+					<div class="h-px w-4 bg-slate-200 transition-colors group-hover:bg-primary-200"></div>
+					<span class="text-[10px] font-bold text-slate-400 group-hover:text-slate-600"
+						>autolinium.com</span
+					>
+				</a>
+			</div>
 		</div>
 	</div>
 </div>

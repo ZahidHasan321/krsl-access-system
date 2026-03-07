@@ -159,7 +159,7 @@
 
 <nav
 	class={clsx(
-		'no-print sticky top-0 z-40 transition-all duration-300',
+		'no-print sticky top-0 z-40 transition-all duration-200',
 		// For PWA Standalone: Be solid white from start to avoid animation lag/white-flashes
 		isStandalone && 'border-b bg-white shadow-sm',
 		// Normal mode behavior
@@ -178,7 +178,7 @@
 				>
 					<div
 						class={clsx(
-							'logo-pill flex size-9 items-center justify-center overflow-visible rounded-full border bg-white transition-all duration-500 group-hover:rotate-[360deg] group-hover:shadow-md group-hover:shadow-primary/10',
+							'logo-pill flex size-9 items-center justify-center overflow-visible rounded-full border bg-white transition-all duration-300 group-hover:rotate-[360deg] group-hover:shadow-md group-hover:shadow-primary/10',
 							isScrolled ? 'border-slate-100' : 'border-white/20 shadow-lg shadow-black/5'
 						)}
 					>
@@ -242,7 +242,7 @@
 									>
 								</button>
 								<div
-									class="invisible absolute left-0 z-50 mt-1 w-64 rounded-2xl border border-slate-200 bg-white/95 opacity-0 shadow-xl backdrop-blur-lg transition-all duration-300 group-hover:visible group-hover:opacity-100"
+									class="invisible absolute left-0 z-50 mt-1 w-64 rounded-2xl border border-slate-200 bg-white/95 opacity-0 shadow-xl backdrop-blur-lg transition-all duration-200 group-hover:visible group-hover:opacity-100"
 								>
 									<div class="py-2">
 										{#each link.sub || [] as sub}
@@ -390,7 +390,7 @@
 
 						{#if isProfileOpen}
 							<div
-								class="absolute right-0 z-50 mt-2 w-64 animate-in overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl duration-200 fade-in slide-in-from-top-2"
+								class="absolute right-0 z-50 mt-2 w-64 animate-in overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl duration-150 fade-in slide-in-from-top-2"
 							>
 								<div class="border-b border-slate-50 bg-slate-50/50 p-4">
 									<p class="truncate text-sm leading-none font-bold text-slate-900">
@@ -424,6 +424,17 @@
 											{i18n.t('logout')}
 										</button>
 									</form>
+
+									<div class="mt-2 border-t border-slate-50 pt-2 pb-1 text-center">
+										<a
+											href="https://autolinium.com"
+											target="_blank"
+											rel="noopener noreferrer"
+											class="inline-flex items-center gap-1.5 text-[9px] font-black tracking-widest text-slate-300 transition-colors hover:text-primary-500 uppercase"
+										>
+											Powered by Autolinium
+										</a>
+									</div>
 								</div>
 							</div>
 						{/if}

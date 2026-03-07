@@ -29,6 +29,7 @@
 	import { page } from '$app/state';
 	import { cn, getPageRange } from '$lib/utils';
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
+	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 	import logo from '$lib/assets/kr_logo.svg';
 
 	let { data }: { data: PageData } = $props();
@@ -280,26 +281,21 @@
 			<!-- Date Range & Actions - Right -->
 			<div class="flex flex-wrap items-center gap-3">
 				<div
-					class="flex h-12 items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white px-4 shadow-sm"
+					class="flex h-12 items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white px-2 shadow-sm"
 				>
-					<Calendar size={18} class="text-slate-400" />
-					<div class="flex items-center gap-3">
-						<input
-							type="date"
-							bind:value={dateFrom}
-							onchange={updateFilters}
-							max={new Date().toISOString().split('T')[0]}
-							class="cursor-pointer bg-transparent text-sm font-black text-slate-700 focus:outline-none"
-						/>
-						<div class="h-0.5 w-4 rounded-full bg-slate-200"></div>
-						<input
-							type="date"
-							bind:value={dateTo}
-							onchange={updateFilters}
-							max={new Date().toISOString().split('T')[0]}
-							class="cursor-pointer bg-transparent text-sm font-black text-slate-700 focus:outline-none"
-						/>
-					</div>
+					<DatePicker
+						bind:value={dateFrom}
+						onchange={updateFilters}
+						placeholder="Start"
+						className="w-[140px]"
+					/>
+					<div class="h-0.5 w-2 shrink-0 rounded-full bg-slate-200"></div>
+					<DatePicker
+						bind:value={dateTo}
+						onchange={updateFilters}
+						placeholder="End"
+						className="w-[140px]"
+					/>
 				</div>
 
 				<div class="flex items-center gap-2">

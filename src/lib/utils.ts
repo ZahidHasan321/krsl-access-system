@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { toast } from 'svelte-sonner';
+import { CalendarDate } from '@internationalized/date';
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
@@ -60,12 +61,17 @@ export type WithoutChildren<T> = Omit<T, 'children'>;
  * Converts a Date or ISO string to a CalendarDate object (simplified for shadcn components)
  */
 export function toCalendarDate(date: Date | string) {
-	const d = typeof date === 'string' ? new Date(date) : date;
-	return {
-		year: d.getFullYear(),
-		month: d.getMonth() + 1,
-		day: d.getDate()
-	};
+	try {
+		const d = typeof date === 'string' ? new Date(date) : date;
+		if (isNaN(d.getTime())) {
+			const now = new Date();
+			return new CalendarDate(now.getFullYear(), now.getMonth() + 1, now.getDate());
+		}
+		return new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+	} catch (e) {
+		const now = new Date();
+		return new CalendarDate(now.getFullYear(), now.getMonth() + 1, now.getDate());
+	}
 }
 
 /**

@@ -7,6 +7,7 @@ import { notifyChange } from '$lib/server/events';
 import { queueDeviceSync, queueDeviceDelete } from '$lib/server/device-sync';
 import { createNotification } from '$lib/server/push';
 import { ensureDesignation } from '$lib/server/db/designation-utils';
+import { ensureDepartment } from '$lib/server/db/department-utils';
 import type { PageServerLoad, Actions } from './$types';
 import { writeFileSync, mkdirSync, existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
@@ -189,7 +190,7 @@ export const actions: Actions = {
 		const updates: Record<string, any> = {
 			name,
 			codeNo: (data.get('codeNo') as string) || null,
-			cardNo: (data.get('cardNo') as string) || null,
+			cardNo,
 			company: (data.get('company') as string) || null,
 			contactNo: (data.get('contactNo') as string) || null,
 			designation,
@@ -206,6 +207,7 @@ export const actions: Actions = {
 
 		try {
 			updates.designation = await ensureDesignation(designation);
+			updates.department = await ensureDepartment(department);
 			const photoResult = await savePhoto(photo);
 			if (photoResult) {
 				// Get old photo URL to delete it

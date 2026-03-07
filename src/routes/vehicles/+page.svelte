@@ -415,8 +415,9 @@
 	<div class="content-container flex flex-col gap-8 px-4 md:px-0 lg:flex-row lg:items-start">
 		<!-- Sidebar - Desktop Only -->
 		<aside
-			class="custom-scrollbar hidden max-h-[calc(100vh-12rem)] w-full shrink-0 space-y-6 overflow-y-auto pr-2 pb-20 lg:block lg:w-64 print:hidden"
+			class="hidden w-64 shrink-0 flex-col gap-6 lg:sticky lg:top-36 lg:flex lg:h-[calc(100vh-12rem)] print:hidden"
 		>
+			<div class="custom-scrollbar flex-1 space-y-6 overflow-y-auto pr-2">
 			<!-- Vehicle Type Filter -->
 			<div class="space-y-3">
 				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
@@ -435,7 +436,7 @@
 					>
 						<div class="flex items-center gap-2">
 							{#if typeFilter === 'all'}
-								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+								<div class="size-1.5 rounded-full bg-white"></div>
 							{/if}
 							{i18n.t('all')}
 						</div>
@@ -502,6 +503,27 @@
 						</div>
 					</div>
 				</div>
+			</div>
+		</div>
+
+		<!-- Sidebar Branding - Fixed at bottom of sticky aside -->
+			<div
+				class="mt-auto flex flex-col items-center gap-1 pt-4 pb-2 border-t border-slate-50/50 opacity-40 transition-opacity hover:opacity-100"
+			>
+				<p class="text-[8px] font-black tracking-[0.3em] text-slate-400 uppercase">
+					System Developed By
+				</p>
+				<a
+					href="https://autolinium.com"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="group flex items-center gap-1.5"
+				>
+					<span
+						class="text-[10px] font-black tracking-widest text-slate-500 transition-colors group-hover:text-primary-600 uppercase"
+						>Autolinium</span
+					>
+				</a>
 			</div>
 		</aside>
 

@@ -42,6 +42,9 @@
 	import RegisterDialog from './RegisterDialog.svelte';
 	import ChangeCategoryDialog from './ChangeCategoryDialog.svelte';
 	import Pagination from '$lib/components/ui/Pagination.svelte';
+	import DesignationCombobox from '$lib/components/ui/designation-combobox.svelte';
+	import DepartmentCombobox from '$lib/components/ui/department-combobox.svelte';
+	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 	import logo from '$lib/assets/kr_logo.svg';
 	import {
 		CATEGORIES,
@@ -118,9 +121,24 @@
 	let editCompany = $state('');
 	let editContactNo = $state('');
 	let editDesignation = $state('');
+	let editDepartment = $state('');
+	let editJoinDate = $state('');
+	let editAuditJoinDate = $state('');
 	let editBiometricId = $state('');
 	let editIsTrained = $state(false);
 	let editNotes = $state('');
+
+	const isEmployeeEdit = $derived(() => {
+		if (!editPerson) return false;
+		// Determine if root category is employee
+		let currentCatId = editPerson.categoryId;
+		const catMap = new Map(CATEGORIES.map(c => [c.id, c]));
+		let current = catMap.get(currentCatId);
+		while (current?.parentId) {
+			current = catMap.get(current.parentId);
+		}
+		return current?.slug === 'employee';
+	});
 
 	// Change Category state
 	let isChangeCategoryOpen = $state(false);
@@ -243,6 +261,9 @@
 		editContactNo = person.contactNo || '';
 		editBiometricId = person.biometricId || '';
 		editDesignation = person.designation || '';
+		editDepartment = person.department || '';
+		editJoinDate = person.joinDate ? format(new Date(person.joinDate), 'yyyy-MM-dd') : '';
+		editAuditJoinDate = person.auditJoinDate ? format(new Date(person.auditJoinDate), 'yyyy-MM-dd') : '';
 		editIsTrained = person.isTrained;
 		editNotes = person.notes || '';
 		isEditOpen = true;
@@ -543,8 +564,9 @@
 	<div class="content-container flex flex-col gap-8 px-4 md:px-0 lg:flex-row">
 		<!-- Sidebar - Desktop Only -->
 		<aside
-			class="custom-scrollbar hidden max-h-[calc(100vh-12rem)] w-full shrink-0 space-y-6 overflow-y-auto pr-2 pb-20 lg:block lg:w-64 print:hidden"
+			class="hidden w-64 shrink-0 flex-col gap-6 lg:sticky lg:top-36 lg:flex lg:h-[calc(100vh-12rem)] print:hidden"
 		>
+			<div class="custom-scrollbar flex-1 space-y-6 overflow-y-auto pr-2">
 			<!-- Category Filter -->
 			<div class="space-y-3">
 				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
@@ -563,7 +585,7 @@
 					>
 						<div class="flex items-center gap-2">
 							{#if !selectedCategoryId}
-								<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+								<div class="size-1.5 rounded-full bg-white"></div>
 							{/if}
 							{i18n.t('all')}
 						</div>
@@ -657,7 +679,7 @@
 						>
 							<div class="flex items-center gap-2">
 								{#if !selectedDepartment}
-									<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+									<div class="size-1.5 rounded-full bg-white"></div>
 								{/if}
 								All Departments
 							</div>
@@ -675,7 +697,7 @@
 							>
 								<div class="flex items-center gap-2 truncate">
 									{#if selectedDepartment === dept}
-										<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+										<div class="size-1.5 rounded-full bg-white"></div>
 									{/if}
 									<span class="truncate">{dept}</span>
 								</div>
@@ -704,7 +726,7 @@
 						>
 							<div class="flex items-center gap-2">
 								{#if selectedTrained === opt.value}
-									<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+									<div class="size-1.5 rounded-full bg-white"></div>
 								{/if}
 								{opt.label}
 							</div>
@@ -734,6 +756,27 @@
 						<p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('untrained')}</p>
 					</div>
 				</div>
+			</div>
+		</div>
+
+		<!-- Sidebar Branding -->
+			<div
+				class="flex flex-col items-center gap-1 pt-4 opacity-40 transition-opacity hover:opacity-100"
+			>
+				<p class="text-[8px] font-black tracking-[0.3em] text-slate-400 uppercase">
+					System Developed By
+				</p>
+				<a
+					href="https://autolinium.com"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="group flex items-center gap-1.5"
+				>
+					<span
+						class="text-[10px] font-black tracking-widest text-slate-500 transition-colors group-hover:text-primary-600 uppercase"
+						>Autolinium</span
+					>
+				</a>
 			</div>
 		</aside>
 
@@ -784,7 +827,7 @@
 																					{#if person.status === 'on_premises'}
 																						<Badge
 																							class={cn(
-																								'shrink-0 text-[9px] font-bold capitalize lg:animate-pulse',
+																								'shrink-0 text-[9px] font-bold capitalize',
 																								statusBadgeClasses.on_premises
 																							)}
 																						>
@@ -1007,7 +1050,7 @@
 											{#if person.status === 'on_premises'}
 												<Badge
 													class={cn(
-														'text-[10px] font-bold uppercase lg:animate-pulse',
+														'text-[10px] font-bold uppercase',
 														statusBadgeClasses.on_premises
 													)}
 												>
@@ -1203,11 +1246,10 @@
 								class="text-[10px] font-bold tracking-widest text-slate-500 uppercase"
 								>{i18n.t('designation')}</Label
 							>
-							<Input
-								id="edit-designation"
+							<DesignationCombobox
 								name="designation"
 								bind:value={editDesignation}
-								class="h-11 border-2"
+								placeholder="Job title"
 							/>
 						</div>
 						<div class="space-y-2">
@@ -1226,6 +1268,42 @@
 							/>
 						</div>
 					</div>
+
+					{#if isEmployeeEdit()}
+						<div class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/30 p-4">
+							<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+								<div class="space-y-2">
+									<Label
+										for="edit-department"
+										class="text-[10px] font-bold tracking-widest text-slate-500 uppercase"
+										>Department</Label
+									>
+									<DepartmentCombobox
+										name="department"
+										bind:value={editDepartment}
+										placeholder="Select or add department"
+									/>
+								</div>
+
+								<div class="space-y-2">
+									<DatePicker
+										name="joinDate"
+										label="Joined Date"
+										bind:value={editJoinDate}
+										placeholder="Actual start date"
+									/>
+								</div>
+								<div class="space-y-2">
+									<DatePicker
+										name="auditJoinDate"
+										label="Audit Join Date"
+										bind:value={editAuditJoinDate}
+										placeholder="Date for audit reports"
+									/>
+								</div>
+							</div>
+						</div>
+					{/if}
 
 					<div class="space-y-2">
 						<Label

@@ -221,7 +221,7 @@
 				</h1>
 				{#if data.anyDeviceOnline}
 					<div
-						class="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-emerald-600 lg:animate-pulse"
+						class="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-emerald-600"
 					>
 						<div class="size-1.5 rounded-full bg-emerald-500"></div>
 						<span class="text-[10px] font-black tracking-widest capitalize">Live</span>
@@ -605,10 +605,9 @@
 									{#if log.status === 'on_premises'}
 										<span
 											class={cn(
-												'rounded-md border px-1 py-0.5 text-[8px] font-black tracking-wide capitalize lg:animate-pulse',
+												'rounded-md border px-1 py-0.5 text-[8px] font-black tracking-wide capitalize',
 												statusBadgeClasses.on_premises
-											)}>In</span
-										>
+											)}>In</span>
 									{:else}
 										<span
 											class={cn(

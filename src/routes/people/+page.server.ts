@@ -9,7 +9,7 @@ import { notifyChange, notifyCheckIn, notifyEnrollment } from '$lib/server/event
 import { queueDeviceSync, queueDeviceDelete } from '$lib/server/device-sync';
 import { createNotification } from '$lib/server/push';
 import { ensureDesignation } from '$lib/server/db/designation-utils';
-import { getUniqueDepartments } from '$lib/server/db/department-utils';
+import { getUniqueDepartments, ensureDepartment } from '$lib/server/db/department-utils';
 import { writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import sharp from 'sharp';
@@ -154,6 +154,8 @@ export const load: PageServerLoad = async (event) => {
 			contactNo: people.contactNo,
 			designation: people.designation,
 			department: people.department,
+			joinDate: people.joinDate,
+			auditJoinDate: people.auditJoinDate,
 			biometricId: people.biometricId,
 			notes: people.notes,
 			isTrained: people.isTrained,
@@ -349,6 +351,13 @@ export const actions: Actions = {
 		const categoryId = data.get('categoryId') as string;
 
 		const rawDesignation = (data.get('designation') as string) || null;
+		const department = (data.get('department') as string) || null;
+		const joinDateStr = data.get('joinDate') as string;
+		const auditJoinDateStr = data.get('auditJoinDate') as string;
+
+		const joinDate = joinDateStr ? new Date(joinDateStr) : null;
+		const auditJoinDate = auditJoinDateStr ? new Date(auditJoinDateStr) : null;
+
 		const isTrained = data.get('isTrained') === 'true';
 		const notes = (data.get('notes') as string) || null;
 		const photo = data.get('photo') as File | null;
@@ -363,6 +372,9 @@ export const actions: Actions = {
 			company: (data.get('company') as string) || null,
 			contactNo: (data.get('contactNo') as string) || null,
 			designation: rawDesignation,
+			department,
+			joinDate,
+			auditJoinDate,
 			isTrained,
 			notes
 		};
@@ -373,6 +385,7 @@ export const actions: Actions = {
 
 		try {
 			updates.designation = await ensureDesignation(rawDesignation);
+			updates.department = await ensureDepartment(department);
 			const photoResult = await savePhoto(photo);
 			if (photoResult) {
 				// Get old photo URL to delete it

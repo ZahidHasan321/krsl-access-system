@@ -27,6 +27,7 @@
 	import { cn, getCategoryLevelClass, appToast } from '$lib/utils';
 	import type { PageData, ActionData } from './$types';
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
+	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 	import VirtualList from 'svelte-virtual-list';
 	import { utils, writeFile } from 'xlsx';
 	import {
@@ -307,8 +308,8 @@
 		debounceTimer = setTimeout(applyFilters, 400);
 	}
 
-	function changeDate(e: Event) {
-		selectedDate = (e.target as HTMLInputElement).value;
+	function changeDate(val: string) {
+		selectedDate = val;
 		applyFilters();
 	}
 
@@ -677,11 +678,11 @@
 					<span class="pl-2 text-[10px] font-black tracking-widest text-slate-400 uppercase"
 						>Reporting Date</span
 					>
-					<input
-						type="date"
+					<DatePicker
 						value={selectedDate}
 						onchange={changeDate}
-						class="h-10 cursor-pointer rounded-xl border-2 border-slate-100 bg-slate-50 px-4 text-sm font-black transition-colors hover:bg-white focus:border-primary-500 focus:outline-none"
+						placeholder="Select date"
+						className="w-[180px]"
 					/>
 				</div>
 			</div>

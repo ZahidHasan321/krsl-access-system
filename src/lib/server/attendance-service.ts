@@ -111,6 +111,7 @@ export async function getAttendanceLogs({
 				name: people.name,
 				codeNo: people.codeNo,
 				company: people.company,
+				department: people.department,
 				categoryId: people.categoryId,
 				photoUrl: people.photoUrl,
 				thumbUrl: people.thumbUrl,

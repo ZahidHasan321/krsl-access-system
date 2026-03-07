@@ -9,7 +9,7 @@ import { subDays } from 'date-fns';
 
 // Initialize web-push with VAPID keys from environment
 const publicVapidKey = publicEnv.PUBLIC_VAPID_KEY;
-const privateVapidKey = env.VAPID_PRIVATE_KEY;
+const privateVapidKey = env.PRIVATE_VAPID_KEY;
 const vapidSubject = env.VAPID_SUBJECT || 'mailto:admin@example.com';
 
 console.log('[Push Service] Checking VAPID keys:', {

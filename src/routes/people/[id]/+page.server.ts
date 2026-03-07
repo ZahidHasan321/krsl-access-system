@@ -83,8 +83,10 @@ export const load: PageServerLoad = async (event) => {
 			company: people.company,
 			contactNo: people.contactNo,
 			designation: people.designation,
+			department: people.department,
 			isTrained: people.isTrained,
 			joinDate: people.joinDate,
+			auditJoinDate: people.auditJoinDate,
 			notes: people.notes,
 			createdAt: people.createdAt,
 			category: {
@@ -175,6 +177,12 @@ export const actions: Actions = {
 		const photo = data.get('photo') as File | null;
 		const cardNo = (data.get('cardNo') as string) || null;
 		const designation = (data.get('designation') as string) || null;
+		const department = (data.get('department') as string) || null;
+		const joinDateStr = data.get('joinDate') as string;
+		const auditJoinDateStr = data.get('auditJoinDate') as string;
+
+		const joinDate = joinDateStr ? new Date(joinDateStr) : null;
+		const auditJoinDate = auditJoinDateStr ? new Date(auditJoinDateStr) : null;
 
 		if (!name) return fail(400, { message: 'Name required' });
 
@@ -185,6 +193,9 @@ export const actions: Actions = {
 			company: (data.get('company') as string) || null,
 			contactNo: (data.get('contactNo') as string) || null,
 			designation,
+			department,
+			joinDate,
+			auditJoinDate,
 			isTrained: data.get('isTrained') === 'true',
 			notes: (data.get('notes') as string) || null
 		};

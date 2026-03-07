@@ -12,6 +12,8 @@
 	import * as Select from '$lib/components/ui/select';
 	import EnrollmentPanel from '../EnrollmentPanel.svelte';
 	import DesignationCombobox from '$lib/components/ui/designation-combobox.svelte';
+	import DepartmentCombobox from '$lib/components/ui/department-combobox.svelte';
+	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 	import {
 		ChevronLeft,
 		User,
@@ -109,6 +111,9 @@
 	let editCompany = $state('');
 	let editContactNo = $state('');
 	let editDesignation = $state('');
+	let editDepartment = $state('');
+	let editJoinDate = $state('');
+	let editAuditJoinDate = $state('');
 	let editIsTrained = $state(false);
 	let editNotes = $state('');
 	let photoPreview = $state<string | null>(null);
@@ -135,11 +140,16 @@
 			editCompany = data.person.company || '';
 			editContactNo = data.person.contactNo || '';
 			editDesignation = data.person.designation || '';
+			editDepartment = data.person.department || '';
+			editJoinDate = data.person.joinDate ? format(data.person.joinDate, 'yyyy-MM-dd') : '';
+			editAuditJoinDate = data.person.auditJoinDate ? format(data.person.auditJoinDate, 'yyyy-MM-dd') : '';
 			editIsTrained = data.person.isTrained;
 			editNotes = data.person.notes || '';
 			photoPreview = data.person.photoUrl || null;
 		}
 	});
+
+	const isEmployee = $derived(data.rootCategorySlug === 'employee');
 
 	const selectedCategoryName = $derived(
 		data.allCategoriesFlat.find((c) => c.id === editCategoryId)?.name ?? 'Select Category'
@@ -373,6 +383,64 @@
 										{i18n.t('designation')}
 									</p>
 									<p class="truncate font-bold text-slate-900">{data.person.designation}</p>
+								</div>
+							</div>
+						{/if}
+
+						{#if data.person.department}
+							<div
+								class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3"
+							>
+								<div
+									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600"
+								>
+									<Building2 size={20} />
+								</div>
+								<div class="min-w-0">
+									<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+										Department
+									</p>
+									<p class="truncate font-bold text-slate-900">{data.person.department}</p>
+								</div>
+							</div>
+						{/if}
+
+						{#if data.person.joinDate}
+							<div
+								class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3"
+							>
+								<div
+									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600"
+								>
+									<Calendar size={20} />
+								</div>
+								<div class="min-w-0">
+									<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+										Joined Date
+									</p>
+									<p class="truncate font-bold text-slate-900">
+										{format(data.person.joinDate, 'PPP')}
+									</p>
+								</div>
+							</div>
+						{/if}
+
+						{#if data.person.auditJoinDate}
+							<div
+								class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3"
+							>
+								<div
+									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600"
+								>
+									<Calendar size={20} />
+								</div>
+								<div class="min-w-0">
+									<p class="text-[10px] font-black tracking-widest text-indigo-400 uppercase">
+										Audit Join Date
+									</p>
+									<p class="truncate font-bold text-slate-900">
+										{format(data.person.auditJoinDate, 'PPP')}
+									</p>
 								</div>
 							</div>
 						{/if}
@@ -1066,12 +1134,49 @@
 							bind:value={editDesignation}
 							placeholder="Job title"
 						/>
-					</div>
-				</div>
+						</div>
+						</div>
 
-				<div
-					class="flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-[10px] font-bold tracking-wider text-amber-800 uppercase"
-				>
+						{#if isEmployee}
+						<div class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/30 p-4">
+						<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+							<div class="space-y-2">
+								<Label
+									for="edit-department"
+									class="text-[10px] font-bold tracking-widest text-slate-500 uppercase"
+									>Department</Label
+								>
+								<DepartmentCombobox
+									name="department"
+									bind:value={editDepartment}
+									placeholder="Select or add department"
+								/>
+							</div>
+
+							<div class="space-y-2">
+								<DatePicker
+									name="joinDate"
+									label="Joined Date"
+									bind:value={editJoinDate}
+									placeholder="Actual start date"
+								/>
+							</div>
+							<div class="space-y-2">
+								<DatePicker
+									name="auditJoinDate"
+									label="Audit Join Date"
+									bind:value={editAuditJoinDate}
+									placeholder="Date for audit reports"
+								/>
+							</div>
+						</div>
+						</div>
+						{/if}
+
+						<div
+						class="flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-[10px] font-bold tracking-wider text-amber-800 uppercase"
+						>
+
 					<AlertCircle size={14} class="shrink-0" />
 					<p>Changing the category might affect required fields or training status.</p>
 				</div>

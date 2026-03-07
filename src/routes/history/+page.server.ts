@@ -4,6 +4,7 @@ import { eq, and, desc, sql, gte, lte, or, ilike, count, inArray, type SQL } fro
 import { format, subDays } from 'date-fns';
 import { requirePermission } from '$lib/server/rbac';
 import { getFlatCategoryList } from '$lib/server/db/category-utils';
+import { getUniqueDepartments } from '$lib/server/db/department-utils';
 import type { PageServerLoad } from './$types';
 
 import { CATEGORIES } from '$lib/constants/categories';
@@ -48,6 +49,7 @@ export const load: PageServerLoad = async (event) => {
 		event.url.searchParams.get('startDate') || format(subDays(new Date(), 30), 'yyyy-MM-dd');
 	const endDate = event.url.searchParams.get('endDate') || format(new Date(), 'yyyy-MM-dd');
 	const categoryId = event.url.searchParams.get('category') || '';
+	const department = event.url.searchParams.get('department') || '';
 	const query = (event.url.searchParams.get('q') || '').trim();
 	const page = parseInt(event.url.searchParams.get('page') || '1');
 	const limit = Math.min(100, Math.max(1, parseInt(event.url.searchParams.get('limit') || '20')));
@@ -64,6 +66,10 @@ export const load: PageServerLoad = async (event) => {
 		// Find all descendant category IDs so filtering by root includes subcategories
 		const descendantIds = getDescendantIds(categoryId);
 		whereClauses.push(inArray(people.categoryId, descendantIds));
+	}
+
+	if (department) {
+		whereClauses.push(eq(people.department, department));
 	}
 
 	if (query) {
@@ -99,8 +105,10 @@ export const load: PageServerLoad = async (event) => {
 					name: people.name,
 					codeNo: people.codeNo,
 					company: people.company,
+					department: people.department,
 					categoryId: people.categoryId,
-					isTrained: people.isTrained
+					isTrained: people.isTrained,
+					auditJoinDate: people.auditJoinDate
 				},
 				category: {
 					name: personCategories.name,
@@ -214,8 +222,10 @@ export const load: PageServerLoad = async (event) => {
 			startDate,
 			endDate,
 			categoryId,
+			department,
 			query
 		},
+		departments: await getUniqueDepartments(),
 		pagination: {
 			page,
 			limit,

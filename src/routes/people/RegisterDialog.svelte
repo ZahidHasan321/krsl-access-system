@@ -38,6 +38,8 @@
 	import EnrollmentPanel from './EnrollmentPanel.svelte';
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
 	import DesignationCombobox from '$lib/components/ui/designation-combobox.svelte';
+	import DepartmentCombobox from '$lib/components/ui/department-combobox.svelte';
+	import DatePicker from '$lib/components/ui/DatePicker.svelte';
 	import { onMount } from 'svelte';
 
 	let { open = $bindable() } = $props<{ open: boolean }>();
@@ -75,6 +77,7 @@
 	let photoPreview = $state<string | null>(null);
 	let purpose = $state('');
 	let designationValue = $state('');
+	let departmentValue = $state('');
 	let showSummary = $state(false);
 	let enrolledMethod = $state<string | null>(null);
 
@@ -90,6 +93,7 @@
 		company: string | null;
 		contactNo: string | null;
 		designation: string | null;
+		department: string | null;
 		codeNo: string | null;
 		cardNo: string | null;
 		isTrained: boolean;
@@ -163,6 +167,7 @@
 	});
 
 	const finalCategoryId = $derived(selectedSubCategoryId || selectedRootCategoryId || '');
+	const isEmployee = $derived(selectedRootCategory?.slug === 'employee');
 
 	const activeColorMap: Record<string, string> = {
 		purple: 'border-purple-500 bg-purple-500 text-white shadow-md scale-[1.02]',
@@ -334,6 +339,14 @@
 										<p class="font-black text-slate-700">{registeredPerson.designation}</p>
 									</div>
 								{/if}
+								{#if registeredPerson.department}
+									<div>
+										<p class="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
+											Department
+										</p>
+										<p class="font-black text-slate-700">{registeredPerson.department}</p>
+									</div>
+								{/if}
 								{#if registeredPerson.contactNo}
 									<div>
 										<p class="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
@@ -480,6 +493,7 @@
 							const formCompany = (formData.get('company') as string) || null;
 							const formContactNo = (formData.get('contactNo') as string) || null;
 							const formDesignation = (formData.get('designation') as string) || null;
+							const formDepartment = (formData.get('department') as string) || null;
 							const formCodeNo = (formData.get('codeNo') as string) || null;
 							const formCardNo = (formData.get('cardNo') as string) || null;
 							const capturedPhoto = photoPreview;
@@ -509,6 +523,7 @@
 										company: formCompany,
 										contactNo: formContactNo,
 										designation: formDesignation,
+										department: formDepartment,
 										codeNo: formCodeNo,
 										cardNo: formCardNo,
 										isTrained: capturedTrained
@@ -685,6 +700,39 @@
 								/>
 							</div>
 						</div>
+
+						{#if isEmployee}
+							<div class="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/30 p-4">
+								<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+									<div class="space-y-2">
+										<Label
+											for="reg-department"
+											class="text-[10px] font-bold tracking-widest text-slate-500 uppercase"
+											>Department</Label
+										>
+										<DepartmentCombobox
+											name="department"
+											bind:value={departmentValue}
+											placeholder="Select or add department"
+										/>
+									</div>
+									<div class="space-y-2">
+										<DatePicker
+											name="joinDate"
+											label="Joined Date"
+											placeholder="Actual start date"
+										/>
+									</div>
+									<div class="space-y-2">
+										<DatePicker
+											name="auditJoinDate"
+											label="Audit Join Date"
+											placeholder="Date for audit reports"
+										/>
+									</div>
+								</div>
+							</div>
+						{/if}
 
 						<div class="space-y-2">
 							<Label

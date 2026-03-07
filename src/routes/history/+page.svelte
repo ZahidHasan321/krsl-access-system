@@ -88,6 +88,7 @@
 	}
 
 	const selectedCategoryId = $derived(page.url.searchParams.get('category') || '');
+	const selectedDepartment = $derived(page.url.searchParams.get('department') || '');
 
 	const activeRootCategoryId = $derived(() => {
 		if (!selectedCategoryId) return '';
@@ -168,7 +169,14 @@
 		searchQuery = '';
 		startDate = '';
 		endDate = '';
-		applyFilters();
+		const url = new URL(page.url);
+		url.searchParams.delete('q');
+		url.searchParams.delete('startDate');
+		url.searchParams.delete('endDate');
+		url.searchParams.delete('category');
+		url.searchParams.delete('department');
+		url.searchParams.set('page', '1');
+		goto(url.toString(), { keepFocus: true, noScroll: true });
 	}
 
 	function formatDuration(seconds: number) {
@@ -179,7 +187,7 @@
 		return `${minutes}m`;
 	}
 
-	const hasActiveFilters = $derived(!!searchQuery || !!startDate || !!endDate);
+	const hasActiveFilters = $derived(!!searchQuery || !!startDate || !!endDate || !!selectedCategoryId || !!selectedDepartment);
 
 	const activeCategoryName = $derived(() => {
 		if (!selectedCategoryId) return '';
@@ -266,7 +274,9 @@
 					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Name</th>
 					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Identity No.</th>
 					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Category</th>
+					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Dept.</th>
 					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Training</th>
+					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Joined</th>
 					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Date</th>
 					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Entry</th>
 					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Exit</th>
@@ -280,8 +290,12 @@
 						<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: #0f172a;">{log.person.name}</td>
 						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.person.codeNo || '-'}</td>
 						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.category.name}</td>
+						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.person.department || '-'}</td>
 						<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: {log.person.isTrained ? '#059669' : '#e11d48'};">
 							{log.person.isTrained ? 'TRAINED' : 'PENDING'}
+						</td>
+						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">
+							{log.person.auditJoinDate ? format(log.person.auditJoinDate, 'dd-MM-yyyy') : '-'}
 						</td>
 						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{format(parseISO(log.date), 'PP')}</td>
 						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{format(log.entryTime, 'hh:mm a')}</td>
@@ -709,6 +723,61 @@
 					{/each}
 				</div>
 			</div>
+
+			<!-- Department Filter (Only for Employees) -->
+			{#if activeRootCategoryId() === 'employee'}
+				<div class="space-y-3" transition:slide>
+					<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+						Department
+					</p>
+					<div class="flex flex-col gap-1">
+						<Button
+							variant={!selectedDepartment ? 'secondary' : 'ghost'}
+							class={cn(
+								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+								!selectedDepartment
+									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+									: 'text-slate-600'
+							)}
+							onclick={() => {
+								const url = new URL(page.url);
+								url.searchParams.delete('department');
+								goto(url.toString());
+							}}
+						>
+							<div class="flex items-center gap-2">
+								{#if !selectedDepartment}
+									<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+								{/if}
+								All Departments
+							</div>
+						</Button>
+						{#each data.departments as dept}
+							<Button
+								variant={selectedDepartment === dept ? 'secondary' : 'ghost'}
+								class={cn(
+									'h-10 cursor-pointer justify-start px-3 font-bold transition-all text-left',
+									selectedDepartment === dept
+										? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+										: 'text-slate-600'
+								)}
+								onclick={() => {
+									const url = new URL(page.url);
+									url.searchParams.set('department', dept);
+									goto(url.toString());
+								}}
+							>
+								<div class="flex items-center gap-2 truncate">
+									{#if selectedDepartment === dept}
+										<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+									{/if}
+									<span class="truncate">{dept}</span>
+								</div>
+							</Button>
+						{/each}
+					</div>
+				</div>
+			{/if}
 
 			<!-- View Selector -->
 			<div class="space-y-3">

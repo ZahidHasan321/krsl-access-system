@@ -37,8 +37,11 @@
 	let searchInput: HTMLInputElement | undefined = $state();
 
 	let isScrolled = $state(false);
+	let isStandalone = $state(false);
 
 	$effect(() => {
+		isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+
 		const handleScroll = () => {
 			isScrolled = window.scrollY > 20;
 		};
@@ -156,10 +159,14 @@
 
 <nav
 	class={clsx(
-		'no-print sticky top-0 z-40 border-b bg-white py-0 shadow-sm xl:transition-all xl:duration-300',
-		isScrolled
-			? 'xl:border-slate-200/60 xl:bg-white/95 xl:py-0 xl:shadow-sm'
-			: 'xl:border-transparent xl:bg-transparent xl:py-2 xl:shadow-none'
+		'no-print sticky top-0 z-40 transition-all duration-300',
+		// For PWA Standalone: Be solid white from start to avoid animation lag/white-flashes
+		isStandalone && 'border-b bg-white shadow-sm',
+		// Normal mode behavior
+		!isStandalone &&
+			(isScrolled
+				? 'border-b border-slate-200/60 bg-white/95 backdrop-blur-md py-0 shadow-sm'
+				: 'border-b border-transparent bg-transparent py-2 shadow-none')
 	)}
 >
 	<div class="container">

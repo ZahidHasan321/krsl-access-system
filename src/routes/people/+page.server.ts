@@ -9,6 +9,7 @@ import { notifyChange, notifyCheckIn, notifyEnrollment } from '$lib/server/event
 import { queueDeviceSync, queueDeviceDelete } from '$lib/server/device-sync';
 import { createNotification } from '$lib/server/push';
 import { ensureDesignation } from '$lib/server/db/designation-utils';
+import { getUniqueDepartments } from '$lib/server/db/department-utils';
 import { writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import sharp from 'sharp';
@@ -89,6 +90,7 @@ export const load: PageServerLoad = async (event) => {
 
 	const query = (event.url.searchParams.get('q') || '').trim();
 	const categoryId = event.url.searchParams.get('category') || '';
+	const department = event.url.searchParams.get('department') || '';
 	const trained = event.url.searchParams.get('trained') || '';
 	const page = parseInt(event.url.searchParams.get('page') || '1');
 	const limit = Math.min(100, Math.max(1, parseInt(event.url.searchParams.get('limit') || '20')));
@@ -111,6 +113,9 @@ export const load: PageServerLoad = async (event) => {
 	if (categoryId) {
 		const descendantIds = getDescendantIds(categoryId);
 		whereClauses.push(inArray(people.categoryId, descendantIds));
+	}
+	if (department) {
+		whereClauses.push(eq(people.department, department));
 	}
 	if (trained === 'yes') {
 		whereClauses.push(eq(people.isTrained, true));
@@ -148,6 +153,7 @@ export const load: PageServerLoad = async (event) => {
 			company: people.company,
 			contactNo: people.contactNo,
 			designation: people.designation,
+			department: people.department,
 			biometricId: people.biometricId,
 			notes: people.notes,
 			isTrained: people.isTrained,
@@ -194,8 +200,10 @@ export const load: PageServerLoad = async (event) => {
 		filters: {
 			query,
 			categoryId,
+			department,
 			trained
 		},
+		departments: await getUniqueDepartments(),
 		pagination: {
 			page: validatedPage,
 			limit,
@@ -217,6 +225,13 @@ export const actions: Actions = {
 		const company = (data.get('company') as string) || null;
 		const contactNo = (data.get('contactNo') as string) || null;
 		const rawDesignation = (data.get('designation') as string) || null;
+		const department = (data.get('department') as string) || null;
+		const joinDateStr = data.get('joinDate') as string;
+		const auditJoinDateStr = data.get('auditJoinDate') as string;
+
+		const joinDate = joinDateStr ? new Date(joinDateStr) : null;
+		const auditJoinDate = auditJoinDateStr ? new Date(auditJoinDateStr) : null;
+
 		const isTrained = data.get('isTrained') === 'true';
 		const notes = (data.get('notes') as string) || null;
 		const photo = data.get('photo') as File | null;
@@ -251,6 +266,9 @@ export const actions: Actions = {
 					company,
 					contactNo,
 					designation,
+					department,
+					joinDate,
+					auditJoinDate,
 					isTrained,
 					notes,
 					enrolledMethods: cardNo ? JSON.stringify(['card']) : null,

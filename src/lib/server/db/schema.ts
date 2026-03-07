@@ -110,6 +110,8 @@ export const people = pgTable(
 
 		// Metadata
 		joinDate: timestamp('join_date', { withTimezone: true, mode: 'date' }),
+		auditJoinDate: timestamp('audit_join_date', { withTimezone: true, mode: 'date' }),
+		department: text('department'),
 		notes: text('notes'),
 		createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).default(sql`now()`)
 	},

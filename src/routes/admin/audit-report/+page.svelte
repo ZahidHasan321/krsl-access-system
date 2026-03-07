@@ -85,6 +85,7 @@
 	// Visibility toggles for report columns
 	let showEntryTime = $state(true);
 	let showExitTime = $state(true);
+	let showJoinDate = $state(true);
 
 	// Warning thresholds (BD time hours)
 	let warnEntryBefore = $state('08:00');
@@ -587,8 +588,12 @@
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">#</th>
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">{i18n.t('name')}</th>
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">{i18n.t('category')}</th>
+				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">Dept.</th>
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">Location</th>
 				<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">Training</th>
+				{#if showJoinDate}
+					<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">Joined</th>
+				{/if}
 				{#if showEntryTime}
 					<th style="border: 1px solid #000; padding: 8px 6px; text-align: left; font-weight: 900; color: #000; text-transform: uppercase;">{i18n.t('entryTime')}</th>
 				{/if}
@@ -613,6 +618,7 @@
 						>{entry.person.name}</td
 					>
 					<td style="border: 1px solid #000; padding: 6px; color: #000;">{displayCategory}</td>
+					<td style="border: 1px solid #000; padding: 6px; color: #000;">{entry.person.department || '-'}</td>
 					<td
 						style="border: 1px solid #000; padding: 6px; text-transform: uppercase; font-weight: 800; color: #000;"
 						>{getLocation(entry)}</td
@@ -622,6 +628,11 @@
 					>
 						{getIsTrained(entry) ? 'TRAINED' : 'PENDING'}
 					</td>
+					{#if showJoinDate}
+						<td style="border: 1px solid #000; padding: 6px; color: #000;">
+							{entry.person.auditJoinDate ? format(entry.person.auditJoinDate, 'dd-MM-yyyy') : '-'}
+						</td>
+					{/if}
 					{#if showEntryTime}
 						<td style="border: 1px solid #000; padding: 6px; color: #000;"
 							>{getPrintEntryTime(entry)}</td
@@ -1107,6 +1118,15 @@
 
 					<div class="flex flex-wrap items-center gap-3">
 						<div class="flex items-center gap-1 rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-1">
+							<button
+								onclick={() => (showJoinDate = !showJoinDate)}
+								class={cn(
+									'rounded-xl px-3 py-1.5 text-[10px] font-black uppercase transition-all',
+									showJoinDate ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-100'
+								)}
+							>
+								Joined Date
+							</button>
 							<button
 								onclick={() => (showEntryTime = !showEntryTime)}
 								class={cn(

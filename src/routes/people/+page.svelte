@@ -185,8 +185,9 @@
 	});
 
 	const selectedTrained = $derived(page.url.searchParams.get('trained') || '');
+	const selectedDepartment = $derived(page.url.searchParams.get('department') || '');
 
-	const hasActiveFilters = $derived(!!searchQuery || !!selectedCategoryId || !!selectedTrained);
+	const hasActiveFilters = $derived(!!searchQuery || !!selectedCategoryId || !!selectedTrained || !!selectedDepartment);
 
 	function parseEnrolledMethods(raw: string | null): string[] {
 		if (!raw) return [];
@@ -228,6 +229,7 @@
 		url.searchParams.delete('q');
 		url.searchParams.delete('category');
 		url.searchParams.delete('trained');
+		url.searchParams.delete('department');
 		url.searchParams.set('page', '1');
 		goto(url.toString(), { keepFocus: true, noScroll: true });
 	}
@@ -325,6 +327,7 @@
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Name</th>
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Identity No.</th>
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Category</th>
+				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Dept.</th>
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Company</th>
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Training</th>
 				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Status</th>
@@ -337,6 +340,7 @@
 					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: #0f172a;">{person.name}</td>
 					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{person.codeNo || '-'}</td>
 					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{person.category.name}</td>
+					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{person.department || '-'}</td>
 					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{person.company || '-'}</td>
 					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: {person.isTrained ? '#059669' : '#e11d48'};">
 						{person.isTrained ? 'TRAINED' : 'PENDING'}
@@ -633,6 +637,53 @@
 					{/each}
 				</div>
 			</div>
+
+			<!-- Department Filter (Only for Employees) -->
+			{#if activeRootCategoryId() === 'employee'}
+				<div class="space-y-3" transition:slide>
+					<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+						Department
+					</p>
+					<div class="flex flex-col gap-1">
+						<Button
+							variant={!selectedDepartment ? 'secondary' : 'ghost'}
+							class={cn(
+								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+								!selectedDepartment
+									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+									: 'text-slate-600'
+							)}
+							onclick={() => setFilter('department', '')}
+						>
+							<div class="flex items-center gap-2">
+								{#if !selectedDepartment}
+									<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+								{/if}
+								All Departments
+							</div>
+						</Button>
+						{#each data.departments as dept}
+							<Button
+								variant={selectedDepartment === dept ? 'secondary' : 'ghost'}
+								class={cn(
+									'h-10 cursor-pointer justify-start px-3 font-bold transition-all text-left',
+									selectedDepartment === dept
+										? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+										: 'text-slate-600'
+								)}
+								onclick={() => setFilter('department', dept)}
+							>
+								<div class="flex items-center gap-2 truncate">
+									{#if selectedDepartment === dept}
+										<div class="size-1.5 animate-pulse rounded-full bg-white"></div>
+									{/if}
+									<span class="truncate">{dept}</span>
+								</div>
+							</Button>
+						{/each}
+					</div>
+				</div>
+			{/if}
 
 			<!-- Training Status Filter -->
 			<div class="space-y-3">

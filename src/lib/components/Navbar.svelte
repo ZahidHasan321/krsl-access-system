@@ -161,13 +161,15 @@
 
 <nav
 	class={clsx(
-		'no-print sticky top-0 z-40 transition-all duration-200',
+		'no-print sticky top-0 z-40 transition-all duration-300 ease-in-out',
+		// Hardware acceleration for smoother scrolling
+		'will-change-[transform,background-color,padding,border-color]',
 		// For PWA Standalone: Be solid white from start to avoid animation lag/white-flashes
 		isStandalone && 'border-b bg-white shadow-sm',
 		// Normal mode behavior
 		!isStandalone &&
 			(isScrolled
-				? 'border-b border-slate-200/60 bg-white/95 backdrop-blur-md py-0 shadow-sm'
+				? 'border-b border-slate-200/60 bg-white/98 py-0 shadow-sm'
 				: 'border-b border-transparent bg-transparent py-2 shadow-none')
 	)}
 >

@@ -1,7 +1,7 @@
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
 import { devices, rawPunches, people, attendanceLogs, bioTemplates } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import {
 	buildHandshakeResponse,
 	parseAttLog,
@@ -107,7 +107,15 @@ export const POST: RequestHandler = async ({ url, request }) => {
 
 			const result = await savePersonPhoto(pin, imageBuffer);
 			if (result) {
-				const [person] = await db.select().from(people).where(eq(people.biometricId, pin));
+				const [person] = await db
+					.select()
+					.from(people)
+					.where(
+						or(
+							eq(people.biometricId, pin),
+							eq(people.biometricId, parseInt(pin, 10).toString())
+						)
+					);
 
 				if (person) {
 					await db
@@ -154,7 +162,15 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				const imageBuffer = Buffer.from(base64Content, 'base64');
 				const result = await savePersonPhoto(photoPin, imageBuffer);
 				if (result) {
-					const [person] = await db.select().from(people).where(eq(people.biometricId, photoPin));
+					const [person] = await db
+						.select()
+						.from(people)
+						.where(
+							or(
+								eq(people.biometricId, photoPin),
+								eq(people.biometricId, parseInt(photoPin, 10).toString())
+							)
+						);
 
 					if (person) {
 						await db
@@ -179,7 +195,15 @@ export const POST: RequestHandler = async ({ url, request }) => {
 		for (const entry of opEntries) {
 			if (!entry.enrollMethod) continue;
 
-			const [person] = await db.select().from(people).where(eq(people.biometricId, entry.pin));
+			const [person] = await db
+				.select()
+				.from(people)
+				.where(
+					or(
+						eq(people.biometricId, entry.pin),
+						eq(people.biometricId, parseInt(entry.pin, 10).toString())
+					)
+				);
 
 			if (!person) continue;
 
@@ -228,7 +252,15 @@ export const POST: RequestHandler = async ({ url, request }) => {
 			`[ZK:BioData] Received ${table} template for PIN ${pin} FID=${fid} No=${templateNo}`
 		);
 		if (pin) {
-			const [person] = await db.select().from(people).where(eq(people.biometricId, pin));
+			const [person] = await db
+				.select()
+				.from(people)
+				.where(
+					or(
+						eq(people.biometricId, pin),
+						eq(people.biometricId, parseInt(pin, 10).toString())
+					)
+				);
 
 			if (person) {
 				// Strip table name prefix from body (device sends "BIODATA Pin=1\t..." but we just want the KV pairs)
@@ -244,16 +276,17 @@ export const POST: RequestHandler = async ({ url, request }) => {
 						and(
 							eq(bioTemplates.personId, person.id),
 							eq(bioTemplates.templateType, table!),
-							eq(bioTemplates.fid, fid)
+							eq(bioTemplates.fid, fid),
+							eq(bioTemplates.templateNo, templateNo)
 						)
 					);
 
 				if (existingTemplate) {
 					await db
 						.update(bioTemplates)
-						.set({ templateData: kvData, templateNo, updatedAt: new Date() })
+						.set({ templateData: kvData, updatedAt: new Date() })
 						.where(eq(bioTemplates.id, existingTemplate.id));
-					console.log(`[ZK:BioData] Updated ${table} template for ${person.name}`);
+					console.log(`[ZK:BioData] Updated ${table} template for ${person.name} (FID=${fid}, No=${templateNo})`);
 				} else {
 					await db.insert(bioTemplates).values({
 						id: crypto.randomUUID(),
@@ -263,7 +296,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 						fid,
 						templateNo
 					});
-					console.log(`[ZK:BioData] Stored new ${table} template for ${person.name}`);
+					console.log(`[ZK:BioData] Stored new ${table} template for ${person.name} (FID=${fid}, No=${templateNo})`);
 				}
 
 				// Track enrolled methods
@@ -276,17 +309,13 @@ export const POST: RequestHandler = async ({ url, request }) => {
 
 				let method = fid === '111' || table === 'FACE' ? 'face' : 'finger';
 				
-				// Special case: If fid=0 but person already has 'face' and NO 'finger',
-				// and this is the ONLY template, don't add 'finger' yet. 
-				// This handles devices that send face as fid=0.
-				if (method === 'finger' && methods.includes('face') && !methods.includes('finger')) {
-					console.log(`[ZK:BioData] Skipping 'finger' addition for ${person.name} as they already have 'face' and fid=0 might be the face template.`);
-				} else if (!methods.includes(method)) {
+				if (!methods.includes(method)) {
 					methods.push(method);
 					await db
 						.update(people)
 						.set({ enrolledMethods: JSON.stringify(Array.from(new Set(methods))) })
 						.where(eq(people.id, person.id));
+					console.log(`[ZK:BioData] Added ${method} to enrolledMethods for ${person.name}`);
 				}
 				notifyEnrollment({ personId: person.id, personName: person.name, method });
 				notifyChange();
@@ -327,7 +356,15 @@ export const POST: RequestHandler = async ({ url, request }) => {
 		});
 
 		// 2. Look up person by biometricId
-		const [person] = await db.select().from(people).where(eq(people.biometricId, entry.pin));
+		const [person] = await db
+			.select()
+			.from(people)
+			.where(
+				or(
+					eq(people.biometricId, entry.pin),
+					eq(people.biometricId, parseInt(entry.pin, 10).toString())
+				)
+			);
 
 		if (!person) continue; // No matching person — raw punch still stored
 

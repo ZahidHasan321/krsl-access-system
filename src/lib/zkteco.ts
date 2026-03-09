@@ -132,11 +132,11 @@ export function verifyCodeToMethod(verify: number): string | null {
 	// Codes based on ZKTeco PUSH protocol standards
 	switch (verify) {
 		case 1:
+		case 2:
 			return 'finger';
 		case 0:
 		case 3:
 			return 'password';
-		case 2:
 		case 4:
 			return 'card';
 		case 15:

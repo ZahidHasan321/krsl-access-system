@@ -14,7 +14,7 @@ import http from 'node:http';
 import { URL } from 'node:url';
 import pg from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq, and, asc, sql } from 'drizzle-orm';
+import { eq, and, or, asc, sql } from 'drizzle-orm';
 import * as schema from '../src/lib/server/db/schema';
 import {
 	buildHandshakeResponse,
@@ -205,7 +205,12 @@ const server = http.createServer(async (req, res) => {
 							const [person] = await db
 								.select()
 								.from(schema.people)
-								.where(eq(schema.people.biometricId, pin));
+								.where(
+									or(
+										eq(schema.people.biometricId, pin),
+										eq(schema.people.biometricId, parseInt(pin, 10).toString())
+									)
+								);
 							if (person) {
 								await db
 									.update(schema.people)
@@ -244,7 +249,12 @@ const server = http.createServer(async (req, res) => {
 																const [person] = await db
 																	.select()
 																	.from(schema.people)
-																	.where(eq(schema.people.biometricId, photoPin));
+																	.where(
+																		or(
+																			eq(schema.people.biometricId, photoPin),
+																			eq(schema.people.biometricId, parseInt(photoPin, 10).toString())
+																		)
+																	);
 																if (person) {
 																	await db
 																		.update(schema.people)
@@ -270,7 +280,12 @@ const server = http.createServer(async (req, res) => {
 						const [person] = await db
 							.select()
 							.from(schema.people)
-							.where(eq(schema.people.biometricId, entry.pin));
+							.where(
+								or(
+									eq(schema.people.biometricId, entry.pin),
+									eq(schema.people.biometricId, parseInt(entry.pin, 10).toString())
+								)
+							);
 						if (!person) continue;
 
 						let methods: string[] = [];
@@ -323,7 +338,12 @@ const server = http.createServer(async (req, res) => {
 						const [person] = await db
 							.select()
 							.from(schema.people)
-							.where(eq(schema.people.biometricId, pin));
+							.where(
+								or(
+									eq(schema.people.biometricId, pin),
+									eq(schema.people.biometricId, parseInt(pin, 10).toString())
+								)
+							);
 						if (person) {
 							// Strip table name prefix from body (device sends "BIODATA Pin=1\t..." but we just want the KV pairs)
 							let kvData = body.trim();
@@ -338,7 +358,8 @@ const server = http.createServer(async (req, res) => {
 									and(
 										eq(schema.bioTemplates.personId, person.id),
 										eq(schema.bioTemplates.templateType, table),
-										eq(schema.bioTemplates.fid, fid)
+										eq(schema.bioTemplates.fid, fid),
+										eq(schema.bioTemplates.templateNo, templateNo)
 									)
 								);
 
@@ -410,7 +431,12 @@ const server = http.createServer(async (req, res) => {
 						const [person] = await db
 							.select()
 							.from(schema.people)
-							.where(eq(schema.people.biometricId, entry.pin));
+							.where(
+								or(
+									eq(schema.people.biometricId, entry.pin),
+									eq(schema.people.biometricId, parseInt(entry.pin, 10).toString())
+								)
+							);
 						if (!person) {
 							console.log(`[ZK:Punch] Unknown PIN ${entry.pin} punched`);
 							continue;
@@ -545,7 +571,12 @@ const server = http.createServer(async (req, res) => {
 						const [person] = await db
 							.select()
 							.from(schema.people)
-							.where(eq(schema.people.biometricId, pin));
+							.where(
+								or(
+									eq(schema.people.biometricId, pin),
+									eq(schema.people.biometricId, parseInt(pin, 10).toString())
+								)
+							);
 						if (newStatus === 'SUCCESS' && person) {
 							await db.insert(schema.deviceCommands).values({
 								id: await nextCommandId(),

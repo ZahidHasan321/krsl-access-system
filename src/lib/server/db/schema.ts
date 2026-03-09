@@ -252,7 +252,7 @@ export const bioTemplates = pgTable(
 	},
 	(table) => ({
 		personIdIdx: index('bio_templates_person_id_idx').on(table.personId),
-		uniqueIdx: index('bio_templates_unique_idx').on(table.personId, table.templateType, table.fid)
+		uniqueIdx: index('bio_templates_unique_idx').on(table.personId, table.templateType, table.fid, table.templateNo)
 	})
 );
 

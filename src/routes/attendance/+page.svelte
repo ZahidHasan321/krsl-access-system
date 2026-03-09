@@ -978,7 +978,7 @@
 							{#each logs as log (log.id)}
 								<Card.Root class="group overflow-hidden border-2 border-slate-100 bg-white transition-all hover:border-primary-200 active:bg-slate-50/50 hover:shadow-md">
 									<Card.Content class="p-4 sm:p-5">
-										<div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+										<div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
 											<div class="flex min-w-0 flex-1 items-center gap-4">
 												<!-- Avatar -->
 												<div class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-slate-50 bg-white shadow-sm">
@@ -998,10 +998,15 @@
 
 												<!-- Primary Info -->
 												<div class="min-w-0 flex-1">
-													<div class="flex items-center gap-2">
-														<a href="/people/{log.person.id}" class="truncate text-lg font-black text-slate-900 transition-colors hover:text-primary-600">
+													<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+														<a href="/people/{log.person.id}" class="text-base font-black text-slate-900 transition-colors hover:text-primary-600 sm:text-lg">
 															{log.person.name}
 														</a>
+														{#if log.person.codeNo}
+															<span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-black tracking-tighter text-slate-500 uppercase">
+																#{log.person.codeNo}
+															</span>
+														{/if}
 														{#if log.verifyMethod}
 															<div
 																class={cn(
@@ -1054,9 +1059,9 @@
 											</div>
 
 											<!-- Metrics & Actions -->
-											<div class="flex flex-wrap items-center gap-6 border-t border-slate-50 pt-4 sm:border-none sm:pt-0 md:gap-8 lg:gap-12">
+											<div class="flex flex-wrap items-center gap-x-6 gap-y-4 border-t border-slate-50 pt-4 lg:border-none lg:pt-0 sm:gap-x-8 md:gap-x-10">
 												<!-- Duration -->
-												<div class="space-y-0.5">
+												<div class="min-w-[80px] space-y-0.5">
 													<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Inside For</p>
 													<div class="flex items-center gap-1.5 text-sm font-black text-emerald-600">
 														<Clock size={16} />
@@ -1065,11 +1070,11 @@
 												</div>
 
 												<!-- Location Toggle -->
-												<div class="space-y-1">
+												<div class="min-w-[120px] space-y-1">
 													<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
 														{i18n.t('location')}
 													</p>
-													<div class="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+													<div class="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5 w-fit">
 														<form method="POST" action="?/updatePurpose" use:enhance>
 															<input type="hidden" name="logId" value={log.id} />
 															<input type="hidden" name="purpose" value={log.purpose || ''} />
@@ -1108,7 +1113,7 @@
 												</div>
 
 												<!-- Entry Time -->
-												<div class="space-y-0.5">
+												<div class="min-w-[90px] space-y-0.5">
 													<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('entryTime')}</p>
 													<div class="flex items-center gap-1.5 text-sm font-black text-slate-500">
 														<Clock size={16} class="opacity-50" />
@@ -1118,15 +1123,15 @@
 
 												<!-- Actions -->
 												{#if data.user?.permissions.includes('people.create')}
-													<form method="POST" action="?/checkOut" use:enhance class="ml-auto sm:ml-0">
+													<form method="POST" action="?/checkOut" use:enhance class="sm:ml-auto lg:ml-0">
 														<input type="hidden" name="logId" value={log.id} />
 														<Button
 															type="button"
 															variant="outline"
-															class="h-12 min-w-[120px] gap-2 border-2 border-rose-100 px-6 font-black text-rose-600 transition-all active:scale-95 hover:bg-rose-50 hover:text-rose-700"
+															class="h-11 min-w-[110px] gap-2 border-2 border-rose-100 px-4 text-xs font-black text-rose-600 transition-all active:scale-95 hover:bg-rose-50 hover:text-rose-700 sm:h-12 sm:px-6 sm:text-sm"
 															onclick={(e) => triggerCheckOut((e.currentTarget as HTMLButtonElement).form as HTMLFormElement)}
 														>
-															<CheckCircle2 size={20} />
+															<CheckCircle2 size={18} />
 															<span>{i18n.t('checkOut')}</span>
 														</Button>
 													</form>

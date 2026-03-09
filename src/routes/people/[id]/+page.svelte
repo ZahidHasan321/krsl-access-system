@@ -726,7 +726,7 @@
 										>
 									{/if}
 								</div>
-								<div class="grid grid-cols-4 gap-2 text-xs">
+								<div class="grid grid-cols-2 gap-4 text-xs">
 									<div>
 										<p class="font-medium text-slate-400">{i18n.t('entryTime')}</p>
 										<p class="font-black text-slate-900">{format(log.entryTime, 'hh:mm a')}</p>

@@ -43,6 +43,7 @@ export interface EnrollmentData {
 	method: string;
 	photoUrl?: string | null;
 	thumbUrl?: string | null;
+	silent?: boolean;
 }
 
 export function notifyEnrollment(data: EnrollmentData) {

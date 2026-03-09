@@ -792,65 +792,74 @@
 							onclick={() => goto(`/people/${person.id}`)}
 						>
 							<Card.Content class="p-4 sm:p-5">
-								<div class="mb-4 flex items-start justify-between gap-3">
-																			<div
-																				class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-100 bg-white shadow-sm md:size-14 md:rounded-2xl"
-																			>
-																				{#if person.photoUrl}
-																					<img
-																						src={person.thumbUrl || person.photoUrl}
-																						alt={person.name}
-																						class="size-full object-cover"
-																						loading="lazy"
-																					/>
-																				{:else}
-																					<div
-																						class="flex size-full items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 text-base font-black text-white md:text-lg"
-																					>
-																						{person.name.trim().split(/\s+/).length > 1
-																							? person.name
-																									.trim()
-																									.split(/\s+/)
-																									.slice(0, 2)
-																									.map((n: string) => [...n][0])
-																									.join('')
-																							: ([...person.name.trim()][0] ?? '?')}
-																					</div>
-																				{/if}
-																			</div>
-									
-																			<div class="min-w-0 flex-1">
-																				<div class="mb-1.5 flex flex-wrap items-center gap-2">
-																					<h3 class="text-base leading-tight font-black text-slate-900 sm:text-lg">
-																						{person.name}
-																					</h3>
-																					{#if person.status === 'on_premises'}
-																						<Badge
-																							class={cn(
-																								'shrink-0 text-[9px] font-bold capitalize',
-																								statusBadgeClasses.on_premises
-																							)}
-																						>
-																							{i18n.t('inside')}
-																						</Badge>
-																					{/if}
-																				</div>										<button
-											class="transition-opacity hover:opacity-70"
-											onclick={(e) => openChangeCategory(person, e)}
+								<div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+									<div class="flex min-w-0 flex-1 items-start gap-3">
+										<div
+											class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-100 bg-white shadow-sm md:size-14 md:rounded-2xl"
 										>
-											<Badge
-												variant="outline"
-												class={cn(
-													'text-[9px] font-bold tracking-wider capitalize',
-													getCategoryBadgeClass(person.category.slug)
-												)}
+											{#if person.photoUrl}
+												<img
+													src={person.thumbUrl || person.photoUrl}
+													alt={person.name}
+													class="size-full object-cover"
+													loading="lazy"
+												/>
+											{:else}
+												<div
+													class="flex size-full items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 text-base font-black text-white md:text-lg"
+												>
+													{person.name.trim().split(/\s+/).length > 1
+														? person.name
+																.trim()
+																.split(/\s+/)
+																.slice(0, 2)
+																.map((n: string) => [...n][0])
+																.join('')
+														: ([...person.name.trim()][0] ?? '?')}
+												</div>
+											{/if}
+										</div>
+
+										<div class="min-w-0 flex-1">
+											<div class="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+												<h3 class="text-base font-black leading-tight text-slate-900 sm:text-lg">
+													{person.name}
+												</h3>
+												{#if person.codeNo}
+													<span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-black tracking-tighter text-slate-500 uppercase">
+														#{person.codeNo}
+													</span>
+												{/if}
+												{#if person.status === 'on_premises'}
+													<Badge
+														class={cn(
+															'shrink-0 text-[9px] font-bold capitalize',
+															statusBadgeClasses.on_premises
+														)}
+													>
+														{i18n.t('inside')}
+													</Badge>
+												{/if}
+											</div>
+											<button
+												class="transition-opacity hover:opacity-70"
+												onclick={(e) => openChangeCategory(person, e)}
 											>
-												{person.category.name}
-											</Badge>
-										</button>
+												<Badge
+													variant="outline"
+													class={cn(
+														'text-[9px] font-bold tracking-wider capitalize',
+														getCategoryBadgeClass(person.category.slug)
+													)}
+												>
+													{person.category.name}
+												</Badge>
+											</button>
+										</div>
 									</div>
+
 									<div
-										class="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 p-1"
+										class="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 p-1 sm:self-start"
 									>
 										{#if data.user?.permissions.includes('people.edit')}
 											<Button

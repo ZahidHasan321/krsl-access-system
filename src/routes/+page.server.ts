@@ -34,6 +34,7 @@ export const load: PageServerLoad = async (event) => {
 		insideByLocation,
 		insideByMethod,
 		insideByDepartment,
+		registeredByDepartment,
 		recentLogs
 	] = await Promise.all([
 		db.select({ lastHeartbeat: devices.lastHeartbeat }).from(devices),
@@ -89,6 +90,13 @@ export const load: PageServerLoad = async (event) => {
 			.where(eq(attendanceLogs.status, 'on_premises'))
 			.groupBy(people.department)
 			.orderBy(desc(count())),
+		db
+			.select({
+				department: people.department,
+				count: count()
+			})
+			.from(people)
+			.groupBy(people.department),
 		db
 			.select({
 				id: attendanceLogs.id,
@@ -206,6 +214,7 @@ export const load: PageServerLoad = async (event) => {
 			totalPeople: totalPeopleInside,
 			categoryTree,
 			insideByDepartment,
+			registeredByDepartment,
 			totalVehicles: vehiclesInsideCount.value,
 			vehicleStats
 		},

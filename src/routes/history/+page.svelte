@@ -869,12 +869,22 @@
 								onclick={() => goto(`/people/${log.person.id}`)}
 							>
 								<Card.Content class="p-4">
-									<div class="mb-3 flex items-start justify-between gap-3">
+									<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 										<div>
-											<div class="mb-1.5 flex flex-wrap items-center gap-2">
-												<h3 class="text-base leading-tight font-black text-slate-900 sm:text-lg">
+											<div class="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+												<h3 class="text-base font-black leading-tight text-slate-900 sm:text-lg">
 													{log.person.name}
 												</h3>
+												{#if !log.exitTime}
+													<Badge
+														class={cn(
+															'shrink-0 text-[9px] font-bold capitalize',
+															statusBadgeClasses.on_premises
+														)}
+													>
+														{i18n.t('inside')}
+													</Badge>
+												{/if}
 											</div>
 											<div class="flex flex-wrap items-center gap-2">
 												<Badge
@@ -897,47 +907,37 @@
 												</span>
 											</div>
 										</div>
-										{#if !log.exitTime}
-											<Badge
-												class={cn(
-													'shrink-0 text-[10px] font-bold capitalize',
-													statusBadgeClasses.on_premises
-												)}
-											>
-												{i18n.t('inside')}
-											</Badge>
-										{/if}
 									</div>
-									<div class="grid grid-cols-3 gap-2 text-xs">
-										<div>
+									<div class="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4 text-xs sm:grid-cols-3">
+										<div class="space-y-1">
 											<p class="font-medium text-slate-400">{i18n.t('date')}</p>
-											<p class="font-bold text-slate-600">{format(parseISO(log.date), 'dd-MM-yyyy')}</p>
+											<p class="font-black text-slate-700">{format(parseISO(log.date), 'dd-MM-yyyy')}</p>
 										</div>
-										<div>
+										<div class="space-y-1">
 											<p class="font-medium text-slate-400">{i18n.t('entryTime')}</p>
 											<p class="font-black text-slate-700">{format(log.entryTime, 'hh:mm a')}</p>
 										</div>
-										<div>
+										<div class="space-y-1">
 											<p class="font-medium text-slate-400">{i18n.t('exitTime')}</p>
 											<p class="font-black text-slate-700">
 												{log.exitTime ? format(log.exitTime, 'hh:mm a') : '-'}
 											</p>
 										</div>
-									</div>
-									<div class="mt-2 border-t border-slate-100 pt-2 text-xs">
-										<span class="font-medium text-slate-400"
-											>{log.exitTime ? i18n.t('duration') : 'Inside For'}:</span
-										>
-										<span class="ml-1 font-bold text-slate-500"
-											>{formatDuration(log.durationSeconds)}</span
-										>
-									</div>
-									{#if !isEmployeeView && log.purpose}
-										<div class="mt-2 border-t border-slate-100 pt-2 text-xs">
-											<span class="font-medium text-slate-400">{i18n.t('purpose')}:</span>
-											<span class="ml-1 font-medium text-slate-600">{log.purpose}</span>
+										<div class="space-y-1">
+											<span class="font-medium text-slate-400"
+												>{log.exitTime ? i18n.t('duration') : 'Inside For'}</span
+											>
+											<p class="font-black text-primary-600">
+												{formatDuration(log.durationSeconds)}
+											</p>
 										</div>
-									{/if}
+										{#if !isEmployeeView && log.purpose}
+											<div class="col-span-2 space-y-1 sm:col-span-3">
+												<p class="font-medium text-slate-400">{i18n.t('purpose')}</p>
+												<p class="font-medium text-slate-600">{log.purpose}</p>
+											</div>
+										{/if}
+									</div>
 								</Card.Content>
 							</Card.Root>
 						{:else}

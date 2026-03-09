@@ -321,16 +321,26 @@
 						<div class="space-y-3">
 							<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Department Breakdown</p>
 							<div class="space-y-2">
-								{#each data.currentlyInside.insideByDepartment.filter(d => d.department) as dept}
-									{@const percentage = Math.round((dept.count / data.currentlyInside.totalPeople) * 100)}
+								{#each data.currentlyInside.registeredByDepartment.filter(d => d.department).sort((a, b) => {
+									const map = new Map(data.currentlyInside.insideByDepartment.map(d => [d.department, d.count]));
+									return (map.get(b.department) || 0) - (map.get(a.department) || 0);
+								}) as dept}
+									{@const insideCount = new Map(data.currentlyInside.insideByDepartment.map(d => [d.department, d.count])).get(dept.department) || 0}
+									{@const percentage = Math.round((insideCount / (data.currentlyInside.totalPeople || 1)) * 100)}
 									<button 
 										class="group space-y-1.5 rounded-xl border border-slate-100 bg-white/50 p-2.5 transition-all hover:border-primary-200 hover:bg-white hover:shadow-sm w-full text-left"
 										onclick={() => goto(`/attendance?category=employee&department=${encodeURIComponent(dept.department || '')}`)}
 									>
 										<div class="flex items-center justify-between text-xs">
-											<span class="font-black text-slate-700 uppercase tracking-tight">{dept.department}</span>
 											<div class="flex items-center gap-2">
-												<span class="font-black text-primary-700">{dept.count}</span>
+												<span class="font-black text-slate-700 uppercase tracking-tight">{dept.department}</span>
+												{#if insideCount > 0}
+													<span class="flex h-4 items-center rounded-full bg-emerald-100 px-1.5 text-[8px] font-black text-emerald-700">INSIDE</span>
+												{/if}
+											</div>
+											<div class="flex items-center gap-2">
+												<span class="font-black text-primary-700">{insideCount}</span>
+												<span class="text-[10px] font-bold text-slate-400">/ {dept.count}</span>
 											</div>
 										</div>
 										<div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
@@ -637,7 +647,7 @@
 								</div>
 								<div class="shrink-0 pl-2 text-right flex flex-col items-end gap-1">
 									<p class="text-[10px] font-black text-slate-900">
-										{format(log.entryTime, 'hh:mm a')}
+										{log.entryTime ? format(new Date(log.entryTime), 'hh:mm a') : '--:--'}
 									</p>
 									{#if log.status === 'on_premises'}
 										<span

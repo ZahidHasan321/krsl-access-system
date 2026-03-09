@@ -8,6 +8,7 @@
  * notifies the app of events via an internal API.
  *
  * Run with: node --env-file=.env --import=tsx scripts/device-service.ts
+ * For Dry Run: DRY_RUN=true node --env-file=.env --import=tsx scripts/device-service.ts
  */
 
 import http from 'node:http';
@@ -20,6 +21,7 @@ import {
 	buildHandshakeResponse,
 	parseAttLog,
 	parseOperLog,
+	parseBioData,
 	toDateString,
 	verifyCodeToMethod,
 	formatCommand,
@@ -35,6 +37,13 @@ const PORT = process.env.DEVICE_SERVICE_PORT || 8080;
 const DATABASE_URL = process.env.DATABASE_URL;
 const SVELTE_INTERNAL_URL = process.env.SVELTE_INTERNAL_URL || 'http://localhost:5173';
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'dev-secret';
+const IS_DRY_RUN = process.env.DRY_RUN === 'true';
+
+if (IS_DRY_RUN) {
+	console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+	console.log('!! RUNNING IN DRY_RUN MODE - DB SAVING DISABLED !!');
+	console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+}
 
 if (!DATABASE_URL) throw new Error('DATABASE_URL is not set');
 
@@ -200,27 +209,31 @@ const server = http.createServer(async (req, res) => {
 						const imageBuffer = await readBuffer(req);
 						console.log(`[ZK:Photo] Image size: ${imageBuffer.length} bytes`);
 
-						const result = await savePersonPhoto(pin, imageBuffer);
-						if (result) {
-							const [person] = await db
-								.select()
-								.from(schema.people)
-								.where(
-									or(
-										eq(schema.people.biometricId, pin),
-										eq(schema.people.biometricId, parseInt(pin, 10).toString())
-									)
-								);
-							if (person) {
-								await db
-									.update(schema.people)
-									.set({ 
-										photoUrl: result.photoUrl,
-										thumbUrl: result.thumbUrl
-									})
-									.where(eq(schema.people.id, person.id));
-								console.log(`[ZK:Photo] Saved ATTPHOTO for ${person.name}: ${result.photoUrl}`);
-								notifySvelte('change');
+						if (IS_DRY_RUN) {
+							console.log(`[DRY-RUN] Would save ATTPHOTO for PIN ${pin}`);
+						} else {
+							const result = await savePersonPhoto(pin, imageBuffer);
+							if (result) {
+								const [person] = await db
+									.select()
+									.from(schema.people)
+									.where(
+										or(
+											eq(schema.people.biometricId, pin),
+											eq(schema.people.biometricId, parseInt(pin, 10).toString())
+										)
+									);
+								if (person) {
+									await db
+										.update(schema.people)
+										.set({ 
+											photoUrl: result.photoUrl,
+											thumbUrl: result.thumbUrl
+										})
+										.where(eq(schema.people.id, person.id));
+									console.log(`[ZK:Photo] Saved ATTPHOTO for ${person.name}: ${result.photoUrl}`);
+									notifySvelte('change');
+								}
 							}
 						}
 					} catch (e) {
@@ -244,31 +257,36 @@ const server = http.createServer(async (req, res) => {
 
 						try {
 							const imageBuffer = Buffer.from(base64Content, 'base64');
-															const result = await savePersonPhoto(photoPin, imageBuffer);
-															if (result) {
-																const [person] = await db
-																	.select()
-																	.from(schema.people)
-																	.where(
-																		or(
-																			eq(schema.people.biometricId, photoPin),
-																			eq(schema.people.biometricId, parseInt(photoPin, 10).toString())
-																		)
-																	);
-																if (person) {
-																	await db
-																		.update(schema.people)
-																		.set({ 
-																			photoUrl: result.photoUrl,
-																			thumbUrl: result.thumbUrl
-																		})
-																		.where(eq(schema.people.id, person.id));
-																	console.log(
-																		`[ZK:OperLog] Saved face photo for ${person.name}: ${result.photoUrl} (thumb: ${result.thumbUrl})`
-																	);
-																	notifySvelte('change');
-																}
-															}						} catch (e) {
+							if (IS_DRY_RUN) {
+								console.log(`[DRY-RUN] Would save BIOPHOTO for PIN ${photoPin}`);
+							} else {
+								const result = await savePersonPhoto(photoPin, imageBuffer);
+								if (result) {
+									const [person] = await db
+										.select()
+										.from(schema.people)
+										.where(
+											or(
+												eq(schema.people.biometricId, photoPin),
+												eq(schema.people.biometricId, parseInt(photoPin, 10).toString())
+											)
+										);
+									if (person) {
+										await db
+											.update(schema.people)
+											.set({ 
+												photoUrl: result.photoUrl,
+												thumbUrl: result.thumbUrl
+											})
+											.where(eq(schema.people.id, person.id));
+										console.log(
+											`[ZK:OperLog] Saved face photo for ${person.name}: ${result.photoUrl} (thumb: ${result.thumbUrl})`
+										);
+										notifySvelte('change');
+									}
+								}
+							}
+						} catch (e) {
 							console.error(`[ZK:OperLog] Error saving face photo:`, e);
 						}
 					}
@@ -276,6 +294,11 @@ const server = http.createServer(async (req, res) => {
 					const opEntries = parseOperLog(body);
 					for (const entry of opEntries) {
 						if (!entry.enrollMethod) continue;
+
+						if (IS_DRY_RUN) {
+							console.log(`[DRY-RUN] Received enrollment OPERLOG for PIN ${entry.pin}: ${entry.enrollMethod}`);
+							continue;
+						}
 
 						const [person] = await db
 							.select()
@@ -318,23 +341,17 @@ const server = http.createServer(async (req, res) => {
 
 				// Handle BIODATA / FACE / FINGERTMP — device sends biometric template after enrollment
 				if (table === 'BIODATA' || table === 'FACE' || table === 'FINGERTMP') {
-					// PIN may be in URL params or in the body (e.g. "BIODATA Pin=2\tNo=0...")
-					let pin = url.searchParams.get('PIN') || url.searchParams.get('pin');
-					if (!pin) {
-						const pinMatch = body.match(/(?:^|\t)PIN=(\w+)/im) || body.match(/Pin=(\w+)/i);
-						pin = pinMatch ? pinMatch[1] : null;
-					}
+					const entries = parseBioData(body, table || 'BIODATA');
+					console.log(`[ZK:BioData] Received ${entries.length} templates from ${table} batch`);
 
-					// Parse FID and No from body KV pairs
-					const fidMatch = body.match(/(?:^|\t)FID=(\w+)/im) || body.match(/(?:^|\t)Fid=(\w+)/im);
-					const noMatch = body.match(/(?:^|\t)No=(\w+)/im);
-					const fid = fidMatch ? fidMatch[1] : table === 'FACE' ? '111' : '0';
-					const templateNo = noMatch ? noMatch[1] : '0';
+					for (const entry of entries) {
+						const { pin, fid, templateNo, templateType, templateData } = entry;
+						
+						if (IS_DRY_RUN) {
+							console.log(`[DRY-RUN] Received ${templateType} for PIN=${pin} (FID=${fid}, No=${templateNo}, Size=${templateData.length})`);
+							continue;
+						}
 
-					console.log(
-						`[ZK:BioData] Received ${table} template for PIN ${pin} FID=${fid} No=${templateNo}`
-					);
-					if (pin) {
 						const [person] = await db
 							.select()
 							.from(schema.people)
@@ -345,11 +362,6 @@ const server = http.createServer(async (req, res) => {
 								)
 							);
 						if (person) {
-							// Strip table name prefix from body (device sends "BIODATA Pin=1\t..." but we just want the KV pairs)
-							let kvData = body.trim();
-							const prefixPattern = new RegExp(`^${table}\\s+`, 'i');
-							kvData = kvData.replace(prefixPattern, '');
-
 							// Store template data
 							const [existingTemplate] = await db
 								.select()
@@ -357,7 +369,7 @@ const server = http.createServer(async (req, res) => {
 								.where(
 									and(
 										eq(schema.bioTemplates.personId, person.id),
-										eq(schema.bioTemplates.templateType, table),
+										eq(schema.bioTemplates.templateType, templateType),
 										eq(schema.bioTemplates.fid, fid),
 										eq(schema.bioTemplates.templateNo, templateNo)
 									)
@@ -366,19 +378,19 @@ const server = http.createServer(async (req, res) => {
 							if (existingTemplate) {
 								await db
 									.update(schema.bioTemplates)
-									.set({ templateData: kvData, templateNo, updatedAt: new Date() })
+									.set({ templateData, updatedAt: new Date() })
 									.where(eq(schema.bioTemplates.id, existingTemplate.id));
-								console.log(`[ZK:BioData] Updated ${table} template for ${person.name}`);
+								console.log(`[ZK:BioData] Updated ${templateType} template for ${person.name} (FID=${fid}, No=${templateNo})`);
 							} else {
 								await db.insert(schema.bioTemplates).values({
 									id: crypto.randomUUID(),
 									personId: person.id,
-									templateType: table,
-									templateData: kvData,
+									templateType,
+									templateData,
 									fid,
 									templateNo
 								});
-								console.log(`[ZK:BioData] Stored new ${table} template for ${person.name}`);
+								console.log(`[ZK:BioData] Stored new ${templateType} template for ${person.name} (FID=${fid}, No=${templateNo})`);
 							}
 
 							// Track enrolled methods
@@ -389,9 +401,7 @@ const server = http.createServer(async (req, res) => {
 								methods = [];
 							}
 
-							const method = fid === '111' || table === 'FACE' ? 'face' : 'finger';
-							console.log(`[ZK:BioData] Associating template as ${method} for ${person.name}`);
-
+							const method = fid === '111' || templateType === 'FACE' ? 'face' : 'finger';
 							if (!methods.includes(method)) {
 								methods.push(method);
 								await db
@@ -399,15 +409,14 @@ const server = http.createServer(async (req, res) => {
 									.set({ enrolledMethods: JSON.stringify(Array.from(new Set(methods))) })
 									.where(eq(schema.people.id, person.id));
 							}
-							// Always notify SvelteKit so the UI can close its waiting dialog
 							notifySvelte('enrollment', {
 								personId: person.id,
 								method,
 								photoUrl: person.photoUrl
 							});
-							notifySvelte('change');
 						}
 					}
+					notifySvelte('change');
 					return res.writeHead(200).end('OK');
 				}
 
@@ -416,6 +425,11 @@ const server = http.createServer(async (req, res) => {
 					const entries = parseAttLog(body);
 					console.log(`[ZK:Punch] Received ${entries.length} punches from device ${sn}`);
 					for (const entry of entries) {
+						if (IS_DRY_RUN) {
+							console.log(`[DRY-RUN] Received punch for PIN ${entry.pin} at ${entry.timestamp.toISOString()}`);
+							continue;
+						}
+
 						const rawId = crypto.randomUUID();
 						await db.insert(schema.rawPunches).values({
 							id: rawId,
@@ -578,34 +592,38 @@ const server = http.createServer(async (req, res) => {
 								)
 							);
 						if (newStatus === 'SUCCESS' && person) {
-							await db.insert(schema.deviceCommands).values({
-								id: await nextCommandId(),
-								deviceSn: sn,
-								commandString: Commands.setUser(pin, person.name),
-								status: 'PENDING'
-							});
-							const method = cmd.commandString.includes('FID=111') ? 'face' : 'finger';
+							if (IS_DRY_RUN) {
+								console.log(`[DRY-RUN] Would confirm enrollment and sync user back to device for PIN ${pin}`);
+							} else {
+								await db.insert(schema.deviceCommands).values({
+									id: await nextCommandId(),
+									deviceSn: sn,
+									commandString: Commands.setUser(pin, person.name),
+									status: 'PENDING'
+								});
+								const method = cmd.commandString.includes('FID=111') ? 'face' : 'finger';
 
-							// Update enrolledMethods in DB
-							let methods: string[] = [];
-							try {
-								methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : [];
-							} catch {
-								methods = [];
-							}
-							if (!methods.includes(method)) {
-								methods.push(method);
-								await db
-									.update(schema.people)
-									.set({ enrolledMethods: JSON.stringify(Array.from(new Set(methods))) })
-									.where(eq(schema.people.id, person.id));
-							}
+								// Update enrolledMethods in DB
+								let methods: string[] = [];
+								try {
+									methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : [];
+								} catch {
+									methods = [];
+								}
+								if (!methods.includes(method)) {
+									methods.push(method);
+									await db
+										.update(schema.people)
+										.set({ enrolledMethods: JSON.stringify(Array.from(new Set(methods))) })
+										.where(eq(schema.people.id, person.id));
+								}
 
-							notifySvelte('enrollment', {
-								personId: person.id,
-								method,
-								photoUrl: person.photoUrl
-							});
+								notifySvelte('enrollment', {
+									personId: person.id,
+									method,
+									photoUrl: person.photoUrl
+								});
+							}
 						} else if (newStatus === 'FAILED' && person) {
 							notifySvelte('enrollment-failed', {
 								personId: person.id,

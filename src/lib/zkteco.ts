@@ -165,6 +165,58 @@ export const ENROLLMENT_OPS: Record<string, string> = {
 	RegUser: 'face'
 };
 
+export interface BioDataEntry {
+	pin: string;
+	fid: string;
+	templateNo: string;
+	templateType: string;
+	templateData: string;
+	rawLine: string;
+}
+
+/** Parse BIODATA/FACE/FINGERTMP lines from device POST body */
+export function parseBioData(body: string, defaultTable: string): BioDataEntry[] {
+	const entries: BioDataEntry[] = [];
+	const lines = body.split('\n');
+
+	for (const line of lines) {
+		const trimmed = line.trim();
+		if (!trimmed) continue;
+
+		// Extract table if present (e.g. "BIODATA Pin=1\t...")
+		const tableMatch = trimmed.match(/^(\w+)\s+/i);
+		const table = tableMatch ? tableMatch[1].toUpperCase() : defaultTable.toUpperCase();
+		
+		// PIN matching
+		const pinMatch = trimmed.match(/(?:^|\t| )PIN=(\w+)/i) || trimmed.match(/Pin=(\w+)/i);
+		const pin = pinMatch ? pinMatch[1] : '';
+
+		// FID and No
+		const fidMatch = trimmed.match(/(?:^|\t| )FID=(\w+)/i);
+		const noMatch = trimmed.match(/(?:^|\t| )No=(\w+)/i);
+		
+		const fid = fidMatch ? fidMatch[1] : (table === 'FACE' ? '111' : '0');
+		const templateNo = noMatch ? noMatch[1] : '0';
+
+		if (pin) {
+			// Strip table prefix for data storage
+			const prefixPattern = new RegExp(`^${table}\\s+`, 'i');
+			const templateData = trimmed.replace(prefixPattern, '');
+
+			entries.push({
+				pin,
+				fid,
+				templateNo,
+				templateType: table,
+				templateData,
+				rawLine: trimmed
+			});
+		}
+	}
+
+	return entries;
+}
+
 export interface OperLogEntry {
 	pin: string;
 	operation: string;

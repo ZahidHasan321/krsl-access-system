@@ -115,31 +115,6 @@
 
 	// Edit dialog state
 	let isEditOpen = $state(false);
-	let editPerson = $state<any>(null);
-	let editName = $state('');
-	let editCodeNo = $state('');
-	let editCompany = $state('');
-	let editContactNo = $state('');
-	let editDesignation = $state('');
-	let editDepartment = $state('');
-	let editJoinDate = $state('');
-	let editAuditJoinDate = $state('');
-	let editBiometricId = $state('');
-	let editIsTrained = $state(false);
-	let editNotes = $state('');
-
-	const isEmployeeEdit = $derived(() => {
-		if (!editPerson) return false;
-		// Determine if root category is employee
-		let currentCatId = editPerson.categoryId;
-		const catMap = new Map(CATEGORIES.map(c => [c.id, c]));
-		let current = catMap.get(currentCatId);
-		while (current?.parentId) {
-			current = catMap.get(current.parentId);
-		}
-		return current?.slug === 'employee';
-	});
-
 	// Change Category state
 	let isChangeCategoryOpen = $state(false);
 	let changeCategoryPerson = $state<any>(null);
@@ -173,19 +148,34 @@
 		return [];
 	});
 
-	const activeRootCategoryId = $derived(() => {
-		if (!selectedCategoryId) return '';
-		if (isRootCategory) return selectedCategoryId;
-		let current = getCategoryById(selectedCategoryId);
-		if (!current) return '';
+	let editPerson = $state<any>(null);
+	let editName = $state('');
+	let editCodeNo = $state('');
+	let editCompany = $state('');
+	let editContactNo = $state('');
+	let editDesignation = $state('');
+	let editDepartment = $state('');
+	let editJoinDate = $state('');
+	let editAuditJoinDate = $state('');
+	let editBiometricId = $state('');
+	let editIsTrained = $state(false);
+	let editNotes = $state('');
+
+	function getRootCategoryId(catId: string | null): string {
+		if (!catId) return '';
+		const catMap = new Map(CATEGORIES.map(c => [c.id, c]));
+		let current = catMap.get(catId);
 		while (current?.parentId) {
-			const parentId = current.parentId;
-			const parent = getCategoryById(parentId);
-			if (!parent) break;
-			if (ROOT_CATEGORIES.some((r) => r.id === parent.id)) return parent.id;
-			current = parent;
+			current = catMap.get(current.parentId);
 		}
 		return current?.id || '';
+	}
+
+	const activeRootCategoryId = $derived(() => getRootCategoryId(selectedCategoryId));
+
+	const isEmployeeEdit = $derived(() => {
+		if (!editPerson) return false;
+		return getRootCategoryId(editPerson.categoryId) === 'employee';
 	});
 
 	const activeParentCategory = $derived(() => {
@@ -555,6 +545,38 @@
 							</button>
 						{/each}
 					</div>
+
+					{#if activeRootCategoryId() === 'employee' && data.departments.length > 0}
+						<div class="mt-2 flex gap-2 overflow-x-auto border-t border-slate-100 pt-2 pb-2">
+							<span class="self-center px-2 text-[9px] font-black text-slate-400 uppercase"
+								>Dept.</span
+							>
+							<button
+								class={cn(
+									'shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+									!selectedDepartment
+										? 'border-primary-600 bg-primary-50 text-primary-700'
+										: 'border-slate-100 bg-white text-slate-500'
+								)}
+								onclick={() => setFilter('department', '')}
+							>
+								All
+							</button>
+							{#each data.departments as dept}
+								<button
+									class={cn(
+										'shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+										selectedDepartment === dept
+											? 'border-primary-600 bg-primary-50 text-primary-700'
+											: 'border-slate-100 bg-white text-slate-500'
+									)}
+									onclick={() => setFilter('department', dept)}
+								>
+									{dept}
+								</button>
+							{/each}
+						</div>
+					{/if}
 				</div>
 			{/if}
 		</div>
@@ -1003,7 +1025,10 @@
 											</div>
 											<div class="flex items-center gap-2">
 												<span class="text-[10px] font-bold tracking-tight text-slate-400 uppercase">
-													{person.designation || '-'}
+													{person.designation || '-'} 
+													{#if person.department}
+														• {person.department}
+													{/if}
 												</span>
 												{#if parseEnrolledMethods(person.enrolledMethods).length > 0}
 													<div class="flex items-center gap-1">

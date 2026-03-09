@@ -305,6 +305,38 @@
 							</div>
 						</div>
 
+						{#if data.person.department}
+							<div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+								<div
+									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600"
+								>
+									<Building2 size={20} />
+								</div>
+								<div class="min-w-0">
+									<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+										Department
+									</p>
+									<p class="truncate font-bold text-slate-900">{data.person.department}</p>
+								</div>
+							</div>
+						{/if}
+
+						{#if data.person.joinDate}
+							<div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+								<div
+									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600"
+								>
+									<Calendar size={20} />
+								</div>
+								<div class="min-w-0">
+									<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+										Join Date
+									</p>
+									<p class="truncate font-bold text-slate-900">{format(new Date(data.person.joinDate), 'dd-MM-yyyy')}</p>
+								</div>
+							</div>
+						{/if}
+
 						{#if data.person.codeNo}
 							<div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
 								<div

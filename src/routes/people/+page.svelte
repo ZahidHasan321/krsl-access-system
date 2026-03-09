@@ -923,6 +923,17 @@
 									</div>
 								</div>
 								<div class="grid grid-cols-2 gap-4 text-xs">
+									<div class="space-y-1">
+										<p class="text-[10px] font-bold tracking-widest text-slate-400 capitalize">
+											{i18n.t('designation')}
+										</p>
+										<p class="font-black text-slate-700">
+											{person.designation || '-'}
+											{#if person.department}
+												<span class="ml-1 text-[10px] font-bold text-slate-400">• {person.department}</span>
+											{/if}
+										</p>
+									</div>
 									{#if person.codeNo}
 										<div class="space-y-1">
 											<p class="text-[10px] font-bold tracking-widest text-slate-400 capitalize">

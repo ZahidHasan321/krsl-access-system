@@ -200,7 +200,7 @@
 </script>
 
 <Dialog.Root bind:open>
-	<Dialog.Content class="flex max-h-[90vh] flex-col overflow-hidden p-0 sm:max-w-[550px]">
+	<Dialog.Content class="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-[550px] sm:rounded-lg">
 		<div class="shrink-0 border-b bg-slate-50 p-6">
 			<Dialog.Title class="text-xl font-black">{i18n.t('checkIn')}</Dialog.Title>
 			<Dialog.Description class="text-xs font-bold tracking-widest text-slate-500 uppercase">
@@ -251,7 +251,7 @@
 									selectedCategoryId === cat.id || selectedCategory?.parentId === cat.id}
 								<button
 									class={cn(
-										'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 p-3 transition-all',
+										'chip-pressable flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 p-3 transition-all',
 										isActive
 											? activeColorMap[cat.color] ||
 													'scale-[1.02] border-primary-500 bg-primary-500 text-white shadow-md'
@@ -275,7 +275,7 @@
 									{#each availableSubCategories() as subCat}
 										<button
 											class={cn(
-												'cursor-pointer rounded-lg border-2 px-3 py-1.5 text-[10px] font-black tracking-wider uppercase transition-all',
+												'chip-pressable cursor-pointer rounded-lg border-2 px-3 py-1.5 text-[10px] font-black tracking-wider uppercase transition-all',
 												selectedCategoryId === subCat.id
 													? activeColorMap[subCat.color] ||
 															'border-primary-500 bg-primary-500 text-white'
@@ -321,7 +321,7 @@
 							>
 								<div class="px-2 py-1.5">
 									<button
-										class="flex w-full cursor-pointer items-center gap-3 rounded-xl border-2 border-slate-100 bg-white p-3 text-left transition-all hover:border-primary-200 hover:bg-primary-50/50"
+										class="card-pressable flex w-full cursor-pointer items-center gap-3 rounded-xl border-2 border-slate-100 bg-white p-3 text-left transition-all hover:border-primary-200 hover:bg-primary-50/50 active:bg-primary-50"
 										onclick={() => selectPerson(person)}
 									>
 										<div
@@ -523,7 +523,7 @@
 								<button
 									type="button"
 									class={cn(
-										'flex h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
+										'chip-pressable flex h-16 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
 										location === 'yard'
 											? 'scale-[1.02] border-primary-500 bg-primary-500 text-white shadow-lg shadow-primary-500/20'
 											: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200 hover:bg-slate-50'
@@ -536,7 +536,7 @@
 								<button
 									type="button"
 									class={cn(
-										'flex h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
+										'chip-pressable flex h-16 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
 										location === 'ship'
 											? 'scale-[1.02] border-primary-500 bg-primary-500 text-white shadow-lg shadow-primary-500/20'
 											: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200 hover:bg-slate-50'

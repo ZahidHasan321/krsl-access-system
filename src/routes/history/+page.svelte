@@ -218,7 +218,7 @@
 </svelte:head>
 
 <!-- Print-only section -->
-<div class={cn('print-only', !isPrintMode && 'hidden')} style="padding-top: 1.5cm; padding-bottom: 1.5cm;">
+<div class={cn('print-only', !isPrintMode && 'hidden')}>
 	<div
 		class="print-header"
 		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 2px solid #000; margin-bottom: 2rem;"
@@ -526,7 +526,7 @@
 					<div class="mt-4 custom-scrollbar flex gap-2 overflow-x-auto pb-2">
 						<button
 							class={cn(
-								'shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+								'chip-pressable shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
 								!selectedCategoryId
 									? 'bg-primary-600 text-white shadow-md'
 									: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -538,7 +538,7 @@
 						{#each ROOT_CATEGORIES as cat (cat.id)}
 							<button
 								class={cn(
-									'shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+									'chip-pressable shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
 									activeRootCategoryId() === cat.id
 										? 'bg-primary-600 text-white shadow-md'
 										: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -556,7 +556,7 @@
 							{#each availableSubCategories() as subCat (subCat.id)}
 								<button
 									class={cn(
-										'shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+										'chip-pressable shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
 										selectedCategoryId === subCat.id
 											? 'border-primary-600 bg-primary-50 text-primary-700'
 											: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200'
@@ -894,11 +894,16 @@
 														getCategoryBadgeClass(log.category.slug)
 													)}
 												>
-													{log.rootCategory.name}
-													{log.category.name !== log.rootCategory.name
-														? ' • ' + log.category.name
-														: ''}
+													{log.category.name}
 												</Badge>
+												{#if log.person.department}
+													<Badge
+														variant="outline"
+														class="border-blue-200 bg-blue-50 text-[9px] font-black tracking-widest text-blue-700 uppercase"
+													>
+														{log.person.department}
+													</Badge>
+												{/if}
 												<span class="text-[10px] font-bold tracking-tight text-slate-400 uppercase">
 													{#if log.person.codeNo}#{log.person.codeNo}{/if}
 													{#if log.person.codeNo && log.person.company} • {/if}
@@ -961,7 +966,7 @@
 						{/each}
 					{:else if data.view === 'daily'}
 						{#each data.data as day}
-							<Card.Root class="bg-white">
+							<Card.Root class="card-pressable border-2 border-slate-100 bg-white active:bg-slate-50/80">
 								<Card.Content class="p-4">
 									<div class="mb-2 font-bold text-slate-900">
 										{format(parseISO(day.date), 'dd-MM-yyyy')}
@@ -991,7 +996,7 @@
 						{/each}
 					{:else}
 						{#each data.data as month}
-							<Card.Root class="bg-white">
+							<Card.Root class="card-pressable border-2 border-slate-100 bg-white active:bg-slate-50/80">
 								<Card.Content class="p-4">
 									<div class="mb-2 font-black text-slate-900 uppercase">
 										{format(parseISO(month.month + '-01'), 'MMMM yyyy')}
@@ -1060,18 +1065,25 @@
 												</div>
 											</Table.Cell>
 											<Table.Cell>
-												<Badge
-													variant="outline"
-													class={cn(
-														'text-[10px] font-bold tracking-wider capitalize',
-														getCategoryBadgeClass(log.category.slug)
-													)}
-												>
-													{log.rootCategory.name}
-													{log.category.name !== log.rootCategory.name
-														? ' • ' + log.category.name
-														: ''}
-												</Badge>
+												<div class="flex flex-col gap-1.5">
+													<Badge
+														variant="outline"
+														class={cn(
+															'w-fit text-[10px] font-bold tracking-wider capitalize',
+															getCategoryBadgeClass(log.category.slug)
+														)}
+													>
+														{log.category.name}
+													</Badge>
+													{#if log.person.department}
+														<Badge
+															variant="outline"
+															class="w-fit border-blue-200 bg-blue-50 text-[9px] font-black tracking-widest text-blue-700 uppercase"
+														>
+															{log.person.department}
+														</Badge>
+													{/if}
+												</div>
 											</Table.Cell>
 											<Table.Cell class="py-4 font-medium text-slate-600"
 												>{format(parseISO(log.date), 'dd-MM-yyyy')}</Table.Cell

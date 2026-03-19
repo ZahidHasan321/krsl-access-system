@@ -538,7 +538,7 @@
 					<div class="custom-scrollbar flex gap-2 overflow-x-auto pb-2">
 						<button
 							class={cn(
-								'shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+								'chip-pressable shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
 								selectedCategoryId === ''
 									? 'bg-primary-600 text-white shadow-md'
 									: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -550,7 +550,7 @@
 						{#each ROOT_CATEGORIES as cat (cat.id)}
 							<button
 								class={cn(
-									'shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+									'chip-pressable shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
 									activeRootCategoryId() === cat.id
 										? 'bg-primary-600 text-white shadow-md'
 										: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -568,7 +568,7 @@
 							{#each availableSubCategories() as subCat (subCat.id)}
 								<button
 									class={cn(
-										'shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+										'chip-pressable shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
 										selectedCategoryId === subCat.id
 											? 'border-primary-600 bg-primary-50 text-primary-700'
 											: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200'
@@ -589,7 +589,7 @@
 							<div class="custom-scrollbar flex gap-2 overflow-x-auto pb-2">
 								<button
 									class={cn(
-										'shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+										'chip-pressable shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
 										!selectedDepartment
 											? 'border-primary-600 bg-primary-50 text-primary-700'
 											: 'border-slate-100 bg-white text-slate-500'
@@ -601,7 +601,7 @@
 								{#each data.departments as dept}
 									<button
 										class={cn(
-											'shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+											'chip-pressable shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
 											selectedDepartment === dept
 												? 'border-primary-600 bg-primary-50 text-primary-700'
 												: 'border-slate-100 bg-white text-slate-500'
@@ -976,7 +976,7 @@
 					{#if logs.length > 0}
 						<div class="flex flex-col gap-3 lg:p-4">
 							{#each logs as log (log.id)}
-								<Card.Root class="group overflow-hidden border-2 border-slate-100 bg-white transition-all hover:border-primary-200 active:bg-slate-50/50 hover:shadow-md">
+								<Card.Root class="card-pressable group overflow-hidden border-2 border-slate-100 bg-white transition-all hover:border-primary-200 active:bg-slate-50/70">
 									<Card.Content class="p-4 sm:p-5">
 										<div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
 											<div class="flex min-w-0 flex-1 items-center gap-4">
@@ -1034,22 +1034,23 @@
 														{/if}
 													</div>
 													<div class="mt-1.5 flex flex-wrap gap-1.5">
-														{#each getCategoryPath(log.person.categoryId).slice(-2) as cat (cat.id)}
+														{#if getCategoryPath(log.person.categoryId).at(-1)}
+															{@const category = getCategoryPath(log.person.categoryId).at(-1)}
 															<Badge
 																variant="outline"
 																class={cn(
 																	'h-5 px-1.5 text-[10px] font-black tracking-wider uppercase',
-																	getCategoryBadgeClass(cat.slug)
+																	getCategoryBadgeClass(category.slug)
 																)}
 															>
-																{i18n.t(cat.slug as any) || cat.name}
+																{i18n.t(category.slug as any) || category.name}
 															</Badge>
-														{/each}
+														{/if}
 
 														{#if log.person.department}
 															<Badge
 																variant="outline"
-																class="h-5 border-slate-200 bg-slate-50 px-1.5 text-[10px] font-black tracking-wider text-slate-600 uppercase"
+																class="h-5 border-blue-200 bg-blue-50 px-1.5 text-[10px] font-black tracking-widest text-blue-700 uppercase"
 															>
 																{log.person.department}
 															</Badge>
@@ -1059,7 +1060,7 @@
 											</div>
 
 											<!-- Metrics & Actions -->
-											<div class="flex flex-wrap items-center gap-x-6 gap-y-4 border-t border-slate-50 pt-4 lg:border-none lg:pt-0 sm:gap-x-8 md:gap-x-10">
+											<div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-slate-50 pt-3 lg:justify-start lg:border-none lg:pt-0 sm:gap-x-8 md:gap-x-10">
 												<!-- Duration -->
 												<div class="min-w-[80px] space-y-0.5">
 													<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Inside For</p>
@@ -1123,7 +1124,7 @@
 
 												<!-- Actions -->
 												{#if data.user?.permissions.includes('people.create')}
-													<form method="POST" action="?/checkOut" use:enhance class="sm:ml-auto lg:ml-0">
+													<form method="POST" action="?/checkOut" use:enhance class="ml-auto lg:ml-0">
 														<input type="hidden" name="logId" value={log.id} />
 														<Button
 															type="button"

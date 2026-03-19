@@ -184,7 +184,7 @@
 </script>
 
 <Dialog.Root bind:open>
-	<Dialog.Content class="flex max-h-[90vh] flex-col overflow-hidden p-0 sm:max-w-[650px]">
+	<Dialog.Content class="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-[650px] sm:rounded-lg">
 		<div class="flex shrink-0 items-center justify-between border-b bg-slate-50 p-6">
 			<div>
 				<Dialog.Title class="text-xl font-black">
@@ -391,7 +391,7 @@
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-3" in:fade>
 					{#each ROOT_CATEGORIES as cat}
 						<button
-							class="group relative cursor-pointer rounded-2xl border-2 border-slate-100 p-5 text-center transition-all hover:border-primary-300 hover:bg-primary-50/50"
+							class="card-pressable group relative cursor-pointer rounded-2xl border-2 border-slate-100 p-5 text-center transition-all hover:border-primary-300 hover:bg-primary-50/50 active:bg-primary-50"
 							onclick={() => selectRootCategory(cat.id)}
 						>
 							<div
@@ -460,7 +460,7 @@
 								{#each subCategories as subCat}
 									<button
 										class={cn(
-											'cursor-pointer rounded-xl border-2 px-4 py-2 text-xs font-black tracking-wider uppercase transition-all',
+											'chip-pressable cursor-pointer rounded-xl border-2 px-4 py-2 text-xs font-black tracking-wider uppercase transition-all',
 											selectedSubCategoryId === subCat.id
 												? activeColorMap[subCat.color] ||
 														'border-primary-500 bg-primary-500 text-white'
@@ -796,7 +796,7 @@
 										<button
 											type="button"
 											class={cn(
-												'flex h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
+												'chip-pressable flex h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
 												location === 'yard'
 													? 'border-primary-500 bg-primary-500 text-white shadow-md'
 													: 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
@@ -809,7 +809,7 @@
 										<button
 											type="button"
 											class={cn(
-												'flex h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
+												'chip-pressable flex h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 text-[10px] font-black tracking-widest uppercase transition-all',
 												location === 'ship'
 													? 'border-primary-500 bg-primary-500 text-white shadow-md'
 													: 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'

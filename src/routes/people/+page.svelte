@@ -484,7 +484,7 @@
 					<div class="custom-scrollbar flex gap-2 overflow-x-auto pb-2">
 						<button
 							class={cn(
-								'shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+								'chip-pressable shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
 								selectedCategoryId === ''
 									? 'bg-primary-600 text-white shadow-md'
 									: 'bg-slate-100 text-slate-600'
@@ -496,7 +496,7 @@
 						{#each ROOT_CATEGORIES as cat}
 							<button
 								class={cn(
-									'shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+									'chip-pressable shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
 									activeRootCategoryId() === cat.id
 										? 'bg-primary-600 text-white shadow-md'
 										: 'bg-slate-100 text-slate-600'
@@ -514,7 +514,7 @@
 							{#each availableSubCategories() as subCat}
 								<button
 									class={cn(
-										'shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+										'chip-pressable shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
 										selectedCategoryId === subCat.id
 											? 'border-primary-600 bg-primary-50 text-primary-700'
 											: 'border-slate-100 bg-white text-slate-500'
@@ -534,7 +534,7 @@
 						{#each [{ label: 'All', value: '' }, { label: 'Trained', value: 'yes' }, { label: 'Untrained', value: 'no' }] as opt}
 							<button
 								class={cn(
-									'shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+									'chip-pressable shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
 									selectedTrained === opt.value
 										? 'border-emerald-500 bg-emerald-50 text-emerald-700'
 										: 'border-slate-100 bg-white text-slate-500'
@@ -553,7 +553,7 @@
 							>
 							<button
 								class={cn(
-									'shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+									'chip-pressable shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
 									!selectedDepartment
 										? 'border-primary-600 bg-primary-50 text-primary-700'
 										: 'border-slate-100 bg-white text-slate-500'
@@ -565,7 +565,7 @@
 							{#each data.departments as dept}
 								<button
 									class={cn(
-										'shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+										'chip-pressable shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
 										selectedDepartment === dept
 											? 'border-primary-600 bg-primary-50 text-primary-700'
 											: 'border-slate-100 bg-white text-slate-500'
@@ -810,61 +810,61 @@
 				<div class="space-y-3 lg:hidden">
 					{#each data.people as person (person.id)}
 						<Card.Root
-							class="cursor-pointer bg-white transition-shadow hover:shadow-lg"
+							class="card-pressable cursor-pointer border-2 border-slate-100 bg-white active:bg-slate-50/80"
 							onclick={() => goto(`/people/${person.id}`)}
 						>
-							<Card.Content class="p-4 sm:p-5">
-								<div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-									<div class="flex min-w-0 flex-1 items-start gap-3">
-										<div
-											class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-100 bg-white shadow-sm md:size-14 md:rounded-2xl"
-										>
-											{#if person.photoUrl}
-												<img
-													src={person.thumbUrl || person.photoUrl}
-													alt={person.name}
-													class="size-full object-cover"
-													loading="lazy"
-												/>
-											{:else}
-												<div
-													class="flex size-full items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 text-base font-black text-white md:text-lg"
+							<Card.Content class="p-4">
+								<div class="flex items-start gap-3">
+									<div
+										class="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-100 bg-white shadow-sm"
+									>
+										{#if person.photoUrl}
+											<img
+												src={person.thumbUrl || person.photoUrl}
+												alt={person.name}
+												class="size-full object-cover"
+												loading="lazy"
+											/>
+										{:else}
+											<div
+												class="flex size-full items-center justify-center bg-gradient-to-br from-primary-400 to-primary-600 text-sm font-black text-white"
+											>
+												{person.name.trim().split(/\s+/).length > 1
+													? person.name
+															.trim()
+															.split(/\s+/)
+															.slice(0, 2)
+															.map((n: string) => [...n][0])
+															.join('')
+													: ([...person.name.trim()][0] ?? '?')}
+											</div>
+										{/if}
+									</div>
+
+									<div class="min-w-0 flex-1">
+										<div class="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+											<h3 class="text-[15px] font-black leading-tight text-slate-900">
+												{person.name}
+											</h3>
+											{#if person.codeNo}
+												<span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-black tracking-tighter text-slate-500 uppercase">
+													#{person.codeNo}
+												</span>
+											{/if}
+											{#if person.status === 'on_premises'}
+												<Badge
+													class={cn(
+														'shrink-0 text-[9px] font-bold capitalize',
+														statusBadgeClasses.on_premises
+													)}
 												>
-													{person.name.trim().split(/\s+/).length > 1
-														? person.name
-																.trim()
-																.split(/\s+/)
-																.slice(0, 2)
-																.map((n: string) => [...n][0])
-																.join('')
-														: ([...person.name.trim()][0] ?? '?')}
-												</div>
+													{i18n.t('inside')}
+												</Badge>
 											{/if}
 										</div>
-
-										<div class="min-w-0 flex-1">
-											<div class="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-												<h3 class="text-base font-black leading-tight text-slate-900 sm:text-lg">
-													{person.name}
-												</h3>
-												{#if person.codeNo}
-													<span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-black tracking-tighter text-slate-500 uppercase">
-														#{person.codeNo}
-													</span>
-												{/if}
-												{#if person.status === 'on_premises'}
-													<Badge
-														class={cn(
-															'shrink-0 text-[9px] font-bold capitalize',
-															statusBadgeClasses.on_premises
-														)}
-													>
-														{i18n.t('inside')}
-													</Badge>
-												{/if}
-											</div>
+										<div class="flex flex-wrap items-center gap-1.5">
 											<button
-												class="transition-opacity hover:opacity-70"
+												class="btn-pressable"
 												onclick={(e) => openChangeCategory(person, e)}
 											>
 												<Badge
@@ -877,119 +877,95 @@
 													{person.category.name}
 												</Badge>
 											</button>
+											{#if person.department}
+												<Badge
+													variant="outline"
+													class="border-blue-100 bg-blue-50 text-[9px] font-black tracking-widest text-blue-600 uppercase"
+												>
+													{person.department}
+												</Badge>
+											{/if}
+											{#if person.designation}
+												<span class="text-[10px] font-bold text-slate-400">{person.designation}</span>
+											{/if}
 										</div>
 									</div>
 
-									<div
-										class="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 p-1 sm:self-start"
-									>
-										{#if data.user?.permissions.includes('people.edit')}
-											<Button
-												variant="ghost"
-												size="icon"
-												class="size-9 text-slate-400 shadow-sm transition-all hover:bg-white hover:text-primary-600"
-												onclick={(e: MouseEvent) => openEdit(person, e)}
-											>
-												<Edit2 size={16} />
-											</Button>
-										{/if}
-										{#if data.user?.permissions.includes('people.delete')}
-											<form
-												method="POST"
-												action="?/delete"
-												use:enhance={() => {
-													return async ({ result, update }) => {
-														if (result.type === 'success') await update();
-													};
-												}}
-											>
-												<input type="hidden" name="id" value={person.id} />
-												<Button
-													type="button"
-													variant="ghost"
-													size="icon"
-													class="size-9 text-slate-400 shadow-sm transition-all hover:bg-white hover:text-rose-600"
-													onclick={(e: MouseEvent) =>
-														triggerDelete(
-															person,
-															(e.currentTarget as HTMLButtonElement).form as HTMLFormElement,
-															e
-														)}
+									{#if data.user?.permissions.includes('people.edit') || data.user?.permissions.includes('people.delete')}
+										<div class="flex shrink-0 items-center">
+											{#if data.user?.permissions.includes('people.edit')}
+												<button
+													class="btn-pressable flex size-9 items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-primary-50 hover:text-primary-600 active:bg-primary-100"
+													onclick={(e) => openEdit(person, e)}
 												>
-													<Trash2 size={16} />
-												</Button>
-											</form>
-										{/if}
-									</div>
-								</div>
-								<div class="grid grid-cols-2 gap-4 text-xs">
-									<div class="space-y-1">
-										<p class="text-[10px] font-bold tracking-widest text-slate-400 capitalize">
-											{i18n.t('designation')}
-										</p>
-										<p class="font-black text-slate-700">
-											{person.designation || '-'}
-											{#if person.department}
-												<span class="ml-1 text-[10px] font-bold text-slate-400">• {person.department}</span>
+													<Edit2 size={15} />
+												</button>
 											{/if}
-										</p>
-									</div>
-									{#if person.codeNo}
-										<div class="space-y-1">
-											<p class="text-[10px] font-bold tracking-widest text-slate-400 capitalize">
-												{i18n.t('codeNo')}
-											</p>
-											<p class="font-black text-slate-700">{person.codeNo}</p>
+											{#if data.user?.permissions.includes('people.delete')}
+												<form
+													method="POST"
+													action="?/delete"
+													use:enhance={() => {
+														return async ({ result, update }) => {
+															if (result.type === 'success') await update();
+														};
+													}}
+												>
+													<input type="hidden" name="id" value={person.id} />
+													<button
+														type="button"
+														class="btn-pressable flex size-9 items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500 active:bg-rose-100"
+														onclick={(e) =>
+															triggerDelete(
+																person,
+																(e.currentTarget as HTMLButtonElement).form as HTMLFormElement,
+																e
+															)}
+													>
+														<Trash2 size={15} />
+													</button>
+												</form>
+											{/if}
 										</div>
 									{/if}
-									{#if person.company}
-										<div class="space-y-1">
-											<p class="text-[10px] font-bold tracking-widest text-slate-400 capitalize">
-												{i18n.t('company')}
-											</p>
-											<p class="truncate font-bold text-slate-600">{person.company}</p>
-										</div>
-									{/if}
-									<div
-										class="col-span-2 mt-1 flex items-center justify-between gap-4 border-t border-slate-50 pt-3"
-									>
+								</div>
+
+								<div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+									<div class="flex items-center gap-3">
+										{#if person.company}
+											<span class="text-[10px] font-bold text-slate-400">{person.company}</span>
+										{/if}
 										{#if person.isTrained}
-											<div class="flex items-center gap-1.5 font-black text-emerald-600">
-												<CheckCircle2 size={14} />
+											<div class="flex items-center gap-1 font-black text-emerald-600">
+												<CheckCircle2 size={13} />
 												<span class="text-[10px] uppercase">Trained</span>
 											</div>
 										{:else}
-											<div class="flex items-center gap-1.5 font-black text-rose-500">
-												<XCircle size={14} />
+											<div class="flex items-center gap-1 font-black text-rose-500">
+												<XCircle size={13} />
 												<span class="text-[10px] uppercase">Pending</span>
 											</div>
 										{/if}
-										{#if parseEnrolledMethods(person.enrolledMethods).length > 0}
-											<div class="flex items-center gap-2">
-												{#if parseEnrolledMethods(person.enrolledMethods).includes('finger')}
-													<div
-														class="flex size-7 items-center justify-center rounded-lg border border-sky-100 bg-sky-50 text-sky-600"
-													>
-														<Fingerprint size={14} />
-													</div>
-												{/if}
-												{#if parseEnrolledMethods(person.enrolledMethods).includes('face')}
-													<div
-														class="flex size-7 items-center justify-center rounded-lg border border-violet-100 bg-violet-50 text-violet-600"
-													>
-														<ScanFace size={14} />
-													</div>
-												{/if}
-												{#if parseEnrolledMethods(person.enrolledMethods).includes('card')}
-													<div
-														class="flex size-7 items-center justify-center rounded-lg border border-amber-100 bg-amber-50 text-amber-600"
-													>
-														<CreditCard size={14} />
-													</div>
-												{/if}
-											</div>
-										{/if}
 									</div>
+									{#if parseEnrolledMethods(person.enrolledMethods).length > 0}
+										<div class="flex items-center gap-1.5">
+											{#if parseEnrolledMethods(person.enrolledMethods).includes('finger')}
+												<div class="flex size-6 items-center justify-center rounded-md border border-sky-100 bg-sky-50 text-sky-600">
+													<Fingerprint size={12} />
+												</div>
+											{/if}
+											{#if parseEnrolledMethods(person.enrolledMethods).includes('face')}
+												<div class="flex size-6 items-center justify-center rounded-md border border-violet-100 bg-violet-50 text-violet-600">
+													<ScanFace size={12} />
+												</div>
+											{/if}
+											{#if parseEnrolledMethods(person.enrolledMethods).includes('card')}
+												<div class="flex size-6 items-center justify-center rounded-md border border-amber-100 bg-amber-50 text-amber-600">
+													<CreditCard size={12} />
+												</div>
+											{/if}
+										</div>
+									{/if}
 								</div>
 							</Card.Content>
 						</Card.Root>
@@ -1036,11 +1012,16 @@
 											</div>
 											<div class="flex items-center gap-2">
 												<span class="text-[10px] font-bold tracking-tight text-slate-400 uppercase">
-													{person.designation || '-'} 
-													{#if person.department}
-														• {person.department}
-													{/if}
+													{person.designation || '-'}
 												</span>
+												{#if person.department}
+													<Badge
+														variant="outline"
+														class="h-4 border-blue-100 bg-blue-50 px-1 text-[8px] font-black tracking-widest text-blue-600 uppercase"
+													>
+														{person.department}
+													</Badge>
+												{/if}
 												{#if parseEnrolledMethods(person.enrolledMethods).length > 0}
 													<div class="flex items-center gap-1">
 														{#if parseEnrolledMethods(person.enrolledMethods).includes('finger')}
@@ -1210,7 +1191,7 @@
 <!-- Edit Dialog -->
 {#if editPerson}
 	<Dialog.Root bind:open={isEditOpen}>
-		<Dialog.Content class="flex max-h-[90vh] flex-col overflow-hidden p-0 sm:max-w-[600px]">
+		<Dialog.Content class="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-[600px] sm:rounded-lg">
 			<div class="shrink-0 border-b bg-slate-50 p-6">
 				<Dialog.Title class="text-xl font-black">{i18n.t('edit')}: {editPerson.name}</Dialog.Title>
 				<Dialog.Description class="text-xs font-bold tracking-widest text-slate-500 uppercase">

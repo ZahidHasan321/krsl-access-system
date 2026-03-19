@@ -44,8 +44,9 @@ git pull origin main
 echo "==> Rebuilding and restarting containers..."
 docker compose up --build -d
 
-echo "==> Cleaning up old images..."
+echo "==> Cleaning up old images and build cache..."
 docker image prune -f
+docker builder prune --filter 'unused-for=72h' -f
 
 echo "==> Waiting for postgres to be ready..."
 until docker compose exec -T postgres pg_isready -U krcrm -d krcrm > /dev/null 2>&1; do

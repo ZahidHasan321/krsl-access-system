@@ -205,7 +205,8 @@ export const actions: Actions = {
 			})
 			.where(eq(attendanceLogs.id, logId));
 
-		notifyChange();
+		// No notifyChange() — location/purpose updates are minor,
+		// no need to trigger SSE re-fetch for all clients
 		return { success: true };
 	}
 };

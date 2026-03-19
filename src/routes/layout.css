@@ -337,7 +337,7 @@
    PRINT STYLES
    =========================================== */
 @page {
-	size: auto;
+	size: A4;
 	margin: 0; /* Remove browser default headers/footers (URL, title, date) */
 }
 
@@ -361,7 +361,7 @@
 @media (min-width: 1024px) {
 	.sticky-filter-bar {
 		position: sticky;
-		top: 4rem; /* Below 64px Navbar */
+		top: 4rem; /* Below 64px Navbar - filter bar is lg:hidden so this only applies if visible */
 		backdrop-filter: blur(4px);
 		background-color: rgb(248 250 252 / 0.95);
 	}
@@ -496,6 +496,17 @@
 
 	.page-break-inside-avoid {
 		page-break-inside: avoid;
+		break-inside: avoid;
+	}
+
+	tr {
+		break-inside: avoid;
+		page-break-inside: avoid;
+	}
+
+	table {
+		orphans: 3;
+		widows: 3;
 	}
 }
 
@@ -511,6 +522,16 @@
    =========================================== */
 
 @layer utilities {
+	/* Activity feed: 500px on mobile, matches left column on desktop */
+	.activity-feed-panel {
+		height: 500px;
+	}
+	@media (min-width: 1024px) {
+		.activity-feed-panel {
+			height: var(--feed-height, 500px);
+		}
+	}
+
 	.custom-scrollbar {
 		scrollbar-width: none; /* Firefox */
 		-ms-overflow-style: none; /* IE and Edge */
@@ -677,6 +698,12 @@
 		padding-right: var(--space-6);
 		border-radius: var(--radius-xl);
 		font-weight: 800;
+	}
+
+	/* Scrollable containers: prevent scroll chaining */
+	[data-slot="dialog-content"],
+	.custom-scrollbar {
+		overscroll-behavior: contain;
 	}
 
 	/* Touch improvements */

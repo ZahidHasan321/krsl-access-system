@@ -21,7 +21,7 @@
 		UserCheck,
 		ArrowLeft
 	} from 'lucide-svelte';
-	import logo from '$lib/assets/kr_logo.svg';
+	import PrintHeader from '$lib/components/PrintHeader.svelte';
 	import { clsx } from 'clsx';
 	import { cn, getCategoryBadgeClass, statusBadgeClasses } from '$lib/utils';
 	import type { PageData } from './$types';
@@ -29,7 +29,7 @@
 	import { page } from '$app/state';
 	import { fade, slide } from 'svelte/transition';
 	import { sineInOut } from 'svelte/easing';
-	import { untrack } from 'svelte';
+	import { untrack, tick } from 'svelte';
 	import { format, parseISO } from 'date-fns';
 
 	import {
@@ -66,18 +66,15 @@
 	$effect(() => {
 		if (isPrintMode) {
 			isPreparingPrint = true;
-			const timer = setTimeout(() => {
+			tick().then(() => {
 				window.print();
 				isPreparingPrint = false;
-				// If this was a new tab, we don't need to go back, user will close it
-				// But we'll remove the param just in case
 				if (window.opener === null) {
 					const url = new URL(page.url);
 					url.searchParams.delete('print');
 					goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
 				}
-			}, 1500);
-			return () => clearTimeout(timer);
+			});
 		}
 	});
 
@@ -219,36 +216,7 @@
 
 <!-- Print-only section -->
 <div class={cn('print-only', !isPrintMode && 'hidden')}>
-	<div
-		class="print-header"
-		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 2px solid #000; margin-bottom: 2rem;"
-	>
-		<div style="display: flex; align-items: center; gap: 20px;">
-			<img src={logo} alt="Logo" style="height: 70px; width: auto;" />
-			<div style="border-left: 2px solid #e2e8f0; padding-left: 20px;">
-				<h1 style="font-family: 'HandelGothic', sans-serif; font-size: 32px; color: #0f172a; margin: 0; line-height: 1;">
-					<span style="color: #1c55a4;">KR</span> Steel Ltd.
-				</h1>
-				<p style="font-size: 11px; font-weight: 900; color: #64748b; margin: 6px 0 0 0; letter-spacing: 0.3em; text-transform: uppercase;">
-					Access Management System
-				</p>
-			</div>
-		</div>
-		<div style="text-align: right;">
-			<h2 style="font-size: 18px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">
-				{#if data.view === 'detailed'}
-					People History Report
-				{:else if data.view === 'daily'}
-					Daily Summary Report
-				{:else}
-					Monthly Summary Report
-				{/if}
-			</h2>
-			<p style="font-size: 12px; font-weight: 700; color: #64748b; margin: 4px 0 0 0;">
-				{format(new Date(), 'PPPP')} | {format(new Date(), 'hh:mm a')}
-			</p>
-		</div>
-	</div>
+	<PrintHeader title={data.view === 'detailed' ? 'People History Report' : data.view === 'daily' ? 'Daily Summary Report' : 'Monthly Summary Report'} />
 
 	<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.25rem 2rem; background: #fff; border: 1px solid #cbd5e1; border-radius: 0;">
 		<div style="display: flex; flex-direction: column; gap: 2px;">
@@ -368,172 +336,103 @@
 <!-- Screen view -->
 {#if !isPrintMode}
 <div class="no-print pb-20">
-	<!-- Sticky Top Bar for Filters -->
-	<div class="sticky-filter-bar px-4 md:px-0">
-		<div class="content-container">
-			<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-				<!-- Top Row: Search & Stats -->
-				<div class="flex w-full items-center lg:flex-1">
-					<div class="mr-3 hidden lg:block">
-						<Button
-							variant="ghost"
-							size="icon"
-							class="shrink-0 rounded-xl hover:bg-slate-100"
-							href="/attendance"
-						>
-							<ArrowLeft size={20} />
-						</Button>
+	<!-- Sticky Top Bar for Filters (mobile only) -->
+	<div class="sticky-filter-bar px-4 md:px-0 lg:hidden">
+		<div class="content-container space-y-3">
+			<!-- Row 1: Search + Actions -->
+			<div class="flex items-center gap-2">
+				<div class="group relative min-w-0 flex-1">
+					<div class="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500">
+						<Search size={17} />
 					</div>
-					<div class="group relative flex-1 lg:max-w-md">
-						<div
-							class="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500"
+					<Input
+						bind:value={searchQuery}
+						oninput={handleSearchInput}
+						placeholder={i18n.t('searchHistoryPlaceholder')}
+						class="h-10 w-full rounded-xl border-2 border-slate-300 bg-white pr-9 pl-10 text-sm font-bold shadow-sm transition-all placeholder:truncate focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/20"
+					/>
+					{#if searchQuery}
+						<button
+							class="btn-pressable absolute top-1/2 right-2.5 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 hover:text-slate-600"
+							onclick={() => { searchQuery = ''; applyFilters(); }}
 						>
-							<Search size={18} />
-						</div>
-						<Input
-							bind:value={searchQuery}
-							oninput={handleSearchInput}
-							placeholder={i18n.t('searchHistoryPlaceholder')}
-							class="h-11 w-full rounded-2xl border-2 border-slate-300 bg-white pr-10 pl-11 text-sm font-bold shadow-sm transition-all focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/30 lg:h-12 lg:text-base"
-						/>
-						{#if searchQuery}
-							<button
-								class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100"
-								onclick={() => {
-									searchQuery = '';
-									applyFilters();
-								}}
-							>
-								<X size={14} />
-							</button>
-						{/if}
-					</div>
+							<X size={14} />
+						</button>
+					{/if}
 				</div>
-
-				<!-- Actions Row: Buttons -->
-				<div
-					class="custom-scrollbar flex items-center justify-between gap-2 overflow-x-auto lg:justify-end lg:overflow-visible"
+				<button
+					class={cn(
+						'btn-pressable flex size-10 shrink-0 items-center justify-center rounded-xl border-2 transition-all',
+						showMobileFilters
+							? 'border-primary-500 bg-primary-50 text-primary-600'
+							: 'border-slate-200 bg-white text-slate-400'
+					)}
+					onclick={() => (showMobileFilters = !showMobileFilters)}
+					aria-label="Toggle filters"
 				>
-					<!-- Left Side (Mobile View) -->
-					<div class="flex items-center gap-2 lg:hidden">
-						<Button
-							variant="ghost"
-							size="icon"
-							class="size-10 shrink-0 text-slate-500 hover:bg-slate-100"
-							href="/attendance"
-							aria-label="Back to entry log"
-						>
-							<ArrowLeft size={20} />
-						</Button>
-
-						<Button
-							variant="outline"
-							size="sm"
-							class={cn(
-								'h-10 rounded-xl border-2 font-black transition-all',
-								showMobileFilters
-									? 'border-primary-500 bg-primary-50 text-primary-600'
-									: 'border-slate-200'
-							)}
-							onclick={() => (showMobileFilters = !showMobileFilters)}
-						>
-							<Filter size={16} class="mr-1.5" />
-							Filters
-						</Button>
-
-						
-					</div>
-
-					<!-- Desktop/Standard Actions -->
-					<div class="flex items-center gap-2">
-						<!-- Desktop Only Date Range -->
-						<div
-							class="mr-2 hidden h-12 items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white px-2 shadow-sm lg:flex"
-						>
-							<DatePicker
-								bind:value={startDate}
-								onchange={applyFilters}
-								placeholder="Start"
-								className="w-[180px]"
-							/>
-							<div class="h-0.5 w-2 rounded-full bg-slate-200 shrink-0"></div>
-							<DatePicker
-								bind:value={endDate}
-								onchange={applyFilters}
-								placeholder="End"
-								className="w-[180px]"
-							/>
-						</div>
-
-						<Button
-							variant="outline"
-							class="h-10 shrink-0 gap-2 rounded-xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 lg:h-12 lg:rounded-2xl lg:px-6"
-							onclick={confirmPrint}
-						>
-							<Printer size={18} />
-							<span class="hidden sm:inline">Print Report</span>
-						</Button>
-
-						{#if hasActiveFilters}
-							<Button
-								variant="ghost"
-								class="h-10 shrink-0 gap-2 rounded-xl border-2 border-transparent px-4 font-black text-rose-500 transition-all hover:border-rose-100 hover:bg-rose-50 hover:text-rose-600 lg:h-12 lg:rounded-2xl lg:px-6"
-								onclick={clearFilters}
-							>
-								<RotateCcw size={18} />
-								<span class="hidden sm:inline">Reset</span>
-							</Button>
-						{/if}
-					</div>
-				</div>
+					<Filter size={16} />
+				</button>
+				<button
+					class={cn(
+						'btn-pressable flex size-10 shrink-0 items-center justify-center rounded-xl border-2 transition-all',
+						hasActiveFilters
+							? 'border-rose-200 bg-rose-50 text-rose-500'
+							: 'border-slate-100 bg-slate-50 text-slate-300'
+					)}
+					disabled={!hasActiveFilters}
+					onclick={clearFilters}
+					aria-label="Clear filters"
+				>
+					<RotateCcw size={14} />
+				</button>
+				<a href="/attendance" class="btn-pressable flex size-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-200 bg-white text-slate-500 transition-all" aria-label="Back to entry log">
+					<ArrowLeft size={16} />
+				</a>
 			</div>
 
-			
-			<!-- View Toggle — always visible on mobile -->
-			<div class="mt-3 lg:hidden">
-				<div class="flex w-full items-center gap-1 rounded-xl border-2 border-slate-100 bg-white p-1 shadow-sm">
-					<button
-						class={cn(
-							'flex-1 rounded-lg py-2 text-[10px] font-black tracking-widest uppercase transition-all',
-							data.view === 'detailed'
-								? 'bg-primary-600 text-white shadow-md'
-								: 'text-slate-500 hover:bg-slate-50'
-						)}
-						onclick={() => changeView('detailed')}
-					>
-						{i18n.t('detailed')}
-					</button>
-					<button
-						class={cn(
-							'flex-1 rounded-lg py-2 text-[10px] font-black tracking-widest uppercase transition-all',
-							data.view === 'daily'
-								? 'bg-primary-600 text-white shadow-md'
-								: 'text-slate-500 hover:bg-slate-50'
-						)}
-						onclick={() => changeView('daily')}
-					>
-						{i18n.t('dailySummary')}
-					</button>
-					<button
-						class={cn(
-							'flex-1 rounded-lg py-2 text-[10px] font-black tracking-widest uppercase transition-all',
-							data.view === 'monthly'
-								? 'bg-primary-600 text-white shadow-md'
-								: 'text-slate-500 hover:bg-slate-50'
-						)}
-						onclick={() => changeView('monthly')}
-					>
-						{i18n.t('monthlySummary')}
-					</button>
-				</div>
+			<!-- Row 2: View Toggle (always visible) -->
+			<div class="flex w-full items-center gap-0.5 rounded-xl border-2 border-slate-100 bg-white p-0.5">
+				<button
+					class={cn(
+						'chip-pressable flex-1 rounded-lg py-2 text-[10px] font-black tracking-widest uppercase transition-all',
+						data.view === 'detailed'
+							? 'bg-primary-600 text-white shadow-sm'
+							: 'text-slate-400'
+					)}
+					onclick={() => changeView('detailed')}
+				>
+					{i18n.t('detailed')}
+				</button>
+				<button
+					class={cn(
+						'chip-pressable flex-1 rounded-lg py-2 text-[10px] font-black tracking-widest uppercase transition-all',
+						data.view === 'daily'
+							? 'bg-primary-600 text-white shadow-sm'
+							: 'text-slate-400'
+					)}
+					onclick={() => changeView('daily')}
+				>
+					{i18n.t('dailySummary')}
+				</button>
+				<button
+					class={cn(
+						'chip-pressable flex-1 rounded-lg py-2 text-[10px] font-black tracking-widest uppercase transition-all',
+						data.view === 'monthly'
+							? 'bg-primary-600 text-white shadow-sm'
+							: 'text-slate-400'
+					)}
+					onclick={() => changeView('monthly')}
+				>
+					{i18n.t('monthlySummary')}
+				</button>
 			</div>
 
-			<!-- Mobile Horizontal Filter Section -->
+			<!-- Expandable: Date Range, Categories, Departments -->
 			{#if showMobileFilters}
-				<div class="mt-4 lg:hidden" transition:slide>
-					<!-- Mobile Date Range -->
+				<div class="lg:hidden" transition:slide={{ duration: 200, easing: sineInOut }}>
+					<!-- Date Range -->
 					<div class="space-y-2">
-						<p class="ml-1 text-[9px] font-black tracking-widest text-slate-400 uppercase">
+						<p class="ml-0.5 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
 							Date Range
 						</p>
 						<div
@@ -558,13 +457,14 @@
 						</div>
 					</div>
 
-					<div class="mt-4 custom-scrollbar flex gap-2 overflow-x-auto pb-2">
+					<!-- Categories -->
+					<div class="custom-scrollbar mt-3 flex gap-1.5 overflow-x-auto pb-2">
 						<button
 							class={cn(
-								'chip-pressable shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+								'chip-pressable shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-black transition-all',
 								!selectedCategoryId
-									? 'bg-primary-600 text-white shadow-md'
-									: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+									? 'bg-primary-600 text-white shadow-sm'
+									: 'bg-slate-100 text-slate-500'
 							)}
 							onclick={() => changeCategory(null)}
 						>
@@ -573,10 +473,10 @@
 						{#each ROOT_CATEGORIES as cat (cat.id)}
 							<button
 								class={cn(
-									'chip-pressable shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+									'chip-pressable shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-black transition-all',
 									activeRootCategoryId() === cat.id
-										? 'bg-primary-600 text-white shadow-md'
-										: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+										? 'bg-primary-600 text-white shadow-sm'
+										: 'bg-slate-100 text-slate-500'
 								)}
 								onclick={() => changeCategory(cat.id)}
 							>
@@ -586,15 +486,15 @@
 					</div>
 
 					{#if activeRootCategoryId() && availableSubCategories().length > 0}
-						<div class="mt-2 flex gap-2 overflow-x-auto pb-2 pl-2">
-							<div class="size-2 shrink-0 self-center rounded-full bg-primary-200"></div>
+						<div class="custom-scrollbar mt-1.5 flex gap-1.5 overflow-x-auto pb-2 pl-2">
+							<div class="size-1.5 shrink-0 self-center rounded-full bg-primary-300"></div>
 							{#each availableSubCategories() as subCat (subCat.id)}
 								<button
 									class={cn(
-										'chip-pressable shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+										'chip-pressable shrink-0 rounded-md border px-2.5 py-1 text-[10px] font-bold transition-all',
 										selectedCategoryId === subCat.id
-											? 'border-primary-600 bg-primary-50 text-primary-700'
-											: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200'
+											? 'border-primary-500 bg-primary-50 text-primary-700'
+											: 'border-slate-200 bg-white text-slate-500'
 									)}
 									onclick={() => changeCategory(subCat.id)}
 								>
@@ -604,7 +504,47 @@
 						</div>
 					{/if}
 
-	
+					{#if activeRootCategoryId() === 'employee' && data.departments.length > 0}
+						<div class="mt-3 space-y-1.5">
+							<p class="ml-0.5 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
+								Department
+							</p>
+							<div class="custom-scrollbar flex gap-1.5 overflow-x-auto pb-2">
+								<button
+									class={cn(
+										'chip-pressable shrink-0 rounded-md border px-2.5 py-1 text-[10px] font-bold transition-all',
+										!selectedDepartment
+											? 'border-primary-500 bg-primary-50 text-primary-700'
+											: 'border-slate-200 bg-white text-slate-500'
+									)}
+									onclick={() => {
+										const url = new URL(page.url);
+										url.searchParams.delete('department');
+										goto(url.toString());
+									}}
+								>
+									All Depts
+								</button>
+								{#each data.departments as dept}
+									<button
+										class={cn(
+											'chip-pressable shrink-0 rounded-md border px-2.5 py-1 text-[10px] font-bold transition-all',
+											selectedDepartment === dept
+												? 'border-primary-500 bg-primary-50 text-primary-700'
+												: 'border-slate-200 bg-white text-slate-500'
+										)}
+										onclick={() => {
+											const url = new URL(page.url);
+											url.searchParams.set('department', dept);
+											goto(url.toString());
+										}}
+									>
+										{dept}
+									</button>
+								{/each}
+							</div>
+						</div>
+					{/if}
 				</div>
 			{/if}
 		</div>
@@ -614,243 +554,290 @@
 	<div class="content-container flex flex-col gap-8 px-4 md:px-0 lg:flex-row">
 		<!-- Sidebar - Desktop Only -->
 		<aside
-			class="custom-scrollbar hidden max-h-[calc(100vh-12rem)] w-full shrink-0 self-start space-y-6 overflow-y-auto pr-2 pb-20 lg:sticky lg:top-36 lg:block lg:w-64"
+			class="custom-scrollbar hidden w-64 shrink-0 self-start overflow-y-auto lg:sticky lg:top-24 lg:block lg:max-h-[calc(100vh-8rem)]"
 		>
-			<!-- Category Filter -->
-			<div class="space-y-3">
-				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-					{i18n.t('category')}
-				</p>
-				<div class="flex flex-col gap-1">
-					<Button
-						variant={!selectedCategoryId ? 'secondary' : 'ghost'}
-						class={cn(
-							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-							!selectedCategoryId
-								? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800'
-								: 'text-slate-600'
-						)}
-						onclick={() => changeCategory(null)}
-					>
+			<div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+				<!-- Summary Stats Header -->
+				<div class="relative border-b border-slate-100 bg-gradient-to-br from-slate-900 via-slate-800 to-primary-900 px-4 py-4">
+					<div class="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(28,85,164,0.3),transparent_60%)]"></div>
+					<div class="relative">
 						<div class="flex items-center gap-2">
-							{#if !selectedCategoryId}
-								<div class="size-1.5 rounded-full bg-white"></div>
-							{/if}
-							{i18n.t('all')}
+							<div class="relative flex size-2">
+								<span class="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+								<span class="relative inline-flex size-2 rounded-full bg-emerald-400"></span>
+							</div>
+							<span class="text-[9px] font-black tracking-[0.2em] text-emerald-300/90 uppercase">History Summary</span>
 						</div>
-					</Button>
-					{#each ROOT_CATEGORIES as cat}
-						{@const isCatActive = activeRootCategoryId() === cat.id}
-						<div>
+						<div class="mt-2 flex items-end justify-between">
+							<div>
+								<p class="text-3xl font-black tabular-nums tracking-tight text-white">{data.summary.totalEntries}</p>
+								<p class="text-[9px] font-bold tracking-wider text-slate-400 uppercase">{i18n.t('entries')}</p>
+							</div>
+							<div class="flex flex-col items-end gap-1">
+								<div class="flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-1 backdrop-blur-sm">
+									<Users size={10} class="text-sky-300" />
+									<span class="text-[10px] font-black tabular-nums text-sky-200">{data.summary.uniquePeople}</span>
+								</div>
+								<div class="flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-1 backdrop-blur-sm">
+									<Calendar size={10} class="text-amber-300" />
+									<span class="text-[10px] font-black tabular-nums text-amber-200">{data.summary.activeDays}d</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="p-3">
+					<!-- Category Filter -->
+					<div class="space-y-1.5">
+						<p class="px-1 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
+							{i18n.t('category')}
+						</p>
+						<div class="flex flex-col gap-0.5">
 							<Button
-								variant={isCatActive ? 'secondary' : 'ghost'}
+								variant={!selectedCategoryId ? 'secondary' : 'ghost'}
 								class={cn(
-									'h-10 w-full cursor-pointer justify-start px-3 font-bold transition-all',
-									isCatActive
-										? 'rounded-l-none border-l-4 border-primary-600 bg-primary-50 text-primary-700'
-										: 'text-slate-600'
+									'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
+									!selectedCategoryId
+										? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+										: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
 								)}
-								onclick={() => changeCategory(cat.id)}
+								onclick={() => changeCategory(null)}
+							>
+								{i18n.t('all')}
+							</Button>
+							{#each ROOT_CATEGORIES as cat}
+								{@const isCatActive = activeRootCategoryId() === cat.id}
+								<div>
+									<Button
+										variant={isCatActive ? 'secondary' : 'ghost'}
+										class={cn(
+											'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
+											isCatActive
+												? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+												: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+										)}
+										onclick={() => changeCategory(cat.id)}
+									>
+										{i18n.t(cat.slug as any) || cat.name}
+									</Button>
+
+									{#if isCatActive && availableSubCategories().length > 0}
+										<div
+											class="mt-1 mb-1.5 ml-3 border-l-2 border-primary-100 pl-2.5"
+											transition:slide={{ duration: 250, easing: sineInOut }}
+										>
+											<div class="flex flex-wrap gap-1 py-0.5">
+												<button
+													class={clsx(
+														'touch-feedback cursor-pointer rounded-md border px-2 py-1 text-[11px] font-bold transition-all active:scale-95',
+														activeRootCategoryId() === selectedCategoryId
+															? 'border-primary-500 bg-primary-600 text-white shadow-sm'
+															: 'border-slate-200 bg-slate-50 text-slate-500 hover:border-primary-200 hover:text-primary-600'
+													)}
+													onclick={() => changeCategory(activeRootCategoryId())}
+												>
+													All
+												</button>
+
+												{#if activeParentCategory() && activeParentCategory()?.id !== activeRootCategoryId()}
+													<button
+														class="touch-feedback cursor-pointer rounded-md bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-500 transition-all active:scale-95 hover:bg-slate-200"
+														onclick={() => changeCategory(activeParentCategory()?.id || null)}
+													>
+														<span class="mr-0.5 opacity-40">↑</span>
+														{activeParentCategory()?.name}
+													</button>
+												{/if}
+
+												{#each availableSubCategories() as subCat}
+													<button
+														class={clsx(
+															'touch-feedback cursor-pointer rounded-md border px-2 py-1 text-[11px] font-bold transition-all active:scale-95',
+															selectedCategoryId === subCat.id
+																? 'border-primary-500 bg-primary-600 text-white shadow-sm'
+																: 'border-slate-200 bg-slate-50 text-slate-500 hover:border-primary-200 hover:text-primary-600'
+														)}
+														onclick={() => changeCategory(subCat.id)}
+													>
+														{i18n.t(subCat.slug as any) || subCat.name}
+													</button>
+												{/each}
+											</div>
+										</div>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					</div>
+
+					<!-- Department Filter (Only for Employees) -->
+					{#if activeRootCategoryId() === 'employee'}
+						<div class="mt-4 space-y-1.5 border-t border-slate-100 pt-3" transition:slide>
+							<p class="px-1 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
+								Department
+							</p>
+							<div class="flex flex-col gap-0.5">
+								<Button
+									variant={!selectedDepartment ? 'secondary' : 'ghost'}
+									class={cn(
+										'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
+										!selectedDepartment
+											? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+											: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+									)}
+									onclick={() => {
+										const url = new URL(page.url);
+										url.searchParams.delete('department');
+										goto(url.toString());
+									}}
+								>
+									All Departments
+								</Button>
+								{#each data.departments as dept}
+									<Button
+										variant={selectedDepartment === dept ? 'secondary' : 'ghost'}
+										class={cn(
+											'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all text-left',
+											selectedDepartment === dept
+												? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+												: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+										)}
+										onclick={() => {
+											const url = new URL(page.url);
+											url.searchParams.set('department', dept);
+											goto(url.toString());
+										}}
+									>
+										<span class="truncate">{dept}</span>
+									</Button>
+								{/each}
+							</div>
+						</div>
+					{/if}
+
+					<!-- View Selector -->
+					<div class="mt-4 space-y-1.5 border-t border-slate-100 pt-3">
+						<p class="px-1 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">Views</p>
+						<div class="flex flex-col gap-0.5">
+							<Button
+								variant={data.view === 'detailed' ? 'secondary' : 'ghost'}
+								class={cn(
+									'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
+									data.view === 'detailed'
+										? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+										: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+								)}
+								onclick={() => changeView('detailed')}
 							>
 								<div class="flex items-center gap-2">
-									{#if isCatActive}
-										<div class="size-1.5 rounded-full bg-primary-600"></div>
-									{/if}
-									{i18n.t(cat.slug as any) || cat.name}
+									<Clock size={14} />
+									{i18n.t('detailed')}
 								</div>
 							</Button>
-
-							{#if isCatActive && availableSubCategories().length > 0}
-								<div
-									class="mt-1 mb-2 ml-3 border-l-2 border-primary-100 pl-3"
-									transition:slide={{ duration: 250, easing: sineInOut }}
-								>
-									<div class="flex flex-wrap gap-1.5 py-1">
-										<button
-											class={clsx(
-												'cursor-pointer rounded-full border px-3 py-1 text-[11px] font-bold transition-all',
-												activeRootCategoryId() === selectedCategoryId
-													? 'border-primary-600 bg-primary-600 text-white shadow-sm'
-													: 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'
-											)}
-											onclick={() => changeCategory(activeRootCategoryId())}
-										>
-											All
-										</button>
-
-										{#if activeParentCategory() && activeParentCategory()?.id !== activeRootCategoryId()}
-											<button
-												class="cursor-pointer rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600 transition-all hover:bg-slate-200"
-												onclick={() => changeCategory(activeParentCategory()?.id || null)}
-											>
-												<span class="mr-1 opacity-50">↑</span>
-												{activeParentCategory()?.name}
-											</button>
-										{/if}
-
-										{#each availableSubCategories() as subCat}
-											<button
-												class={clsx(
-													'cursor-pointer rounded-full border px-3 py-1 text-[11px] font-bold transition-all',
-													selectedCategoryId === subCat.id
-														? 'border-primary-600 bg-primary-600 text-white shadow-sm'
-														: 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'
-												)}
-												onclick={() => changeCategory(subCat.id)}
-											>
-												{i18n.t(subCat.slug as any) || subCat.name}
-											</button>
-										{/each}
-									</div>
-								</div>
-							{/if}
-						</div>
-					{/each}
-				</div>
-			</div>
-
-			<!-- Department Filter (Only for Employees) -->
-			{#if activeRootCategoryId() === 'employee'}
-				<div class="space-y-3" transition:slide>
-					<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-						Department
-					</p>
-					<div class="flex flex-col gap-1">
-						<Button
-							variant={!selectedDepartment ? 'secondary' : 'ghost'}
-							class={cn(
-								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-								!selectedDepartment
-									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
-									: 'text-slate-600'
-							)}
-							onclick={() => {
-								const url = new URL(page.url);
-								url.searchParams.delete('department');
-								goto(url.toString());
-							}}
-						>
-							<div class="flex items-center gap-2">
-								{#if !selectedDepartment}
-									<div class="size-1.5 rounded-full bg-white"></div>
-								{/if}
-								All Departments
-							</div>
-						</Button>
-						{#each data.departments as dept}
 							<Button
-								variant={selectedDepartment === dept ? 'secondary' : 'ghost'}
+								variant={data.view === 'daily' ? 'secondary' : 'ghost'}
 								class={cn(
-									'h-10 cursor-pointer justify-start px-3 font-bold transition-all text-left',
-									selectedDepartment === dept
-										? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
-										: 'text-slate-600'
+									'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
+									data.view === 'daily'
+										? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+										: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
 								)}
-								onclick={() => {
-									const url = new URL(page.url);
-									url.searchParams.set('department', dept);
-									goto(url.toString());
-								}}
+								onclick={() => changeView('daily')}
 							>
-								<div class="flex items-center gap-2 truncate">
-									{#if selectedDepartment === dept}
-										<div class="size-1.5 rounded-full bg-white"></div>
-									{/if}
-									<span class="truncate">{dept}</span>
+								<div class="flex items-center gap-2">
+									<Calendar size={14} />
+									{i18n.t('dailySummary')}
 								</div>
 							</Button>
-						{/each}
+							<Button
+								variant={data.view === 'monthly' ? 'secondary' : 'ghost'}
+								class={cn(
+									'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
+									data.view === 'monthly'
+										? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+										: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+								)}
+								onclick={() => changeView('monthly')}
+							>
+								<div class="flex items-center gap-2">
+									<TrendingUp size={14} />
+									{i18n.t('monthlySummary')}
+								</div>
+							</Button>
+						</div>
 					</div>
 				</div>
-			{/if}
 
-			<!-- View Selector -->
-			<div class="space-y-3">
-				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Views</p>
-				<div class="flex flex-col gap-1">
-					<Button
-						variant={data.view === 'detailed' ? 'secondary' : 'ghost'}
-						class={cn(
-							'h-10 cursor-pointer justify-start gap-2 px-3 font-bold transition-all',
-							data.view === 'detailed'
-								? 'rounded-l-none border-l-4 border-primary-600 bg-primary-50 text-primary-700'
-								: 'text-slate-600'
-						)}
-						onclick={() => changeView('detailed')}
-					>
-						<div class="flex items-center gap-2">
-							{#if data.view === 'detailed'}
-								<div class="size-1.5 rounded-full bg-primary-600"></div>
-							{/if}
-							<Clock size={16} />
-							{i18n.t('detailed')}
-						</div>
-					</Button>
-					<Button
-						variant={data.view === 'daily' ? 'secondary' : 'ghost'}
-						class={cn(
-							'h-10 cursor-pointer justify-start gap-2 px-3 font-bold transition-all',
-							data.view === 'daily'
-								? 'rounded-l-none border-l-4 border-primary-600 bg-primary-50 text-primary-700'
-								: 'text-slate-600'
-						)}
-						onclick={() => changeView('daily')}
-					>
-						<div class="flex items-center gap-2">
-							{#if data.view === 'daily'}
-								<div class="size-1.5 rounded-full bg-primary-600"></div>
-							{/if}
-							<Calendar size={16} />
-							{i18n.t('dailySummary')}
-						</div>
-					</Button>
-					<Button
-						variant={data.view === 'monthly' ? 'secondary' : 'ghost'}
-						class={cn(
-							'h-10 cursor-pointer justify-start gap-2 px-3 font-bold transition-all',
-							data.view === 'monthly'
-								? 'rounded-l-none border-l-4 border-primary-600 bg-primary-50 text-primary-700'
-								: 'text-slate-600'
-						)}
-						onclick={() => changeView('monthly')}
-					>
-						<div class="flex items-center gap-2">
-							{#if data.view === 'monthly'}
-								<div class="size-1.5 rounded-full bg-primary-600"></div>
-							{/if}
-							<TrendingUp size={16} />
-							{i18n.t('monthlySummary')}
-						</div>
-					</Button>
-				</div>
-			</div>
-
-			<!-- Summary Stats -->
-			<div class="space-y-3 rounded-xl border-2 border-slate-100 bg-white p-4 shadow-sm">
-				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-					People History Summary
-				</p>
-				<div class="grid grid-cols-2 gap-3">
-					<div>
-						<p class="text-2xl font-black text-slate-900">{data.summary.totalEntries}</p>
-						<p class="text-[10px] font-bold text-slate-500 capitalize">{i18n.t('entries')}</p>
-					</div>
-					<div>
-						<p class="text-2xl font-black text-slate-900">{data.summary.uniquePeople}</p>
-						<p class="text-[10px] font-bold text-slate-500 capitalize">{i18n.t('people')}</p>
-					</div>
-					<div>
-						<p class="text-2xl font-black text-slate-900">{data.summary.activeDays}</p>
-						<p class="text-[10px] font-bold text-slate-500 capitalize">Active Days</p>
-					</div>
+				<!-- Sidebar Branding -->
+				<div
+					class="flex items-center justify-center gap-1.5 border-t border-slate-100 px-4 py-2.5 opacity-30 transition-opacity hover:opacity-70"
+				>
+					<p class="text-[7px] font-black tracking-[0.2em] text-slate-400 uppercase">Built by</p>
+					<a
+						href="https://autolinium.com"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="text-[8px] font-black tracking-[0.15em] text-slate-500 transition-colors hover:text-primary-600 uppercase"
+					>Autolinium</a>
 				</div>
 			</div>
 		</aside>
 
 		<!-- Main Scrolling Content Area -->
-		<main class="w-full min-w-0 flex-1 space-y-6">
+		<main class="w-full min-w-0 flex-1">
+			<!-- List Area with integrated toolbar -->
+			<div class="lg:overflow-hidden lg:rounded-2xl lg:border lg:border-slate-200/80 lg:bg-white lg:shadow-sm">
+				<!-- Integrated Desktop Toolbar -->
+				<div class="hidden items-center gap-2.5 border-b border-slate-200 bg-slate-50/80 px-4 py-3 lg:flex">
+					<div class="group relative min-w-0 flex-1">
+						<div class="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500">
+							<Search size={17} />
+						</div>
+						<Input
+							bind:value={searchQuery}
+							oninput={handleSearchInput}
+							placeholder={i18n.t('searchHistoryPlaceholder')}
+							class="h-11 w-full rounded-xl border-2 border-slate-300 bg-white pr-9 pl-10 text-sm font-bold shadow-sm transition-all placeholder:truncate focus-visible:border-primary-500 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-primary-500/20"
+						/>
+						{#if searchQuery}
+							<button
+								class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600"
+								aria-label="Clear search"
+								onclick={() => { searchQuery = ''; applyFilters(); }}
+							>
+								<X size={14} />
+							</button>
+						{/if}
+					</div>
+					<div class="flex h-11 items-center gap-3 rounded-xl border-2 border-slate-100 bg-white px-2 shadow-sm">
+						<DatePicker bind:value={startDate} onchange={applyFilters} placeholder="Start" className="w-[160px]" />
+						<div class="h-0.5 w-2 shrink-0 rounded-full bg-slate-200"></div>
+						<DatePicker bind:value={endDate} onchange={applyFilters} placeholder="End" className="w-[160px]" />
+					</div>
+					<button
+						class={cn(
+							'flex shrink-0 items-center gap-1.5 rounded-xl border-2 px-3 py-2 text-[11px] font-black transition-all',
+							hasActiveFilters
+								? 'cursor-pointer border-rose-200 bg-rose-50 text-rose-500 hover:border-rose-300 hover:bg-rose-100 active:scale-95'
+								: 'cursor-default border-slate-100 bg-slate-50 text-slate-300'
+						)}
+						aria-label="Reset filters"
+						disabled={!hasActiveFilters}
+						onclick={clearFilters}
+					>
+						<RotateCcw size={12} />
+						Clear
+					</button>
+					<div class="mx-0.5 h-6 w-px bg-slate-200"></div>
+					<Button variant="ghost" size="icon" class="size-9 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Print report" onclick={confirmPrint}>
+						<Printer size={15} />
+					</Button>
+				</div>
+
+				<div class="relative min-h-full lg:bg-slate-100/50">
 			<!-- List Section -->
-			<div class="space-y-4">
+			<div class="space-y-4 lg:p-3">
 				<!-- Mobile Card View -->
 				<div class="space-y-3 lg:hidden">
 					{#if data.view === 'detailed'}
@@ -1048,7 +1035,7 @@
 												</Table.Cell>
 											{/if}
 											<Table.Cell class="py-4 font-bold tabular-nums text-slate-700">
-												<div class="flex flex-col gap-1">
+												<div class="flex flex-col gap-0.5">
 													<span>{formatDuration(log.durationSeconds)}</span>
 													{#if !log.exitTime}
 														<Badge
@@ -1134,6 +1121,8 @@
 
 				<!-- Pagination -->
 				<Pagination {...data.pagination} />
+			</div>
+				</div>
 			</div>
 		</main>
 	</div>

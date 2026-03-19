@@ -25,7 +25,7 @@
 		Ship,
 		Warehouse
 	} from 'lucide-svelte';
-	import logo from '$lib/assets/kr_logo.svg';
+	import PrintHeader from '$lib/components/PrintHeader.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { format } from 'date-fns';
@@ -48,7 +48,7 @@
 		getSubCategories,
 		getCategoryById
 	} from '$lib/constants/categories';
-	import { onMount, untrack } from 'svelte';
+	import { onMount, untrack, tick } from 'svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -101,18 +101,15 @@
 	$effect(() => {
 		if (isPrintMode) {
 			isPreparingPrint = true;
-			const timer = setTimeout(() => {
+			tick().then(() => {
 				window.print();
 				isPreparingPrint = false;
-				// If this was a new tab, we don't need to go back, user will close it
-				// But we'll remove the param just in case
 				if (window.opener === null) {
 					const url = new URL(page.url);
 					url.searchParams.delete('print');
 					goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
 				}
-			}, 1500);
-			return () => clearTimeout(timer);
+			});
 		}
 	});
 
@@ -332,30 +329,7 @@
 
 <!-- Print-only section -->
 <div class={cn('print-only', !isPrintMode && 'hidden')}>
-	<div
-		class="print-header"
-		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 2px solid #000; margin-bottom: 2rem;"
-	>
-		<div style="display: flex; align-items: center; gap: 20px;">
-			<img src={logo} alt="Logo" style="height: 70px; width: auto;" />
-			<div style="border-left: 2px solid #e2e8f0; padding-left: 20px;">
-				<h1 style="font-family: 'HandelGothic', sans-serif; font-size: 32px; color: #0f172a; margin: 0; line-height: 1;">
-					<span style="color: #1c55a4;">KR</span> Steel Ltd.
-				</h1>
-				<p style="font-size: 11px; font-weight: 900; color: #64748b; margin: 6px 0 0 0; letter-spacing: 0.3em; text-transform: uppercase;">
-					Access Management System
-				</p>
-			</div>
-		</div>
-		<div style="text-align: right;">
-			<h2 style="font-size: 18px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">
-				Entry Log Report
-			</h2>
-			<p style="font-size: 12px; font-weight: 700; color: #64748b; margin: 4px 0 0 0;">
-				{format(new Date(), 'PPPP')} | {format(new Date(), 'hh:mm a')}
-			</p>
-		</div>
-	</div>
+	<PrintHeader title="Entry Log Report" />
 
 	<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.25rem 2rem; background: #fff; border: 1px solid #cbd5e1; border-radius: 0;">
 		<div style="display: flex; flex-direction: column; gap: 2px;">
@@ -422,128 +396,118 @@
 
 <!-- Screen view -->
 {#if !isPrintMode}
-<div class="no-print">
-	<!-- Sticky Top Bar for Filters -->
-	<div class="sticky-filter-bar px-4 md:px-0">
-		<div class="content-container">
-			<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-				<!-- Top Row: Search & Stats -->
-				<div class="flex w-full items-center lg:flex-1">
-					<div class="group relative flex-1 lg:max-w-md">
-						<div
-							class="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500"
-						>
-							<Search size={18} />
-						</div>
-						<Input
-							bind:ref={searchInputEl}
-							bind:value={searchQuery}
-							oninput={handleSearchInput}
-							placeholder={i18n.t('searchPeoplePlaceholder')}
-							class="h-11 w-full rounded-2xl border-2 border-slate-300 bg-white pr-10 pl-11 text-sm font-bold shadow-sm transition-all focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/30 lg:h-12 lg:text-base"
-						/>
-						{#if searchQuery}
-							<button
-								class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100"
-								onclick={() => {
-									searchQuery = '';
-									applyFilters();
-								}}
-							>
-								<X size={14} />
-							</button>
-						{/if}
+<div class="no-print pb-20">
+	<!-- Mobile Top Bar -->
+	<div class="sticky-filter-bar px-4 md:px-0 lg:hidden">
+		<div class="content-container space-y-3">
+			<!-- Row 1: Search + Actions -->
+			<div class="flex items-center gap-2">
+				<div class="group relative min-w-0 flex-1">
+					<div class="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500">
+						<Search size={17} />
 					</div>
+					<Input
+						bind:ref={searchInputEl}
+						bind:value={searchQuery}
+						oninput={handleSearchInput}
+						placeholder={i18n.t('searchPeoplePlaceholder')}
+						class="h-10 w-full rounded-xl border-2 border-slate-300 bg-white pr-9 pl-10 text-sm font-bold shadow-sm transition-all placeholder:truncate focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/20"
+					/>
+					{#if searchQuery}
+						<button
+							class="btn-pressable absolute top-1/2 right-2.5 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 hover:text-slate-600"
+							onclick={() => { searchQuery = ''; applyFilters(); }}
+						>
+							<X size={14} />
+						</button>
+					{/if}
 				</div>
-
-				<!-- Actions Row: Buttons -->
-				<div
-					class="custom-scrollbar flex items-center justify-between gap-2 overflow-x-auto lg:justify-end lg:overflow-visible"
+				<button
+					class={cn(
+						'btn-pressable flex size-10 shrink-0 items-center justify-center rounded-xl border-2 transition-all',
+						showMobileFilters
+							? 'border-primary-500 bg-primary-50 text-primary-600'
+							: 'border-slate-200 bg-white text-slate-400'
+					)}
+					onclick={() => (showMobileFilters = !showMobileFilters)}
+					aria-label="Toggle filters"
 				>
-					<!-- Left Side (Mobile View) -->
-					<div class="flex items-center gap-2 lg:hidden">
-						<Button
-							variant="outline"
-							size="sm"
-							class={cn(
-								'h-10 rounded-xl border-2 font-black transition-all',
-								showMobileFilters
-									? 'border-primary-500 bg-primary-50 text-primary-600'
-									: 'border-slate-200'
-							)}
-							onclick={() => (showMobileFilters = !showMobileFilters)}
-						>
-							<Filter size={16} class="mr-1.5" />
-							Filters
-						</Button>
+					<Filter size={16} />
+				</button>
+				<button
+					class={cn(
+						'btn-pressable flex size-10 shrink-0 items-center justify-center rounded-xl border-2 transition-all',
+						hasActiveFilters
+							? 'border-rose-200 bg-rose-50 text-rose-500'
+							: 'border-slate-100 bg-slate-50 text-slate-300'
+					)}
+					disabled={!hasActiveFilters}
+					onclick={clearFilters}
+					aria-label="Clear filters"
+				>
+					<RotateCcw size={14} />
+				</button>
+				<a href="/history" class="btn-pressable flex size-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-200 bg-white text-primary-600 transition-all" aria-label="History">
+					<History size={16} />
+				</a>
+			</div>
 
-						<!-- Mobile Info Badge Moved Here -->
-						<div class="flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2">
-							<span class="text-[9px] font-black tracking-widest text-slate-400 capitalize"
-								>Inside</span
-							>
-							<span class="text-xs font-black text-primary-700">{data.pagination.totalCount}</span>
-						</div>
-					</div>
-
-					<!-- Desktop/Standard Actions -->
-					<div class="flex items-center gap-2">
-						<!-- Desktop Only Stats -->
-						<div
-							class="mr-2 hidden h-8 items-center gap-2 border-r-2 border-slate-100 pr-4 lg:flex"
-						>
-							<span class="text-[10px] font-black tracking-widest text-slate-400 capitalize"
-								>{i18n.t('entryLog')}</span
-							>
-							<Badge class="border-primary-200 bg-primary-100 text-xs font-black text-primary-700">
-								{data.pagination.totalCount} inside
-							</Badge>
-						</div>
-
-						<Button
-							variant="outline"
-							class="h-10 shrink-0 gap-2 rounded-xl border-2 border-primary-200 bg-primary-50 px-4 font-black text-primary-700 transition-all hover:border-primary-300 hover:bg-primary-100 lg:h-12 lg:rounded-2xl lg:px-6"
-							href="/history"
-						>
-							<History size={18} />
-							<span class="hidden sm:inline">{i18n.t('history')}</span>
-						</Button>
-
-						<Button
-							variant="ghost"
-							size="icon"
-							class="size-10 shrink-0 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-							aria-label="Print log"
-							onclick={confirmPrint}
-						>
-							<Printer size={18} />
-						</Button>
-
-						{#if hasActiveFilters}
-							<Button
-								variant="ghost"
-								size="icon"
-								class="size-10 shrink-0 text-rose-400 hover:bg-rose-50 hover:text-rose-600"
-								aria-label="Reset filters"
-								onclick={clearFilters}
-							>
-								<RotateCcw size={18} />
-							</Button>
-						{/if}
-					</div>
+			<!-- Row 2: Location quick-toggle (always visible) -->
+			<div class="flex items-center gap-2">
+				<div class="flex flex-1 items-center gap-0.5 rounded-xl border-2 border-slate-100 bg-white p-0.5">
+					<button
+						class={cn(
+							'chip-pressable flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[10px] font-black tracking-wider uppercase transition-all',
+							selectedLocation === ''
+								? 'bg-slate-800 text-white shadow-sm'
+								: 'text-slate-400'
+						)}
+						onclick={() => changeLocation('')}
+					>
+						<MapPin size={11} />
+						{i18n.t('all')}
+						<span class={cn('tabular-nums', selectedLocation === '' ? 'text-white/70' : 'text-slate-300')}>{data.summary.total}</span>
+					</button>
+					<button
+						class={cn(
+							'chip-pressable flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[10px] font-black tracking-wider uppercase transition-all',
+							selectedLocation === 'yard'
+								? 'bg-amber-600 text-white shadow-sm'
+								: 'text-slate-400'
+						)}
+						onclick={() => changeLocation('yard')}
+					>
+						<Warehouse size={11} />
+						Yard
+						<span class={cn('tabular-nums', selectedLocation === 'yard' ? 'text-white/70' : 'text-slate-300')}>{data.summary.yard}</span>
+					</button>
+					<button
+						class={cn(
+							'chip-pressable flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[10px] font-black tracking-wider uppercase transition-all',
+							selectedLocation === 'ship'
+								? 'bg-blue-600 text-white shadow-sm'
+								: 'text-slate-400'
+						)}
+						onclick={() => changeLocation('ship')}
+					>
+						<Ship size={11} />
+						Ship
+						<span class={cn('tabular-nums', selectedLocation === 'ship' ? 'text-white/70' : 'text-slate-300')}>{data.summary.ship}</span>
+					</button>
 				</div>
 			</div>
 
-			<!-- Mobile Horizontal Category Scroll -->
+			<!-- Expandable: Categories, Department, Sort -->
 			{#if showMobileFilters}
-				<div class="mt-4 lg:hidden" transition:slide>
-					<div class="custom-scrollbar flex gap-2 overflow-x-auto pb-2">
+				<div class="lg:hidden" transition:slide={{ duration: 200, easing: sineInOut }}>
+					<!-- Categories -->
+					<div class="custom-scrollbar flex gap-1.5 overflow-x-auto pb-2">
 						<button
 							class={cn(
-								'chip-pressable shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+								'chip-pressable shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-black transition-all',
 								selectedCategoryId === ''
-									? 'bg-primary-600 text-white shadow-md'
-									: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+									? 'bg-primary-600 text-white shadow-sm'
+									: 'bg-slate-100 text-slate-500'
 							)}
 							onclick={() => changeCategory('')}
 						>
@@ -552,10 +516,10 @@
 						{#each ROOT_CATEGORIES as cat (cat.id)}
 							<button
 								class={cn(
-									'chip-pressable shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+									'chip-pressable shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-black transition-all',
 									activeRootCategoryId() === cat.id
-										? 'bg-primary-600 text-white shadow-md'
-										: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+										? 'bg-primary-600 text-white shadow-sm'
+										: 'bg-slate-100 text-slate-500'
 								)}
 								onclick={() => changeCategory(cat.id)}
 							>
@@ -565,15 +529,15 @@
 					</div>
 
 					{#if activeRootCategoryId() && availableSubCategories().length > 0}
-						<div class="mt-2 flex gap-2 overflow-x-auto pb-2 pl-2">
-							<div class="size-2 shrink-0 self-center rounded-full bg-primary-200"></div>
+						<div class="custom-scrollbar mt-1.5 flex gap-1.5 overflow-x-auto pb-2 pl-2">
+							<div class="size-1.5 shrink-0 self-center rounded-full bg-primary-300"></div>
 							{#each availableSubCategories() as subCat (subCat.id)}
 								<button
 									class={cn(
-										'chip-pressable shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+										'chip-pressable shrink-0 rounded-md border px-2.5 py-1 text-[10px] font-bold transition-all',
 										selectedCategoryId === subCat.id
-											? 'border-primary-600 bg-primary-50 text-primary-700'
-											: 'border-slate-100 bg-white text-slate-500 hover:border-slate-200'
+											? 'border-primary-500 bg-primary-50 text-primary-700'
+											: 'border-slate-200 bg-white text-slate-500'
 									)}
 									onclick={() => changeCategory(subCat.id)}
 								>
@@ -584,29 +548,29 @@
 					{/if}
 
 					{#if activeRootCategoryId() === 'employee' && data.departments.length > 0}
-						<div class="mt-4 space-y-2">
-							<p class="ml-1 text-[9px] font-black tracking-widest text-slate-400 uppercase">
+						<div class="mt-3 space-y-1.5">
+							<p class="ml-0.5 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
 								Department
 							</p>
-							<div class="custom-scrollbar flex gap-2 overflow-x-auto pb-2">
+							<div class="custom-scrollbar flex gap-1.5 overflow-x-auto pb-2">
 								<button
 									class={cn(
-										'chip-pressable shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+										'chip-pressable shrink-0 rounded-md border px-2.5 py-1 text-[10px] font-bold transition-all',
 										!selectedDepartment
-											? 'border-primary-600 bg-primary-50 text-primary-700'
-											: 'border-slate-100 bg-white text-slate-500'
+											? 'border-primary-500 bg-primary-50 text-primary-700'
+											: 'border-slate-200 bg-white text-slate-500'
 									)}
 									onclick={() => changeDepartment('')}
 								>
-									All Departments
+									All Depts
 								</button>
 								{#each data.departments as dept}
 									<button
 										class={cn(
-											'chip-pressable shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+											'chip-pressable shrink-0 rounded-md border px-2.5 py-1 text-[10px] font-bold transition-all',
 											selectedDepartment === dept
-												? 'border-primary-600 bg-primary-50 text-primary-700'
-												: 'border-slate-100 bg-white text-slate-500'
+												? 'border-primary-500 bg-primary-50 text-primary-700'
+												: 'border-slate-200 bg-white text-slate-500'
 										)}
 										onclick={() => changeDepartment(dept)}
 									>
@@ -617,81 +581,32 @@
 						</div>
 					{/if}
 
-					<!-- Mobile Location Toggle -->
-					<div class="mt-4 flex gap-4">
-						<div class="flex-1 space-y-2">
-							<p class="ml-1 text-[9px] font-black tracking-widest text-slate-400 uppercase">
-								{i18n.t('location')}
-							</p>
-							<div
-								class="flex w-full items-center gap-1 rounded-2xl border-2 border-slate-100 bg-white p-1 shadow-sm"
+					<!-- Sort -->
+					<div class="mt-3 flex items-center gap-2 pb-1">
+						<span class="text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">Sort</span>
+						<div class="flex gap-0.5 rounded-lg border border-slate-100 bg-slate-50 p-0.5">
+							<button
+								class={cn(
+									'chip-pressable rounded-md px-3 py-1 text-[10px] font-black uppercase transition-all',
+									selectedSort === 'recent'
+										? 'bg-white text-slate-700 shadow-sm'
+										: 'text-slate-400'
+								)}
+								onclick={() => changeSort('recent')}
 							>
-								<button
-									class={cn(
-										'flex-1 rounded-xl py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
-										selectedLocation === ''
-											? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
-											: 'text-slate-500 hover:bg-slate-50'
-									)}
-									onclick={() => changeLocation('')}
-								>
-									{i18n.t('all')}
-								</button>
-								<button
-									class={cn(
-										'flex-1 rounded-xl py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
-										selectedLocation === 'yard'
-											? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
-											: 'text-slate-500 hover:bg-slate-50'
-									)}
-									onclick={() => changeLocation('yard')}
-								>
-									Yard
-								</button>
-								<button
-									class={cn(
-										'flex-1 rounded-xl py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
-										selectedLocation === 'ship'
-											? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
-											: 'text-slate-500 hover:bg-slate-50'
-									)}
-									onclick={() => changeLocation('ship')}
-								>
-									Ship
-								</button>
-							</div>
-						</div>
-
-						<div class="flex-1 space-y-2">
-							<p class="ml-1 text-[9px] font-black tracking-widest text-slate-400 uppercase">
-								Sort By
-							</p>
-							<div
-								class="flex w-full items-center gap-1 rounded-2xl border-2 border-slate-100 bg-white p-1 shadow-sm"
+								Recent
+							</button>
+							<button
+								class={cn(
+									'chip-pressable rounded-md px-3 py-1 text-[10px] font-black uppercase transition-all',
+									selectedSort === 'duration'
+										? 'bg-white text-slate-700 shadow-sm'
+										: 'text-slate-400'
+								)}
+								onclick={() => changeSort('duration')}
 							>
-								<button
-									class={cn(
-										'flex-1 rounded-xl py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
-										selectedSort === 'recent'
-											? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
-											: 'text-slate-500 hover:bg-slate-50'
-									)}
-									onclick={() => changeSort('recent')}
-								>
-									Recent
-								</button>
-								<button
-									class={cn(
-										'flex-1 rounded-xl py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
-										selectedSort === 'duration'
-											? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
-											: 'text-slate-500 hover:bg-slate-50'
-									)}
-									onclick={() => changeSort('duration')}
-								>
-									Inside
-								</button>
-							</div>
+								Duration
+							</button>
 						</div>
 					</div>
 				</div>
@@ -702,286 +617,325 @@
 	<div class="content-container flex flex-col gap-8 px-4 md:px-0 lg:flex-row">
 		<!-- Sidebar - Desktop Only -->
 		<aside
-			class="hidden w-64 shrink-0 flex-col gap-6 lg:sticky lg:top-36 lg:flex lg:h-[calc(100vh-12rem)]"
+			class="custom-scrollbar hidden w-64 shrink-0 self-start overflow-y-auto lg:sticky lg:top-24 lg:block lg:max-h-[calc(100vh-8rem)]"
 		>
-			<div class="custom-scrollbar flex-1 space-y-6 overflow-y-auto pr-2">
-				<!-- Category Filter -->
-				<div class="space-y-3">
-					<p class="text-[10px] font-black tracking-widest text-slate-400 capitalize">
-						{i18n.t('category')}
-					</p>
-					<div class="flex flex-col gap-1">
-						<Button
-							variant={selectedCategoryId === '' ? 'secondary' : 'ghost'}
-							class={cn(
-								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-								selectedCategoryId === ''
-									? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800'
-									: 'text-slate-600'
-							)}
-							onclick={() => changeCategory('')}
-						>
+			<div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+				<!-- Live Status Header -->
+				<div class="relative border-b border-slate-100 bg-gradient-to-br from-slate-900 via-slate-800 to-primary-900 px-4 py-4">
+					<div class="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(28,85,164,0.3),transparent_60%)]"></div>
+					<div class="relative flex items-center justify-between">
+						<div>
 							<div class="flex items-center gap-2">
-								{#if selectedCategoryId === ''}
-									<div class="size-1.5 rounded-full bg-white"></div>
-								{/if}
-								{i18n.t('all')}
+								<div class="relative flex size-2">
+									<span class="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+									<span class="relative inline-flex size-2 rounded-full bg-emerald-400"></span>
+								</div>
+								<span class="text-[9px] font-black tracking-[0.2em] text-emerald-300/90 uppercase">On Premises</span>
 							</div>
-						</Button>
-						{#each ROOT_CATEGORIES as cat (cat.id)}
-							{@const isActive = activeRootCategoryId() === cat.id}
-							<div>
-								<Button
-									variant={isActive ? 'secondary' : 'ghost'}
-									class={cn(
-										'h-10 w-full cursor-pointer justify-start px-3 font-bold transition-all',
-										isActive
-											? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800'
-											: 'text-slate-600'
-									)}
-									onclick={() => changeCategory(cat.id)}
-								>
-									<div class="flex items-center gap-2">
-										{#if isActive}
-											<div class="size-1.5 rounded-full bg-primary-600"></div>
-										{/if}
-										{i18n.t(cat.slug as any) || cat.name}
-									</div>
-								</Button>
-
-								{#if isActive && availableSubCategories().length > 0}
-									<div
-										class="mt-1 mb-2 ml-3 border-l-2 border-primary-100 pl-3"
-										transition:slide={{ duration: 250, easing: sineInOut }}
-									>
-										<div class="flex flex-wrap gap-1.5 py-1">
-											<button
-												class={clsx(
-													'touch-feedback cursor-pointer rounded-full border px-3 py-2 text-xs font-bold transition-all active:scale-95',
-													activeRootCategoryId() === selectedCategoryId
-														? 'border-primary-600 bg-primary-600 text-white shadow-sm'
-														: 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'
-												)}
-												onclick={() => changeCategory(activeRootCategoryId())}
-											>
-												All {activeRootCategoryName()}
-											</button>
-
-											{#if activeParentCategory() && activeParentCategory()?.id !== activeRootCategoryId()}
-												<button
-													class="touch-feedback cursor-pointer rounded-full bg-slate-100 px-3 py-2 text-[11px] font-bold text-slate-600 transition-all active:scale-95 hover:bg-slate-200"
-													onclick={() => changeCategory(activeParentCategory()?.id || '')}
-												>
-													<span class="mr-1 opacity-50">↑</span>
-													{activeParentCategory()?.name}
-												</button>
-											{/if}
-
-											{#each availableSubCategories() as subCat (subCat.id)}
-												<button
-													class={clsx(
-														'touch-feedback cursor-pointer rounded-full border px-3 py-2 text-xs font-bold transition-all active:scale-95',
-														selectedCategoryId === subCat.id
-															? 'border-primary-600 bg-primary-600 text-white shadow-sm'
-															: 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'
-													)}
-													onclick={() => changeCategory(subCat.id)}
-												>
-													{i18n.t(subCat.slug as any) || subCat.name}
-												</button>
-											{/each}
-										</div>
-									</div>
-								{/if}
+							<p class="mt-1.5 text-3xl font-black tabular-nums tracking-tight text-white">{data.summary.total}</p>
+						</div>
+						<div class="flex flex-col items-end gap-1">
+							<div class="flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-1 backdrop-blur-sm">
+								<Warehouse size={10} class="text-amber-300" />
+								<span class="text-[10px] font-black tabular-nums text-amber-200">{data.summary.yard}</span>
 							</div>
-						{/each}
+							<div class="flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-1 backdrop-blur-sm">
+								<Ship size={10} class="text-sky-300" />
+								<span class="text-[10px] font-black tabular-nums text-sky-200">{data.summary.ship}</span>
+							</div>
+						</div>
 					</div>
 				</div>
 
-				<!-- Department Filter (Only for Employees) -->
-				{#if activeRootCategoryId() === 'employee'}
-					<div class="space-y-3" transition:slide>
-						<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-							Department
+				<div class="p-3">
+					<!-- Category Filter -->
+					<div class="space-y-1.5">
+						<p class="px-1 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
+							{i18n.t('category')}
 						</p>
-						<div class="flex flex-col gap-1">
+						<div class="flex flex-col gap-0.5">
 							<Button
-								variant={!selectedDepartment ? 'secondary' : 'ghost'}
+								variant={selectedCategoryId === '' ? 'secondary' : 'ghost'}
 								class={cn(
-									'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-									!selectedDepartment
-										? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800'
-										: 'text-slate-600'
+									'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
+									selectedCategoryId === ''
+										? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+										: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
 								)}
-								onclick={() => changeDepartment('')}
+								onclick={() => changeCategory('')}
 							>
-								<div class="flex items-center gap-2">
-									{#if !selectedDepartment}
-										<div class="size-1.5 rounded-full bg-white"></div>
-									{/if}
-									All Departments
-								</div>
+								{i18n.t('all')}
 							</Button>
-							{#each data.departments as dept}
-								<Button
-									variant={selectedDepartment === dept ? 'secondary' : 'ghost'}
-									class={cn(
-										'h-10 cursor-pointer justify-start px-3 font-bold transition-all text-left',
-										selectedDepartment === dept
-											? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800'
-											: 'text-slate-600'
-									)}
-									onclick={() => changeDepartment(dept)}
-								>
-									<div class="flex items-center gap-2 truncate">
-										{#if selectedDepartment === dept}
-											<div class="size-1.5 rounded-full bg-white"></div>
-										{/if}
-										<span class="truncate">{dept}</span>
-									</div>
-								</Button>
+							{#each ROOT_CATEGORIES as cat (cat.id)}
+								{@const isActive = activeRootCategoryId() === cat.id}
+								<div>
+									<Button
+										variant={isActive ? 'secondary' : 'ghost'}
+										class={cn(
+											'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
+											isActive
+												? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+												: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+										)}
+										onclick={() => changeCategory(cat.id)}
+									>
+										{i18n.t(cat.slug as any) || cat.name}
+									</Button>
+
+									{#if isActive && availableSubCategories().length > 0}
+										<div
+											class="mt-1 mb-1.5 ml-3 border-l-2 border-primary-100 pl-2.5"
+											transition:slide={{ duration: 250, easing: sineInOut }}
+										>
+											<div class="flex flex-wrap gap-1 py-0.5">
+												<button
+													class={clsx(
+														'touch-feedback cursor-pointer rounded-md border px-2 py-1 text-[11px] font-bold transition-all active:scale-95',
+														activeRootCategoryId() === selectedCategoryId
+															? 'border-primary-500 bg-primary-600 text-white shadow-sm'
+															: 'border-slate-200 bg-slate-50 text-slate-500 hover:border-primary-200 hover:text-primary-600'
+													)}
+													onclick={() => changeCategory(activeRootCategoryId())}
+												>
+													All {activeRootCategoryName()}
+												</button>
+
+												{#if activeParentCategory() && activeParentCategory()?.id !== activeRootCategoryId()}
+													<button
+														class="touch-feedback cursor-pointer rounded-md bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-500 transition-all active:scale-95 hover:bg-slate-200"
+														onclick={() => changeCategory(activeParentCategory()?.id || '')}
+													>
+														<span class="mr-0.5 opacity-40">↑</span>
+														{activeParentCategory()?.name}
+													</button>
+												{/if}
+
+												{#each availableSubCategories() as subCat (subCat.id)}
+													<button
+														class={clsx(
+															'touch-feedback cursor-pointer rounded-md border px-2 py-1 text-[11px] font-bold transition-all active:scale-95',
+															selectedCategoryId === subCat.id
+																? 'border-primary-500 bg-primary-600 text-white shadow-sm'
+																: 'border-slate-200 bg-slate-50 text-slate-500 hover:border-primary-200 hover:text-primary-600'
+														)}
+														onclick={() => changeCategory(subCat.id)}
+													>
+														{i18n.t(subCat.slug as any) || subCat.name}
+													</button>
+												{/each}
+											</div>
+										</div>
+									{/if}
+								</div>
 							{/each}
 						</div>
 					</div>
-				{/if}
 
-				<!-- Location Filter -->
-				<div class="space-y-3">
-					<p class="text-[10px] font-black tracking-widest text-slate-400 capitalize">
-						{i18n.t('location')}
-					</p>
-					<div class="flex flex-col gap-1">
-						<Button
-							variant={selectedLocation === '' ? 'secondary' : 'ghost'}
-							class={cn(
-								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-								selectedLocation === ''
-									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
-									: 'text-slate-600'
-							)}
-							onclick={() => changeLocation('')}
-						>
-							<div class="flex items-center gap-2">
-								{#if selectedLocation === ''}
-									<div class="size-1.5 rounded-full bg-white"></div>
-								{/if}
-								{i18n.t('all')}
+					<!-- Department Filter (Only for Employees) -->
+					{#if activeRootCategoryId() === 'employee'}
+						<div class="mt-4 space-y-1.5 border-t border-slate-100 pt-3" transition:slide>
+							<p class="px-1 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
+								Department
+							</p>
+							<div class="flex flex-col gap-0.5">
+								<Button
+									variant={!selectedDepartment ? 'secondary' : 'ghost'}
+									class={cn(
+										'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
+										!selectedDepartment
+											? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+											: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+									)}
+									onclick={() => changeDepartment('')}
+								>
+									All Departments
+								</Button>
+								{#each data.departments as dept}
+									<Button
+										variant={selectedDepartment === dept ? 'secondary' : 'ghost'}
+										class={cn(
+											'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all text-left',
+											selectedDepartment === dept
+												? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+												: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+										)}
+										onclick={() => changeDepartment(dept)}
+									>
+										<span class="truncate">{dept}</span>
+									</Button>
+								{/each}
 							</div>
-						</Button>
-						<Button
-							variant={selectedLocation === 'yard' ? 'secondary' : 'ghost'}
-							class={cn(
-								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-								selectedLocation === 'yard'
-									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
-									: 'text-slate-600'
-							)}
-							onclick={() => changeLocation('yard')}
-						>
-							<div class="flex items-center gap-2">
-								{#if selectedLocation === 'yard'}
-									<div class="size-1.5 rounded-full bg-white"></div>
-								{/if}
-								Yard
-							</div>
-						</Button>
-						<Button
-							variant={selectedLocation === 'ship' ? 'secondary' : 'ghost'}
-							class={cn(
-								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-								selectedLocation === 'ship'
-									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
-									: 'text-slate-600'
-							)}
-							onclick={() => changeLocation('ship')}
-						>
-							<div class="flex items-center gap-2">
-								{#if selectedLocation === 'ship'}
-									<div class="size-1.5 rounded-full bg-white"></div>
-								{/if}
-								Ship
-							</div>
-						</Button>
+						</div>
+					{/if}
+
+					<!-- Location Filter -->
+					<div class="mt-4 space-y-1.5 border-t border-slate-100 pt-3">
+						<p class="px-1 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
+							{i18n.t('location')}
+						</p>
+						<div class="flex gap-1.5">
+							<button
+								class={cn(
+									'chip-pressable flex flex-1 cursor-pointer flex-col items-center gap-1 rounded-xl border-2 px-2 py-2.5 transition-all',
+									selectedLocation === ''
+										? 'border-primary-500 bg-primary-50 shadow-sm'
+										: 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-slate-50'
+								)}
+								onclick={() => changeLocation('')}
+							>
+								<MapPin size={14} class={selectedLocation === '' ? 'text-primary-600' : 'text-slate-400'} />
+								<span class={cn('text-[10px] font-black tracking-wider uppercase', selectedLocation === '' ? 'text-primary-700' : 'text-slate-500')}>{i18n.t('all')}</span>
+								<span class={cn('text-sm font-black tabular-nums', selectedLocation === '' ? 'text-primary-600' : 'text-slate-400')}>{data.summary.total}</span>
+							</button>
+							<button
+								class={cn(
+									'chip-pressable flex flex-1 cursor-pointer flex-col items-center gap-1 rounded-xl border-2 px-2 py-2.5 transition-all',
+									selectedLocation === 'yard'
+										? 'border-amber-400 bg-amber-50 shadow-sm'
+										: 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-slate-50'
+								)}
+								onclick={() => changeLocation('yard')}
+							>
+								<Warehouse size={14} class={selectedLocation === 'yard' ? 'text-amber-600' : 'text-slate-400'} />
+								<span class={cn('text-[10px] font-black tracking-wider uppercase', selectedLocation === 'yard' ? 'text-amber-700' : 'text-slate-500')}>Yard</span>
+								<span class={cn('text-sm font-black tabular-nums', selectedLocation === 'yard' ? 'text-amber-600' : 'text-slate-400')}>{data.summary.yard}</span>
+							</button>
+							<button
+								class={cn(
+									'chip-pressable flex flex-1 cursor-pointer flex-col items-center gap-1 rounded-xl border-2 px-2 py-2.5 transition-all',
+									selectedLocation === 'ship'
+										? 'border-sky-400 bg-sky-50 shadow-sm'
+										: 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-slate-50'
+								)}
+								onclick={() => changeLocation('ship')}
+							>
+								<Ship size={14} class={selectedLocation === 'ship' ? 'text-sky-600' : 'text-slate-400'} />
+								<span class={cn('text-[10px] font-black tracking-wider uppercase', selectedLocation === 'ship' ? 'text-sky-700' : 'text-slate-500')}>Ship</span>
+								<span class={cn('text-sm font-black tabular-nums', selectedLocation === 'ship' ? 'text-sky-600' : 'text-slate-400')}>{data.summary.ship}</span>
+							</button>
+						</div>
+					</div>
+
+					<!-- Sort Filter -->
+					<div class="mt-4 space-y-1.5 border-t border-slate-100 pt-3">
+						<p class="px-1 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
+							Sort By
+						</p>
+						<div class="flex gap-1.5 rounded-xl border border-slate-100 bg-slate-50/50 p-1">
+							<button
+								class={cn(
+									'chip-pressable flex-1 cursor-pointer rounded-lg px-3 py-1.5 text-[11px] font-black tracking-wide uppercase transition-all',
+									selectedSort === 'recent'
+										? 'bg-white text-slate-800 shadow-sm'
+										: 'text-slate-400 hover:text-slate-600'
+								)}
+								onclick={() => changeSort('recent')}
+							>
+								Recent
+							</button>
+							<button
+								class={cn(
+									'chip-pressable flex-1 cursor-pointer rounded-lg px-3 py-1.5 text-[11px] font-black tracking-wide uppercase transition-all',
+									selectedSort === 'duration'
+										? 'bg-white text-slate-800 shadow-sm'
+										: 'text-slate-400 hover:text-slate-600'
+								)}
+								onclick={() => changeSort('duration')}
+							>
+								Duration
+							</button>
+						</div>
 					</div>
 				</div>
 
-				<!-- Sort Filter -->
-				<div class="space-y-3">
-					<p class="text-[10px] font-black tracking-widest text-slate-400 capitalize">
-						Sort By
-					</p>
-					<div class="flex flex-col gap-1">
-						<Button
-							variant={selectedSort === 'recent' ? 'secondary' : 'ghost'}
-							class={cn(
-								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-								selectedSort === 'recent'
-									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
-									: 'text-slate-600'
-							)}
-							onclick={() => changeSort('recent')}
-						>
-							<div class="flex items-center gap-2">
-								{#if selectedSort === 'recent'}
-									<div class="size-1.5 rounded-full bg-white"></div>
-								{/if}
-								Recent (Default)
-							</div>
-						</Button>
-						<Button
-							variant={selectedSort === 'duration' ? 'secondary' : 'ghost'}
-							class={cn(
-								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-								selectedSort === 'duration'
-									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
-									: 'text-slate-600'
-							)}
-							onclick={() => changeSort('duration')}
-						>
-							<div class="flex items-center gap-2">
-								{#if selectedSort === 'duration'}
-									<div class="size-1.5 rounded-full bg-white"></div>
-								{/if}
-								Inside For (Longest)
-							</div>
-						</Button>
-					</div>
-				</div>
-			</div>
-
-			<!-- Sidebar Branding - Fixed at bottom of sticky aside -->
-			<div
-				class="mt-auto flex flex-col items-center gap-1 pt-4 pb-2 border-t border-slate-50/50 opacity-40 transition-opacity hover:opacity-100"
-			>
-				<p class="text-[8px] font-black tracking-[0.3em] text-slate-400 uppercase">
-					System Developed By
-				</p>
-				<a
-					href="https://autolinium.com"
-					target="_blank"
-					rel="noopener noreferrer"
-					class="group flex items-center gap-1.5"
+				<!-- Sidebar Branding -->
+				<div
+					class="flex items-center justify-center gap-1.5 border-t border-slate-100 px-4 py-2.5 opacity-30 transition-opacity hover:opacity-70"
 				>
-					<span
-						class="text-[10px] font-black tracking-widest text-slate-500 transition-colors group-hover:text-primary-600 uppercase"
-						>Autolinium</span
-					>
-				</a>
+					<p class="text-[7px] font-black tracking-[0.2em] text-slate-400 uppercase">Built by</p>
+					<a
+						href="https://autolinium.com"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="text-[8px] font-black tracking-[0.15em] text-slate-500 transition-colors hover:text-primary-600 uppercase"
+					>Autolinium</a>
+				</div>
 			</div>
 		</aside>
 
 		<!-- Main Content Area -->
 		<main class="w-full min-w-0 flex-1">
-			<!-- List Area (Infinite Scroll) -->
-			<div class="lg:rounded-3xl lg:border-2 lg:border-slate-100 lg:bg-slate-50/30 lg:shadow-inner">
-				<div class="relative min-h-full">
+			<!-- List Area with integrated toolbar -->
+			<div class="lg:overflow-hidden lg:rounded-2xl lg:border lg:border-slate-200/80 lg:bg-white lg:shadow-sm">
+				<!-- Integrated Desktop Toolbar -->
+				<div class="hidden items-center gap-2.5 border-b border-slate-200 bg-slate-50/80 px-4 py-3 lg:flex">
+					<div class="group relative min-w-0 flex-1">
+						<div class="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500">
+							<Search size={17} />
+						</div>
+						<Input
+							bind:value={searchQuery}
+							oninput={handleSearchInput}
+							placeholder={i18n.t('searchPeoplePlaceholder')}
+							class="h-11 w-full rounded-xl border-2 border-slate-300 bg-white pr-9 pl-10 text-sm font-bold shadow-sm transition-all placeholder:truncate focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/20"
+						/>
+						{#if searchQuery}
+							<button
+								class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600"
+								aria-label="Clear search"
+								onclick={() => { searchQuery = ''; applyFilters(); }}
+							>
+								<X size={14} />
+							</button>
+						{/if}
+					</div>
+					<button
+						class={cn(
+							'flex shrink-0 items-center gap-1.5 rounded-xl border-2 px-3 py-2 text-[11px] font-black transition-all',
+							hasActiveFilters
+								? 'cursor-pointer border-rose-200 bg-rose-50 text-rose-500 hover:border-rose-300 hover:bg-rose-100 active:scale-95'
+								: 'cursor-default border-slate-100 bg-slate-50 text-slate-300'
+						)}
+						aria-label="Reset filters"
+						disabled={!hasActiveFilters}
+						onclick={clearFilters}
+					>
+						<RotateCcw size={12} />
+						Clear
+					</button>
+					<div class="mx-0.5 h-6 w-px bg-slate-200"></div>
+					<Button variant="ghost" size="sm" class="h-9 gap-1.5 rounded-xl px-3 text-xs font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-700" href="/history">
+						<History size={15} />
+						{i18n.t('history')}
+					</Button>
+					<Button variant="ghost" size="icon" class="size-9 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Print log" onclick={confirmPrint}>
+						<Printer size={15} />
+					</Button>
+				</div>
+
+				<div class="relative min-h-full lg:bg-slate-100/50">
 					{#if logs.length > 0}
-						<div class="flex flex-col gap-3 lg:p-4">
+						<div class="flex flex-col gap-2.5 lg:p-3">
 							{#each logs as log (log.id)}
-								<Card.Root class="card-pressable group overflow-hidden border-2 border-slate-100 bg-white active:bg-slate-50/70">
-									<Card.Content class="p-4">
+								<Card.Root class="card-pressable overflow-hidden border border-slate-200/80 bg-white shadow-sm">
+									<Card.Content class="relative p-4">
+										<!-- Mobile Checkout: top-right icon -->
+										{#if data.user?.permissions.includes('people.create')}
+											<form method="POST" action="?/checkOut" use:enhance class="absolute top-3 right-3 lg:hidden">
+												<input type="hidden" name="logId" value={log.id} />
+												<button
+													type="button"
+													class="btn-pressable flex size-8 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-500 transition-all hover:bg-rose-100"
+													onclick={(e) => triggerCheckOut((e.currentTarget as HTMLButtonElement).closest('form') as HTMLFormElement)}
+													aria-label={i18n.t('checkOut')}
+												>
+													<CheckCircle2 size={14} />
+												</button>
+											</form>
+										{/if}
+
 										<div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-											<div class="flex min-w-0 flex-1 items-center gap-3">
+											<div class="flex min-w-0 flex-1 items-center gap-3 pr-10 lg:pr-0">
 												<!-- Avatar -->
 												<div class="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-100 bg-white shadow-sm">
 													{#if log.person.photoUrl}
@@ -1001,7 +955,7 @@
 												<!-- Primary Info -->
 												<div class="min-w-0 flex-1">
 													<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-														<a href="/people/{log.person.id}" class="text-[15px] font-black text-slate-900 transition-colors hover:text-primary-600">
+														<a href="/people/{log.person.id}" class="touch-feedback text-[15px] font-black text-slate-900 transition-colors hover:text-primary-600">
 															{log.person.name}
 														</a>
 														{#if log.person.codeNo}
@@ -1037,24 +991,9 @@
 														{/if}
 													</div>
 												</div>
-												<!-- Checkout -->
-												{#if data.user?.permissions.includes('people.create')}
-													<form method="POST" action="?/checkOut" use:enhance class="shrink-0">
-														<input type="hidden" name="logId" value={log.id} />
-														<Button
-															type="button"
-															variant="outline"
-															class="h-9 gap-1.5 border-2 border-rose-200 px-3 text-[11px] font-black text-rose-600 active:scale-95 hover:bg-rose-50"
-															onclick={(e) => triggerCheckOut((e.currentTarget as HTMLButtonElement).form as HTMLFormElement)}
-														>
-															<CheckCircle2 size={14} />
-															<span class="hidden sm:inline">{i18n.t('checkOut')}</span>
-														</Button>
-													</form>
-												{/if}
 											</div>
 
-											<!-- Metrics -->
+											<!-- Metrics & Checkout -->
 											<div class="flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-slate-100 pt-3 lg:justify-start lg:border-none lg:pt-0">
 												<!-- Duration -->
 												<div class="flex items-center gap-1.5 text-sm font-black text-emerald-600">
@@ -1063,13 +1002,13 @@
 												</div>
 
 												<!-- Location Toggle -->
-												<div class="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5 w-fit">
+												<div class="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 w-fit">
 													<form method="POST" action="?/updatePurpose" use:enhance>
 														<input type="hidden" name="logId" value={log.id} />
 														<input type="hidden" name="purpose" value={log.purpose || ''} />
 														<input type="hidden" name="location" value="ship" />
 														<button type="submit" class={cn(
-															'flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-black transition-all',
+															'btn-pressable flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black transition-all',
 															log.location === 'ship' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
 														)}>
 															<Ship size={12} />
@@ -1080,7 +1019,7 @@
 														<input type="hidden" name="purpose" value={log.purpose || ''} />
 														<input type="hidden" name="location" value="yard" />
 														<button type="submit" class={cn(
-															'flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-black transition-all',
+															'btn-pressable flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black transition-all',
 															log.location === 'yard' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
 														)}>
 															<Warehouse size={12} />
@@ -1090,6 +1029,22 @@
 
 												<!-- Entry Time -->
 												<span class="text-sm font-bold tabular-nums text-slate-500">{format(log.entryTime, 'hh:mm a')}</span>
+
+												<!-- Desktop Checkout -->
+												{#if data.user?.permissions.includes('people.create')}
+													<form method="POST" action="?/checkOut" use:enhance class="ml-auto hidden lg:block">
+														<input type="hidden" name="logId" value={log.id} />
+														<Button
+															type="button"
+															variant="outline"
+															class="btn-pressable h-9 gap-1.5 border-2 border-rose-200 px-3 text-[11px] font-black text-rose-600 hover:bg-rose-50"
+															onclick={(e) => triggerCheckOut((e.currentTarget as HTMLButtonElement).form as HTMLFormElement)}
+														>
+															<CheckCircle2 size={14} />
+															<span>{i18n.t('checkOut')}</span>
+														</Button>
+													</form>
+												{/if}
 
 											</div>
 										</div>
@@ -1132,7 +1087,7 @@
 
 	<!-- Floating Action Buttons -->
 	{#if data.user?.permissions.includes('people.create')}
-		<div class="fixed right-5 bottom-6 z-40 flex flex-col items-end gap-3 sm:right-8 sm:bottom-8">
+		<div class="fixed right-5 bottom-6 z-40 flex flex-col items-end gap-3 pb-[env(safe-area-inset-bottom)] sm:right-8 sm:bottom-8">
 			<Button
 				variant="outline"
 				class="h-12 cursor-pointer gap-2.5 rounded-full border border-slate-200 bg-white/95 px-5 text-xs font-bold text-slate-600 shadow-lg backdrop-blur-sm transition-all duration-200 hover:border-slate-300 hover:bg-white hover:shadow-xl active:scale-[0.97] md:h-14 md:px-6 md:text-sm"

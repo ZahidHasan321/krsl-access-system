@@ -27,10 +27,11 @@
 	import type { PageData } from './$types';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { tick } from 'svelte';
 	import { cn, getPageRange } from '$lib/utils';
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
 	import DatePicker from '$lib/components/ui/DatePicker.svelte';
-	import logo from '$lib/assets/kr_logo.svg';
+	import PrintHeader from '$lib/components/PrintHeader.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -49,18 +50,15 @@
 	$effect(() => {
 		if (isPrintMode) {
 			isPreparingPrint = true;
-			const timer = setTimeout(() => {
+			tick().then(() => {
 				window.print();
 				isPreparingPrint = false;
-				// If this was a new tab, we don't need to go back, user will close it
-				// But we'll remove the param just in case
 				if (window.opener === null) {
 					const url = new URL(page.url);
 					url.searchParams.delete('print');
 					goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
 				}
-			}, 1500);
-			return () => clearTimeout(timer);
+			});
 		}
 	});
 
@@ -143,30 +141,7 @@
 </svelte:head>
 
 <div class={cn('print-only', !isPrintMode && 'hidden')}>
-	<div
-		class="print-header"
-		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 2px solid #000; margin-bottom: 2rem;"
-	>
-		<div style="display: flex; align-items: center; gap: 20px;">
-			<img src={logo} alt="Logo" style="height: 70px; width: auto;" />
-			<div style="border-left: 2px solid #e2e8f0; padding-left: 20px;">
-				<h1 style="font-family: 'HandelGothic', sans-serif; font-size: 32px; color: #0f172a; margin: 0; line-height: 1;">
-					<span style="color: #1c55a4;">KR</span> Steel Ltd.
-				</h1>
-				<p style="font-size: 11px; font-weight: 900; color: #64748b; margin: 6px 0 0 0; letter-spacing: 0.3em; text-transform: uppercase;">
-					Access Management System
-				</p>
-			</div>
-		</div>
-		<div style="text-align: right;">
-			<h2 style="font-size: 18px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">
-				Vehicle History Report
-			</h2>
-			<p style="font-size: 12px; font-weight: 700; color: #64748b; margin: 4px 0 0 0;">
-				{format(new Date(), 'PPPP')} | {format(new Date(), 'hh:mm a')}
-			</p>
-		</div>
-	</div>
+	<PrintHeader title="Vehicle History Report" />
 
 	<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.25rem 2rem; background: #fff; border: 1px solid #cbd5e1; border-radius: 0;">
 		<div style="display: flex; flex-direction: column; gap: 2px;">
@@ -324,10 +299,10 @@
 	</div>
 
 	<!-- Main Content Area -->
-	<div class="content-container flex flex-col items-start gap-8 md:flex-row">
-		<!-- Sidebar - Sticky -->
+	<div class="content-container flex flex-col gap-8 px-4 md:px-0 lg:flex-row">
+		<!-- Sidebar - Desktop Only -->
 		<aside
-			class="custom-scrollbar max-h-[calc(100vh-12rem)] w-full shrink-0 space-y-6 overflow-y-auto pr-2 pb-20 md:sticky md:top-36 md:w-64 print:hidden"
+			class="custom-scrollbar hidden w-64 shrink-0 self-start space-y-6 overflow-y-auto lg:sticky lg:top-24 lg:block lg:max-h-[calc(100vh-8rem)] print:hidden"
 		>
 			<!-- Vehicle Type Filter -->
 			<div class="space-y-3">

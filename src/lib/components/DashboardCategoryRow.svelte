@@ -34,11 +34,11 @@
 	<button
 		type="button"
 		class={clsx(
-			'flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-all',
-			hasChildren ? 'cursor-pointer hover:bg-slate-50' : 'cursor-default',
+			'touch-feedback group flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-all duration-150',
+			hasChildren ? 'cursor-pointer hover:bg-slate-50 hover:shadow-md active:bg-slate-100/60 active:shadow-sm' : 'cursor-default',
 			level === 0
-				? 'mb-3 border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/50'
-				: 'mb-1 border-transparent hover:bg-slate-50/50'
+				? 'mb-3 border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/50 hover:border-primary-200 hover:ring-primary-200/50'
+				: 'mb-1 border-transparent hover:border-slate-100 hover:bg-slate-50/50 active:bg-slate-100/40'
 		)}
 		onclick={toggle}
 	>
@@ -47,7 +47,7 @@
 			{#if level === 0}
 				<div
 					class={cn(
-						'flex size-10 items-center justify-center rounded-lg border-2 shadow-sm transition-transform',
+						'flex size-10 items-center justify-center rounded-lg border-2 shadow-sm transition-transform duration-200 group-hover:scale-105',
 						getCategoryColorClass(category.color)
 					)}
 				>
@@ -56,7 +56,7 @@
 			{:else}
 				<div
 					class={cn(
-						'flex size-8 items-center justify-center rounded-lg border shadow-sm',
+						'flex size-8 items-center justify-center rounded-lg border shadow-sm transition-transform duration-200 group-hover:scale-105',
 						getCategoryColorClass(category.color)
 					)}
 				>
@@ -91,18 +91,13 @@
 			</div>
 		</div>
 
-		<!-- Right: Counts -->
-		<div class="flex items-center gap-3">
-			{#if category.count > 0}
-				<div
-					class={cn(
-						'flex h-8 min-w-8 items-center justify-center rounded-lg border-2 px-2 text-sm font-bold tracking-tighter shadow-sm',
-						getCategoryColorClass(category.color)
-					)}
-				>
-					{category.count}
-				</div>
-			{/if}
+		<!-- Right: Inside / Registered -->
+		<div class="flex items-baseline gap-1">
+			<span class={cn(
+				'text-sm font-black tabular-nums',
+				category.count > 0 ? 'text-slate-900' : 'text-slate-300'
+			)}>{category.count}</span>
+			<span class="text-[10px] font-bold tabular-nums text-slate-400">/ {category.registeredCount}</span>
 		</div>
 	</button>
 

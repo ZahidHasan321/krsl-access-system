@@ -19,7 +19,8 @@ function getDescendantIds(categoryId: string): string[] {
 	return ids;
 }
 
-function buildRootLookup() {
+/** Cached – CATEGORIES is a compile-time constant so the lookup never changes. */
+const rootLookupCache = (() => {
 	const byId = new Map(CATEGORIES.map((c) => [c.id, c]));
 	const rootOf = new Map<string, { id: string; name: string; slug: string }>();
 	for (const cat of CATEGORIES) {
@@ -32,7 +33,7 @@ function buildRootLookup() {
 		rootOf.set(cat.id, { id: current.id, name: current.name, slug: current.slug });
 	}
 	return rootOf;
-}
+})();
 
 export interface GetAttendanceLogsParams {
 	page?: number;
@@ -54,7 +55,7 @@ export async function getAttendanceLogs({
 	sortBy = 'recent'
 }: GetAttendanceLogsParams) {
 	const trimmedQuery = query.trim();
-	const rootLookup = buildRootLookup();
+	const rootLookup = rootLookupCache;
 
 	const whereClauses: (SQL | undefined)[] = [eq(attendanceLogs.status, 'on_premises')];
 
@@ -104,7 +105,9 @@ export async function getAttendanceLogs({
 	const validatedOffset = (validatedPage - 1) * limit;
 
 	const orderBy =
-		sortBy === 'duration' ? asc(attendanceLogs.entryTime) : desc(attendanceLogs.entryTime);
+		sortBy === 'duration'
+			? [asc(attendanceLogs.entryTime), asc(attendanceLogs.id)]
+			: [desc(attendanceLogs.entryTime), desc(attendanceLogs.id)];
 
 	// Load active entries (on_premises) only with filtering
 	const logs = await db
@@ -138,7 +141,7 @@ export async function getAttendanceLogs({
 		.innerJoin(people, eq(attendanceLogs.personId, people.id))
 		.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
 		.where(where)
-		.orderBy(orderBy)
+		.orderBy(...orderBy)
 		.limit(limit)
 		.offset(validatedOffset);
 

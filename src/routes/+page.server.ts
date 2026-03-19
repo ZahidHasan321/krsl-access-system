@@ -112,7 +112,7 @@ export const load: PageServerLoad = async (event) => {
 			.innerJoin(people, eq(attendanceLogs.personId, people.id))
 			.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
 			.orderBy(desc(attendanceLogs.entryTime))
-			.limit(8)
+			.limit(30)
 	]);
 
 	const anyDeviceOnline = allDevices.some((d) => isDeviceOnline(d.lastHeartbeat));

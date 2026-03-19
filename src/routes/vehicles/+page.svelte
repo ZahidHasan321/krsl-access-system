@@ -36,10 +36,10 @@
 	import { page } from '$app/state';
 	import { cn, appToast } from '$lib/utils';
 	import type { PageData, ActionData } from './$types';
-	import { untrack } from 'svelte';
+	import { untrack, tick } from 'svelte';
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
 	import Pagination from '$lib/components/ui/Pagination.svelte';
-	import logo from '$lib/assets/kr_logo.svg';
+	import PrintHeader from '$lib/components/PrintHeader.svelte';
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let isCheckInOpen = $state(false);
@@ -72,18 +72,15 @@
 	$effect(() => {
 		if (isPrintMode) {
 			isPreparingPrint = true;
-			const timer = setTimeout(() => {
+			tick().then(() => {
 				window.print();
 				isPreparingPrint = false;
-				// If this was a new tab, we don't need to go back, user will close it
-				// But we'll remove the param just in case
 				if (window.opener === null) {
 					const url = new URL(page.url);
 					url.searchParams.delete('print');
 					goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
 				}
-			}, 1500);
-			return () => clearTimeout(timer);
+			});
 		}
 	});
 
@@ -196,30 +193,7 @@
 </svelte:head>
 
 <div class={cn('print-only', !isPrintMode && 'hidden')}>
-	<div
-		class="print-header"
-		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 2px solid #000; margin-bottom: 2rem;"
-	>
-		<div style="display: flex; align-items: center; gap: 20px;">
-			<img src={logo} alt="Logo" style="height: 70px; width: auto;" />
-			<div style="border-left: 2px solid #e2e8f0; padding-left: 20px;">
-				<h1 style="font-family: 'HandelGothic', sans-serif; font-size: 32px; color: #0f172a; margin: 0; line-height: 1;">
-					<span style="color: #1c55a4;">KR</span> Steel Ltd.
-				</h1>
-				<p style="font-size: 11px; font-weight: 900; color: #64748b; margin: 6px 0 0 0; letter-spacing: 0.3em; text-transform: uppercase;">
-					Access Management System
-				</p>
-			</div>
-		</div>
-		<div style="text-align: right;">
-			<h2 style="font-size: 18px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">
-				Vehicles On-Premises Report
-			</h2>
-			<p style="font-size: 12px; font-weight: 700; color: #64748b; margin: 4px 0 0 0;">
-				{format(new Date(), 'PPPP')} | {format(new Date(), 'hh:mm a')}
-			</p>
-		</div>
-	</div>
+	<PrintHeader title="Vehicles On-Premises Report" />
 
 	<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.25rem 2rem; background: #fff; border: 1px solid #cbd5e1; border-radius: 0;">
 		<div style="display: flex; flex-direction: column; gap: 2px;">
@@ -278,127 +252,83 @@
 {#if isPreparingPrint}
 	<div class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white">
 		<Loader2 class="mb-4 animate-spin text-primary-600" size={48} />
-		<h2 class="text-xl font-black text-slate-900">Preparing Print Report...</h2>
+		<h2 class="text-xl font-black text-slate-900">Preparing Print Report…</h2>
 		<p class="mt-2 font-bold text-slate-500">Fetching {data.pagination.totalCount} records</p>
 	</div>
 {/if}
 
 {#if !isPrintMode}
 <div class="no-print pb-20">
-	<!-- Sticky Top Bar for Search -->
-	<div class="sticky-filter-bar px-4 md:px-0">
-		<div class="content-container">
-			<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-				<!-- Search Section - Left -->
-				<div class="flex w-full items-center lg:flex-1">
-					<div class="group relative flex-1 lg:max-w-md">
-						<div
-							class="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500"
-						>
-							<Search size={18} />
-						</div>
-						<Input
-							bind:ref={searchInputEl}
-							bind:value={searchQuery}
-							oninput={handleSearchInput}
-							placeholder={i18n.t('searchVehiclesPlaceholder')}
-							class="h-11 w-full rounded-2xl border-2 border-slate-300 bg-white pr-10 pl-11 text-sm font-bold shadow-sm transition-all focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/30 lg:h-12 lg:text-base"
-						/>
-						{#if searchQuery}
-							<button
-								class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100"
-								onclick={() => {
-									searchQuery = '';
-									applyFilters();
-								}}
-							>
-								<X size={14} />
-							</button>
-						{/if}
+	<!-- Sticky Top Bar (mobile only) -->
+	<div class="sticky-filter-bar px-4 md:px-0 lg:hidden">
+		<div class="content-container space-y-3">
+			<!-- Row 1: Search + Actions -->
+			<div class="flex items-center gap-2">
+				<div class="group relative min-w-0 flex-1">
+					<div class="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500">
+						<Search size={17} />
 					</div>
+					<Input
+						bind:ref={searchInputEl}
+						bind:value={searchQuery}
+						oninput={handleSearchInput}
+						placeholder={i18n.t('searchVehiclesPlaceholder')}
+						class="h-10 w-full rounded-xl border-2 border-slate-300 bg-white pr-9 pl-10 text-sm font-bold shadow-sm transition-all placeholder:truncate focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/20"
+					/>
+					{#if searchQuery}
+						<button
+							class="btn-pressable absolute top-1/2 right-2.5 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 hover:text-slate-600"
+							onclick={() => { searchQuery = ''; applyFilters(); }}
+						>
+							<X size={14} />
+						</button>
+					{/if}
 				</div>
-
-				<!-- Actions - Right -->
-				<div
-					class="custom-scrollbar flex items-center justify-between gap-2 overflow-x-auto lg:justify-end lg:overflow-visible"
+				<button
+					class={cn(
+						'btn-pressable flex size-10 shrink-0 items-center justify-center rounded-xl border-2 transition-all',
+						showMobileFilters
+							? 'border-primary-500 bg-primary-50 text-primary-600'
+							: 'border-slate-200 bg-white text-slate-400'
+					)}
+					onclick={() => (showMobileFilters = !showMobileFilters)}
+					aria-label="Toggle filters"
 				>
-					<div class="flex items-center gap-2 lg:hidden">
-						<Button
-							variant="outline"
-							size="sm"
-							class={cn(
-								'h-10 rounded-xl border-2 font-black transition-all',
-								showMobileFilters
-									? 'border-primary-500 bg-primary-50 text-primary-600'
-									: 'border-slate-200'
-							)}
-							onclick={() => (showMobileFilters = !showMobileFilters)}
-						>
-							<Filter size={16} class="mr-1.5" />
-							Filters
-						</Button>
-
-						<!-- Mobile Info Badge Moved Here -->
-						<div class="flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2">
-							<span class="text-[9px] font-black tracking-widest text-slate-400 uppercase"
-								>Inside</span
-							>
-							<span class="text-xs font-black text-amber-700">{data.pagination.totalCount}</span>
-						</div>
-					</div>
-
-					<div class="flex items-center gap-2">
-						<Button
-							variant="outline"
-							class="h-10 shrink-0 cursor-pointer gap-2 rounded-xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 lg:h-12 lg:rounded-2xl lg:px-6"
-							onclick={() => window.print()}
-						>
-							<Printer size={18} />
-							<span class="hidden sm:inline">Print Report</span>
-						</Button>
-
-						<Button
-							variant="outline"
-							class="h-10 shrink-0 cursor-pointer gap-2 rounded-xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 lg:h-12 lg:rounded-2xl lg:px-6"
-							onclick={() => goto('/vehicles/history')}
-						>
-							<LucideHistory size={18} />
-							<span class="hidden sm:inline">{i18n.t('history')}</span>
-						</Button>
-
-						{#if hasActiveFilters}
-							<Button
-								variant="ghost"
-								class="h-10 shrink-0 cursor-pointer gap-2 rounded-xl border-2 border-transparent px-4 font-black text-rose-500 transition-all hover:border-rose-100 hover:bg-rose-50 hover:text-rose-600 lg:h-12 lg:rounded-2xl lg:px-6"
-								onclick={clearFilters}
-							>
-								<RotateCcw size={18} />
-								<span class="hidden sm:inline">Reset</span>
-							</Button>
-						{/if}
-
-						<Button
-							class="h-10 shrink-0 gap-2 rounded-xl px-5 font-black shadow-lg lg:h-12 lg:rounded-2xl lg:px-8"
-							onclick={() => (isCheckInOpen = true)}
-						>
-							<LogIn size={20} />
-							<span class="hidden sm:inline">{i18n.t('checkIn')}</span>
-						</Button>
-					</div>
-				</div>
+					<Filter size={16} />
+				</button>
+				<button
+					class={cn(
+						'btn-pressable flex size-10 shrink-0 items-center justify-center rounded-xl border-2 transition-all',
+						hasActiveFilters
+							? 'border-rose-200 bg-rose-50 text-rose-500'
+							: 'border-slate-100 bg-slate-50 text-slate-300'
+					)}
+					disabled={!hasActiveFilters}
+					onclick={clearFilters}
+					aria-label="Clear filters"
+				>
+					<RotateCcw size={14} />
+				</button>
+				<a href="/vehicles/history" class="btn-pressable flex size-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-200 bg-white text-primary-600 transition-all" aria-label="History">
+					<LucideHistory size={16} />
+				</a>
+				<Button class="btn-pressable h-10 gap-1.5 rounded-xl px-4 text-xs font-black shadow-lg" onclick={() => (isCheckInOpen = true)}>
+					<LogIn size={14} />
+					<span class="hidden sm:inline">{i18n.t('checkIn')}</span>
+				</Button>
 			</div>
 
-			<!-- Mobile Horizontal Filters -->
+			<!-- Expandable: Vehicle Type Chips -->
 			{#if showMobileFilters}
-				<div class="mt-4 lg:hidden" transition:slide>
-					<div class="custom-scrollbar flex gap-2 overflow-x-auto pb-2">
+				<div class="lg:hidden" transition:slide>
+					<div class="custom-scrollbar flex gap-1.5 overflow-x-auto pb-2">
 						{#each [{ label: i18n.t('all'), value: 'all' }, { label: i18n.t('transportVehicle'), value: 'transport' }, { label: i18n.t('regularVehicle'), value: 'regular' }] as opt}
 							<button
 								class={cn(
-									'shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+									'chip-pressable shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-black transition-all',
 									typeFilter === opt.value
-										? 'bg-primary-600 text-white shadow-md'
-										: 'bg-slate-100 text-slate-600'
+										? 'bg-primary-600 text-white shadow-sm'
+										: 'bg-slate-100 text-slate-500'
 								)}
 								onclick={() => changeTypeFilter(opt.value)}
 							>
@@ -412,130 +342,164 @@
 	</div>
 
 	<!-- Main Content Area -->
-	<div class="content-container flex flex-col gap-8 px-4 md:px-0 lg:flex-row lg:items-start">
+	<div class="content-container flex flex-col gap-8 px-4 md:px-0 lg:flex-row">
 		<!-- Sidebar - Desktop Only -->
 		<aside
-			class="hidden w-64 shrink-0 flex-col gap-6 lg:sticky lg:top-36 lg:flex lg:h-[calc(100vh-12rem)] print:hidden"
+			class="custom-scrollbar hidden w-64 shrink-0 self-start overflow-y-auto lg:sticky lg:top-24 lg:block lg:max-h-[calc(100vh-8rem)] print:hidden"
 		>
-			<div class="custom-scrollbar flex-1 space-y-6 overflow-y-auto pr-2">
-			<!-- Vehicle Type Filter -->
-			<div class="space-y-3">
-				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-					{i18n.t('vehicleType')}
-				</p>
-				<div class="flex flex-col gap-1">
-					<Button
-						variant={typeFilter === 'all' ? 'secondary' : 'ghost'}
-						class={cn(
-							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-							typeFilter === 'all'
-								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
-								: 'text-slate-600'
-						)}
-						onclick={() => changeTypeFilter('all')}
-					>
-						<div class="flex items-center gap-2">
-							{#if typeFilter === 'all'}
-								<div class="size-1.5 rounded-full bg-white"></div>
-							{/if}
-							{i18n.t('all')}
+			<div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+				<!-- Live Status Header -->
+				<div class="relative border-b border-slate-100 bg-gradient-to-br from-slate-900 via-slate-800 to-primary-900 px-4 py-4">
+					<div class="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(28,85,164,0.3),transparent_60%)]"></div>
+					<div class="relative flex items-center justify-between">
+						<div>
+							<div class="flex items-center gap-2">
+								<div class="relative flex size-2">
+									<span class="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+									<span class="relative inline-flex size-2 rounded-full bg-emerald-400"></span>
+								</div>
+								<span class="text-[9px] font-black tracking-[0.2em] text-emerald-300/90 uppercase">Inside Now</span>
+							</div>
+							<p class="mt-1.5 text-3xl font-black tabular-nums tracking-tight text-white">{data.summary.total}</p>
 						</div>
-					</Button>
-					<Button
-						variant={typeFilter === 'transport' ? 'secondary' : 'ghost'}
-						class={cn(
-							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-							typeFilter === 'transport'
-								? 'rounded-l-none border-l-4 border-primary-600 bg-primary-50 text-primary-700'
-								: 'text-slate-600'
-						)}
-						onclick={() => changeTypeFilter('transport')}
-					>
-						<div class="flex items-center gap-2">
-							{#if typeFilter === 'transport'}
-								<div class="size-1.5 rounded-full bg-primary-600"></div>
-							{/if}
-							{i18n.t('transportVehicle')}
+						<div class="flex flex-col items-end gap-1">
+							<div class="flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-1 backdrop-blur-sm">
+								<Truck size={10} class="text-amber-300" />
+								<span class="text-[10px] font-black tabular-nums text-amber-200">{data.summary.transport}</span>
+							</div>
+							<div class="flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-1 backdrop-blur-sm">
+								<Package size={10} class="text-sky-300" />
+								<span class="text-[10px] font-black tabular-nums text-sky-200">{data.summary.regular}</span>
+							</div>
 						</div>
-					</Button>
-					<Button
-						variant={typeFilter === 'regular' ? 'secondary' : 'ghost'}
-						class={cn(
-							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
-							typeFilter === 'regular'
-								? 'rounded-l-none border-l-4 border-primary-600 bg-primary-50 text-primary-700'
-								: 'text-slate-600'
-						)}
-						onclick={() => changeTypeFilter('regular')}
-					>
-						<div class="flex items-center gap-2">
-							{#if typeFilter === 'regular'}
-								<div class="size-1.5 rounded-full bg-primary-600"></div>
-							{/if}
-							{i18n.t('regularVehicle')}
-						</div>
-					</Button>
+					</div>
 				</div>
-			</div>
 
-			<!-- Summary Stats -->
-			<div class="space-y-3 rounded-xl border-2 border-slate-100 bg-white p-4 shadow-sm">
-				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Inside Now</p>
-				<div class="space-y-4">
-					<div>
-						<p class="text-3xl font-black text-slate-900">{data.summary.total}</p>
-						<p class="text-[10px] font-bold tracking-widest text-slate-500 uppercase">
-							Total Vehicles
+				<div class="p-3">
+					<!-- Vehicle Type Filter -->
+					<div class="space-y-1.5">
+						<p class="px-1 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
+							{i18n.t('vehicleType')}
 						</p>
-					</div>
-					<div class="grid grid-cols-1 gap-3 border-t border-slate-50 pt-2">
-						<div class="flex items-center justify-between">
-							<span class="text-xs font-bold text-slate-500 uppercase"
-								>{i18n.t('transportVehicle')}</span
+						<div class="flex flex-col gap-0.5">
+							<Button
+								variant={typeFilter === 'all' ? 'secondary' : 'ghost'}
+								class={cn(
+									'btn-pressable h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
+									typeFilter === 'all'
+										? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+										: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+								)}
+								onclick={() => changeTypeFilter('all')}
 							>
-							<span class="text-sm font-black text-primary-600">{data.summary.transport}</span>
-						</div>
-						<div class="flex items-center justify-between">
-							<span class="text-xs font-bold text-slate-500 uppercase"
-								>{i18n.t('regularVehicle')}</span
+								{i18n.t('all')}
+							</Button>
+							<Button
+								variant={typeFilter === 'transport' ? 'secondary' : 'ghost'}
+								class={cn(
+									'btn-pressable h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
+									typeFilter === 'transport'
+										? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+										: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+								)}
+								onclick={() => changeTypeFilter('transport')}
 							>
-							<span class="text-sm font-black text-emerald-600">{data.summary.regular}</span>
+								{i18n.t('transportVehicle')}
+							</Button>
+							<Button
+								variant={typeFilter === 'regular' ? 'secondary' : 'ghost'}
+								class={cn(
+									'btn-pressable h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
+									typeFilter === 'regular'
+										? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+										: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+								)}
+								onclick={() => changeTypeFilter('regular')}
+							>
+								{i18n.t('regularVehicle')}
+							</Button>
 						</div>
 					</div>
 				</div>
-			</div>
-		</div>
 
-		<!-- Sidebar Branding - Fixed at bottom of sticky aside -->
-			<div
-				class="mt-auto flex flex-col items-center gap-1 pt-4 pb-2 border-t border-slate-50/50 opacity-40 transition-opacity hover:opacity-100"
-			>
-				<p class="text-[8px] font-black tracking-[0.3em] text-slate-400 uppercase">
-					System Developed By
-				</p>
-				<a
-					href="https://autolinium.com"
-					target="_blank"
-					rel="noopener noreferrer"
-					class="group flex items-center gap-1.5"
+				<!-- Sidebar Branding -->
+				<div
+					class="flex items-center justify-center gap-1.5 border-t border-slate-100 px-4 py-2.5 opacity-30 transition-opacity hover:opacity-70"
 				>
-					<span
-						class="text-[10px] font-black tracking-widest text-slate-500 transition-colors group-hover:text-primary-600 uppercase"
-						>Autolinium</span
-					>
-				</a>
+					<p class="text-[7px] font-black tracking-[0.2em] text-slate-400 uppercase">Built by</p>
+					<a
+						href="https://autolinium.com"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="text-[8px] font-black tracking-[0.15em] text-slate-500 transition-colors hover:text-primary-600 uppercase"
+					>Autolinium</a>
+				</div>
 			</div>
 		</aside>
 
 		<!-- Main Scrolling Content Area -->
-		<main class="min-w-0 flex-1 space-y-6">
+		<main class="w-full min-w-0 flex-1">
+			<!-- List Area with integrated toolbar -->
+			<div class="lg:overflow-hidden lg:rounded-2xl lg:border lg:border-slate-200/80 lg:bg-white lg:shadow-sm">
+				<!-- Integrated Desktop Toolbar -->
+				<div class="hidden items-center gap-2.5 border-b border-slate-200 bg-slate-50/80 px-4 py-3 lg:flex">
+					<div class="group relative min-w-0 flex-1">
+						<div class="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500">
+							<Search size={17} />
+						</div>
+						<Input
+							bind:ref={searchInputEl}
+							bind:value={searchQuery}
+							oninput={handleSearchInput}
+							placeholder={i18n.t('searchVehiclesPlaceholder')}
+							class="h-11 w-full rounded-xl border-2 border-slate-300 bg-white pr-9 pl-10 text-sm font-bold shadow-sm transition-all placeholder:truncate focus-visible:border-primary-500 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-primary-500/20"
+						/>
+						{#if searchQuery}
+							<button
+								class="btn-pressable absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600"
+								aria-label="Clear search"
+								onclick={() => { searchQuery = ''; applyFilters(); }}
+							>
+								<X size={14} />
+							</button>
+						{/if}
+					</div>
+					<button
+						class={cn(
+							'btn-pressable flex shrink-0 items-center gap-1.5 rounded-xl border-2 px-3 py-2 text-[11px] font-black transition-all',
+							hasActiveFilters
+								? 'cursor-pointer border-rose-200 bg-rose-50 text-rose-500 hover:border-rose-300 hover:bg-rose-100 active:scale-95'
+								: 'cursor-default border-slate-100 bg-slate-50 text-slate-300'
+						)}
+						aria-label="Reset filters"
+						disabled={!hasActiveFilters}
+						onclick={clearFilters}
+					>
+						<RotateCcw size={12} />
+						Clear
+					</button>
+					<div class="mx-0.5 h-6 w-px bg-slate-200"></div>
+					<Button variant="ghost" size="sm" class="btn-pressable h-9 gap-1.5 rounded-xl px-3 text-xs font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-700" href="/vehicles/history">
+						<LucideHistory size={15} />
+						{i18n.t('history')}
+					</Button>
+					<Button variant="ghost" size="icon" class="btn-pressable size-9 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Print log" onclick={confirmPrint}>
+						<Printer size={15} />
+					</Button>
+					<Button class="btn-pressable h-9 gap-1.5 rounded-xl px-4 text-xs font-black shadow-lg" onclick={() => (isCheckInOpen = true)}>
+						<LogIn size={15} />
+						{i18n.t('checkIn')}
+					</Button>
+				</div>
+
+				<div class="relative min-h-full lg:bg-slate-100/50">
 			<!-- List Section -->
-			<div class="space-y-4">
+			<div class="space-y-4 lg:p-3">
 				<!-- Mobile Card View -->
 				<div class="space-y-3 lg:hidden">
 					{#each data.activeVehicles as vehicle}
 						<Card.Root
-							class="cursor-pointer overflow-hidden border-l-4 border-l-amber-500 bg-white transition-shadow hover:shadow-lg"
+							class="card-pressable cursor-pointer overflow-hidden border-l-4 border-l-amber-500 bg-white active:bg-slate-50/80"
 							onclick={() => goto(`/vehicles/${vehicle.id}`)}
 						>
 							<Card.Content class="p-4 sm:p-5">
@@ -596,7 +560,7 @@
 									<Button
 										type="submit"
 										variant="outline"
-										class="h-11 w-full gap-2 rounded-xl border-2 border-rose-100 px-4 font-black text-rose-600 transition-all hover:bg-rose-50 hover:text-rose-700"
+										class="btn-pressable h-11 w-full gap-2 rounded-xl border-2 border-rose-100 px-4 font-black text-rose-600 transition-all hover:bg-rose-50 hover:text-rose-700"
 										onclick={(e: MouseEvent) => e.stopPropagation()}
 									>
 										<LogOut size={16} />
@@ -619,16 +583,16 @@
 
 				<!-- Desktop Table View -->
 				<div class="hidden lg:block">
-					<Card.Root class="overflow-hidden rounded-3xl border-2 bg-white shadow-sm">
+					<Card.Root class="overflow-hidden rounded-xl border-2 border-slate-200 bg-white shadow-sm">
 						<Table.Root>
 							<Table.Header>
-								<Table.Row class="bg-slate-50 hover:bg-transparent">
-									<Table.Head class="font-black text-slate-900">{i18n.t('vehicleNo')}</Table.Head>
-									<Table.Head class="font-black text-slate-900">{i18n.t('vehicleType')}</Table.Head>
-									<Table.Head class="font-black text-slate-900">{i18n.t('driverName')}</Table.Head>
-									<Table.Head class="font-black text-slate-900">{i18n.t('vendorName')}</Table.Head>
-									<Table.Head class="font-black text-slate-900">{i18n.t('entryTime')}</Table.Head>
-									<Table.Head class="text-right font-black text-slate-900 print:hidden"
+								<Table.Row class="bg-slate-200 hover:bg-slate-200">
+									<Table.Head class="font-black text-slate-800">{i18n.t('vehicleNo')}</Table.Head>
+									<Table.Head class="font-black text-slate-800">{i18n.t('vehicleType')}</Table.Head>
+									<Table.Head class="font-black text-slate-800">{i18n.t('driverName')}</Table.Head>
+									<Table.Head class="font-black text-slate-800">{i18n.t('vendorName')}</Table.Head>
+									<Table.Head class="font-black text-slate-800">{i18n.t('entryTime')}</Table.Head>
+									<Table.Head class="text-right font-black text-slate-800 print:hidden"
 										>{i18n.t('actions')}</Table.Head
 									>
 								</Table.Row>
@@ -636,7 +600,7 @@
 							<Table.Body>
 								{#each data.activeVehicles as vehicle}
 									<Table.Row
-										class="group cursor-pointer"
+										class="group cursor-pointer even:bg-slate-50/50 hover:!bg-primary-50/40"
 										onclick={() => goto(`/vehicles/${vehicle.id}`)}
 									>
 										<Table.Cell class="py-4">
@@ -687,7 +651,7 @@
 														type="submit"
 														variant="outline"
 														size="sm"
-														class="h-10 gap-2 border-2 border-rose-100 px-4 font-black text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+														class="btn-pressable h-10 gap-2 border-2 border-rose-100 px-4 font-black text-rose-600 hover:bg-rose-50 hover:text-rose-700"
 														onclick={(e: MouseEvent) => e.stopPropagation()}
 													>
 														<LogOut size={16} />
@@ -712,6 +676,8 @@
 				<!-- Pagination -->
 				<Pagination {...data.pagination} />
 			</div>
+				</div>
+			</div>
 		</main>
 	</div>
 </div>
@@ -729,7 +695,7 @@
 />
 
 <Dialog.Root bind:open={isCheckInOpen}>
-	<Dialog.Content class="flex max-h-[90vh] flex-col overflow-hidden p-0 sm:max-w-[550px]">
+	<Dialog.Content class="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-[550px] sm:rounded-lg">
 		<div class="shrink-0 border-b bg-slate-50 p-6">
 			<Dialog.Title class="text-2xl font-black"
 				>{i18n.t('checkIn')} {i18n.t('vehicles')}</Dialog.Title

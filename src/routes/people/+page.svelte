@@ -45,7 +45,7 @@
 	import DesignationCombobox from '$lib/components/ui/designation-combobox.svelte';
 	import DepartmentCombobox from '$lib/components/ui/department-combobox.svelte';
 	import DatePicker from '$lib/components/ui/DatePicker.svelte';
-	import logo from '$lib/assets/kr_logo.svg';
+	import PrintHeader from '$lib/components/PrintHeader.svelte';
 	import {
 		CATEGORIES,
 		ROOT_CATEGORIES,
@@ -54,7 +54,7 @@
 	} from '$lib/constants/categories';
 	import ConfirmModal from '$lib/components/ui/ConfirmModal.svelte';
 
-	import { onMount, untrack } from 'svelte';
+	import { onMount, untrack, tick } from 'svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -93,18 +93,15 @@
 	$effect(() => {
 		if (isPrintMode) {
 			isPreparingPrint = true;
-			const timer = setTimeout(() => {
+			tick().then(() => {
 				window.print();
 				isPreparingPrint = false;
-				// If this was a new tab, we don't need to go back, user will close it
-				// But we'll remove the param just in case
 				if (window.opener === null) {
 					const url = new URL(page.url);
 					url.searchParams.delete('print');
 					goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
 				}
-			}, 1500);
-			return () => clearTimeout(timer);
+			});
 		}
 	});
 
@@ -289,30 +286,7 @@
 </svelte:head>
 
 <div class={cn('print-only', !isPrintMode && 'hidden')}>
-	<div
-		class="print-header"
-		style="display: flex !important; justify-content: space-between; align-items: flex-end; padding-bottom: 1.5rem; border-bottom: 2px solid #000; margin-bottom: 2rem;"
-	>
-		<div style="display: flex; align-items: center; gap: 20px;">
-			<img src={logo} alt="Logo" style="height: 70px; width: auto;" />
-			<div style="border-left: 2px solid #e2e8f0; padding-left: 20px;">
-				<h1 style="font-family: 'HandelGothic', sans-serif; font-size: 32px; color: #0f172a; margin: 0; line-height: 1;">
-					<span style="color: #1c55a4;">KR</span> Steel Ltd.
-				</h1>
-				<p style="font-size: 11px; font-weight: 900; color: #64748b; margin: 6px 0 0 0; letter-spacing: 0.3em; text-transform: uppercase;">
-					Access Management System
-				</p>
-			</div>
-		</div>
-		<div style="text-align: right;">
-			<h2 style="font-size: 18px; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">
-				People Directory Report
-			</h2>
-			<p style="font-size: 12px; font-weight: 700; color: #64748b; margin: 4px 0 0 0;">
-				{format(new Date(), 'PPPP')} | {format(new Date(), 'hh:mm a')}
-			</p>
-		</div>
-	</div>
+	<PrintHeader title="People Directory Report" />
 
 	<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.25rem 2rem; background: #fff; border: 1px solid #cbd5e1; border-radius: 0;">
 		<div style="display: flex; flex-direction: column; gap: 2px;">
@@ -382,114 +356,88 @@
 
 {#if !isPrintMode}
 	<div class="no-print pb-20">
-	<!-- Sticky Top Bar for Search -->
-	<div class="sticky-filter-bar px-4 md:px-0">
-		<div class="content-container">
-			<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-				<!-- Search Section - Left -->
-				<div class="flex w-full items-center lg:flex-1">
-					<div class="group relative flex-1 lg:max-w-md">
-						<div
-							class="absolute top-1/2 left-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500"
-						>
-							<Search size={18} />
-						</div>
-						<Input
-							bind:ref={searchInputEl}
-							bind:value={searchQuery}
-							oninput={handleSearchInput}
-							placeholder={i18n.t('searchPeoplePlaceholder')}
-							class="h-11 w-full rounded-2xl border-2 border-slate-300 bg-white pr-10 pl-11 text-sm font-bold shadow-sm transition-all focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/30 lg:h-12 lg:text-base"
-						/>
-						{#if searchQuery}
-							<button
-								class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100"
-								onclick={() => {
-									searchQuery = '';
-									handleSearch();
-								}}
-							>
-								<X size={14} />
-							</button>
-						{/if}
+	<!-- Sticky Top Bar for Search (mobile only) -->
+	<div class="sticky-filter-bar px-4 md:px-0 lg:hidden">
+		<div class="content-container space-y-3">
+			<!-- Row 1: Search + Actions -->
+			<div class="flex items-center gap-2">
+				<div class="group relative min-w-0 flex-1">
+					<div class="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500">
+						<Search size={17} />
 					</div>
+					<Input
+						bind:ref={searchInputEl}
+						bind:value={searchQuery}
+						oninput={handleSearchInput}
+						placeholder={i18n.t('searchPeoplePlaceholder')}
+						class="h-10 w-full rounded-xl border-2 border-slate-300 bg-white pr-9 pl-10 text-sm font-bold shadow-sm transition-all placeholder:truncate focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/20"
+					/>
+					{#if searchQuery}
+						<button
+							class="btn-pressable absolute top-1/2 right-2.5 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 hover:text-slate-600"
+							onclick={() => {
+								searchQuery = '';
+								handleSearch();
+							}}
+						>
+							<X size={14} />
+						</button>
+					{/if}
 				</div>
-
-				<!-- Actions - Right -->
-				<div
-					class="custom-scrollbar flex items-center justify-between gap-2 overflow-x-auto lg:justify-end lg:overflow-visible"
+				<button
+					class={cn(
+						'btn-pressable flex size-10 shrink-0 items-center justify-center rounded-xl border-2 transition-all',
+						showMobileFilters
+							? 'border-primary-500 bg-primary-50 text-primary-600'
+							: 'border-slate-200 bg-white text-slate-400'
+					)}
+					onclick={() => (showMobileFilters = !showMobileFilters)}
+					aria-label="Toggle filters"
 				>
-					<div class="flex items-center gap-2 lg:hidden">
-						<Button
-							variant="outline"
-							size="sm"
-							class={cn(
-								'h-10 rounded-xl border-2 font-black transition-all',
-								showMobileFilters
-									? 'border-primary-500 bg-primary-50 text-primary-600'
-									: 'border-slate-200'
-							)}
-							onclick={() => (showMobileFilters = !showMobileFilters)}
-						>
-							<Filter size={16} class="mr-1.5" />
-							Filters
-						</Button>
-
-						<!-- Mobile Info Badge Moved Here -->
-						<div class="flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2">
-							<span class="text-[9px] font-black tracking-widest text-slate-400 uppercase"
-								>Registry</span
-							>
-							<span class="text-xs font-black text-primary-700">{data.pagination.totalCount}</span>
-						</div>
-					</div>
-
-					<div class="flex items-center gap-2">
-						<Button
-							variant="ghost"
-							size="icon"
-							class="size-10 shrink-0 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-							aria-label="Print report"
-							onclick={confirmPrint}
-						>
-							<Printer size={18} />
-						</Button>
-
-						{#if hasActiveFilters}
-							<Button
-								variant="ghost"
-								size="icon"
-								class="size-10 shrink-0 text-rose-400 hover:bg-rose-50 hover:text-rose-600"
-								aria-label="Reset filters"
-								onclick={clearFilters}
-							>
-								<RotateCcw size={18} />
-							</Button>
-						{/if}
-
-						{#if data.user?.permissions.includes('people.create')}
-							<Button
-								class="h-10 shrink-0 gap-2 rounded-xl px-5 font-black shadow-lg lg:h-12 lg:rounded-2xl lg:px-8"
-								onclick={() => (isRegisterOpen = true)}
-							>
-								<PlusCircle size={18} />
-								<span class="hidden sm:inline">{i18n.t('register')}</span>
-							</Button>
-						{/if}
-					</div>
-				</div>
+					<Filter size={16} />
+				</button>
+				<button
+					class={cn(
+						'btn-pressable flex size-10 shrink-0 items-center justify-center rounded-xl border-2 transition-all',
+						hasActiveFilters
+							? 'border-rose-200 bg-rose-50 text-rose-500'
+							: 'border-slate-100 bg-slate-50 text-slate-300'
+					)}
+					disabled={!hasActiveFilters}
+					onclick={clearFilters}
+					aria-label="Clear filters"
+				>
+					<RotateCcw size={14} />
+				</button>
+				<button
+					class="btn-pressable flex size-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-200 bg-white text-slate-400 transition-all hover:text-slate-600"
+					onclick={confirmPrint}
+					aria-label="Print report"
+				>
+					<Printer size={16} />
+				</button>
+				{#if data.user?.permissions.includes('people.create')}
+					<Button
+						class="h-10 shrink-0 gap-1.5 rounded-xl px-4 text-xs font-black shadow-lg"
+						onclick={() => (isRegisterOpen = true)}
+					>
+						<PlusCircle size={16} />
+						<span class="hidden sm:inline">{i18n.t('register')}</span>
+					</Button>
+				{/if}
 			</div>
 
-			<!-- Mobile Horizontal Category Scroll -->
+			<!-- Expandable Filters -->
 			{#if showMobileFilters}
-				<div class="mt-4 lg:hidden" transition:slide>
-					<div class="custom-scrollbar flex gap-2 overflow-x-auto pb-2">
+				<div class="lg:hidden" transition:slide={{ duration: 200, easing: sineInOut }}>
+					<!-- Categories -->
+					<div class="custom-scrollbar flex gap-1.5 overflow-x-auto pb-2">
 						<button
 							class={cn(
-								'chip-pressable shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+								'chip-pressable shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-black transition-all',
 								selectedCategoryId === ''
-									? 'bg-primary-600 text-white shadow-md'
-									: 'bg-slate-100 text-slate-600'
+									? 'bg-primary-600 text-white shadow-sm'
+									: 'bg-slate-100 text-slate-500'
 							)}
 							onclick={() => changeCategory(null)}
 						>
@@ -498,10 +446,10 @@
 						{#each ROOT_CATEGORIES as cat}
 							<button
 								class={cn(
-									'chip-pressable shrink-0 rounded-xl px-4 py-2 text-xs font-black transition-all',
+									'chip-pressable shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-black transition-all',
 									activeRootCategoryId() === cat.id
-										? 'bg-primary-600 text-white shadow-md'
-										: 'bg-slate-100 text-slate-600'
+										? 'bg-primary-600 text-white shadow-sm'
+										: 'bg-slate-100 text-slate-500'
 								)}
 								onclick={() => changeCategory(cat.id)}
 							>
@@ -511,15 +459,15 @@
 					</div>
 
 					{#if activeRootCategoryId() && availableSubCategories().length > 0}
-						<div class="mt-2 flex gap-2 overflow-x-auto pb-2 pl-2">
-							<div class="size-2 shrink-0 self-center rounded-full bg-primary-200"></div>
+						<div class="custom-scrollbar mt-1.5 flex gap-1.5 overflow-x-auto pb-2 pl-2">
+							<div class="size-1.5 shrink-0 self-center rounded-full bg-primary-300"></div>
 							{#each availableSubCategories() as subCat}
 								<button
 									class={cn(
-										'chip-pressable shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
+										'chip-pressable shrink-0 rounded-md border px-2.5 py-1 text-[10px] font-bold transition-all',
 										selectedCategoryId === subCat.id
-											? 'border-primary-600 bg-primary-50 text-primary-700'
-											: 'border-slate-100 bg-white text-slate-500'
+											? 'border-primary-500 bg-primary-50 text-primary-700'
+											: 'border-slate-200 bg-white text-slate-500'
 									)}
 									onclick={() => changeCategory(subCat.id)}
 								>
@@ -529,54 +477,60 @@
 						</div>
 					{/if}
 
-					<div class="mt-2 flex gap-2 overflow-x-auto border-t border-slate-100 pt-2 pb-2">
-						<span class="self-center px-2 text-[9px] font-black text-slate-400 uppercase"
-							>Safety</span
-						>
-						{#each [{ label: 'All', value: '' }, { label: 'Trained', value: 'yes' }, { label: 'Untrained', value: 'no' }] as opt}
-							<button
-								class={cn(
-									'chip-pressable shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
-									selectedTrained === opt.value
-										? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-										: 'border-slate-100 bg-white text-slate-500'
-								)}
-								onclick={() => setFilter('trained', opt.value)}
-							>
-								{opt.label}
-							</button>
-						{/each}
-					</div>
-
-					{#if activeRootCategoryId() === 'employee' && data.departments.length > 0}
-						<div class="mt-2 flex gap-2 overflow-x-auto border-t border-slate-100 pt-2 pb-2">
-							<span class="self-center px-2 text-[9px] font-black text-slate-400 uppercase"
-								>Dept.</span
-							>
-							<button
-								class={cn(
-									'chip-pressable shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
-									!selectedDepartment
-										? 'border-primary-600 bg-primary-50 text-primary-700'
-										: 'border-slate-100 bg-white text-slate-500'
-								)}
-								onclick={() => setFilter('department', '')}
-							>
-								All
-							</button>
-							{#each data.departments as dept}
+					<!-- Safety Filter -->
+					<div class="mt-3 space-y-1.5">
+						<p class="ml-0.5 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
+							Safety
+						</p>
+						<div class="custom-scrollbar flex gap-1.5 overflow-x-auto pb-2">
+							{#each [{ label: 'All', value: '' }, { label: 'Trained', value: 'yes' }, { label: 'Untrained', value: 'no' }] as opt}
 								<button
 									class={cn(
-										'chip-pressable shrink-0 rounded-lg border-2 px-3 py-1.5 text-[10px] font-black transition-all',
-										selectedDepartment === dept
-											? 'border-primary-600 bg-primary-50 text-primary-700'
-											: 'border-slate-100 bg-white text-slate-500'
+										'chip-pressable shrink-0 rounded-md border px-2.5 py-1 text-[10px] font-bold transition-all',
+										selectedTrained === opt.value
+											? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+											: 'border-slate-200 bg-white text-slate-500'
 									)}
-									onclick={() => setFilter('department', dept)}
+									onclick={() => setFilter('trained', opt.value)}
 								>
-									{dept}
+									{opt.label}
 								</button>
 							{/each}
+						</div>
+					</div>
+
+					<!-- Department Filter -->
+					{#if activeRootCategoryId() === 'employee' && data.departments.length > 0}
+						<div class="mt-3 space-y-1.5">
+							<p class="ml-0.5 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
+								Department
+							</p>
+							<div class="custom-scrollbar flex gap-1.5 overflow-x-auto pb-2">
+								<button
+									class={cn(
+										'chip-pressable shrink-0 rounded-md border px-2.5 py-1 text-[10px] font-bold transition-all',
+										!selectedDepartment
+											? 'border-primary-500 bg-primary-50 text-primary-700'
+											: 'border-slate-200 bg-white text-slate-500'
+									)}
+									onclick={() => setFilter('department', '')}
+								>
+									All Depts
+								</button>
+								{#each data.departments as dept}
+									<button
+										class={cn(
+											'chip-pressable shrink-0 rounded-md border px-2.5 py-1 text-[10px] font-bold transition-all',
+											selectedDepartment === dept
+												? 'border-primary-500 bg-primary-50 text-primary-700'
+												: 'border-slate-200 bg-white text-slate-500'
+										)}
+										onclick={() => setFilter('department', dept)}
+									>
+										{dept}
+									</button>
+								{/each}
+							</div>
 						</div>
 					{/if}
 				</div>
@@ -588,195 +542,247 @@
 	<div class="content-container flex flex-col gap-8 px-4 md:px-0 lg:flex-row">
 		<!-- Sidebar - Desktop Only -->
 		<aside
-			class="hidden w-64 shrink-0 flex-col gap-6 lg:sticky lg:top-36 lg:flex lg:h-[calc(100vh-12rem)] print:hidden"
+			class="custom-scrollbar hidden w-64 shrink-0 self-start overflow-y-auto lg:sticky lg:top-24 lg:block lg:max-h-[calc(100vh-8rem)] print:hidden"
 		>
-			<div class="custom-scrollbar flex-1 space-y-6 overflow-y-auto pr-2">
-			<!-- Summary Stats -->
-			<div class="mb-5 grid grid-cols-2 gap-2">
-				<button onclick={clearFilters} class="card-pressable rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm transition-all hover:border-slate-300 hover:shadow-md">
-					<p class="text-xl font-black tabular-nums text-slate-900">{data.summary.total}</p>
-					<p class="text-[8px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('total')}</p>
-				</button>
-				<button onclick={() => goto('/attendance')} class="card-pressable rounded-xl border border-emerald-200 bg-white p-3 text-center shadow-sm transition-all hover:border-emerald-300 hover:shadow-md">
-					<p class="text-xl font-black tabular-nums text-emerald-600">{data.summary.inside}</p>
-					<p class="text-[8px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('inside')}</p>
-				</button>
-				<button onclick={() => setFilter('trained', 'yes')} class="card-pressable rounded-xl border border-primary-200 bg-white p-3 text-center shadow-sm transition-all hover:border-primary-300 hover:shadow-md">
-					<p class="text-xl font-black tabular-nums text-primary-600">{data.summary.trained}</p>
-					<p class="text-[8px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('trained')}</p>
-				</button>
-				<button onclick={() => setFilter('trained', 'no')} class="card-pressable rounded-xl border border-rose-200 bg-white p-3 text-center shadow-sm transition-all hover:border-rose-300 hover:shadow-md">
-					<p class="text-xl font-black tabular-nums text-rose-500">{data.summary.untrained}</p>
-					<p class="text-[8px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('untrained')}</p>
-				</button>
-			</div>
-
-			<!-- Category Filter -->
-			<div class="space-y-2">
-				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-					{i18n.t('category')}
-				</p>
-				<div class="flex flex-col gap-0.5">
-					<Button
-						variant="ghost"
-						class={cn(
-							'h-9 justify-start px-3 text-sm font-bold',
-							!selectedCategoryId
-								? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800 hover:bg-primary-100'
-								: 'text-slate-600'
-						)}
-						onclick={() => changeCategory(null)}
-					>
-						{i18n.t('all')}
-					</Button>
-					{#each ROOT_CATEGORIES as cat}
-						{@const isCatActive = activeRootCategoryId() === cat.id}
-						<div>
-							<Button
-								variant="ghost"
-								class={cn(
-									'h-9 w-full justify-start px-3 text-sm font-bold',
-									isCatActive
-										? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800 hover:bg-primary-100'
-										: 'text-slate-600'
-								)}
-								onclick={() => changeCategory(cat.id)}
-							>
-								{i18n.t(cat.slug as any) || cat.name}
-							</Button>
-
-							{#if isCatActive && availableSubCategories().length > 0}
-								<div
-									class="mt-1 mb-1 ml-4 border-l-2 border-primary-100 pl-3"
-									transition:slide={{ duration: 250, easing: sineInOut }}
-								>
-									<div class="flex flex-wrap gap-1.5 py-1">
-										<button
-											class={clsx(
-												'cursor-pointer rounded-full px-3 py-1 text-[11px] font-bold transition-all',
-												activeRootCategoryId() === selectedCategoryId
-													? 'bg-primary-600 text-white'
-													: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-											)}
-											onclick={() => changeCategory(activeRootCategoryId())}
-										>
-											All
-										</button>
-
-										{#if activeParentCategory() && activeParentCategory()?.id !== activeRootCategoryId()}
-											<button
-												class="cursor-pointer rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600 transition-all hover:bg-slate-200"
-												onclick={() => changeCategory(activeParentCategory()?.id || null)}
-											>
-												<span class="mr-1 opacity-50">↑</span>
-												{activeParentCategory()?.name}
-											</button>
-										{/if}
-
-										{#each availableSubCategories() as subCat}
-											<button
-												class={clsx(
-													'cursor-pointer rounded-full px-3 py-1 text-[11px] font-bold transition-all',
-													selectedCategoryId === subCat.id
-														? 'bg-primary-600 text-white'
-														: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-												)}
-												onclick={() => changeCategory(subCat.id)}
-											>
-												{i18n.t(subCat.slug as any) || subCat.name}
-											</button>
-										{/each}
-									</div>
-								</div>
-							{/if}
-						</div>
-					{/each}
-				</div>
-			</div>
-
-			<!-- Department Filter -->
-			{#if activeRootCategoryId() === 'employee'}
-				<div class="space-y-2" transition:slide>
-					<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Department</p>
-					<div class="flex flex-col gap-0.5">
-						<Button
-							variant="ghost"
-							class={cn(
-								'h-8 justify-start px-3 text-xs font-bold',
-								!selectedDepartment
-									? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800 hover:bg-primary-100'
-									: 'text-slate-600'
-							)}
-							onclick={() => setFilter('department', '')}
-						>
-							All
-						</Button>
-						{#each data.departments as dept}
-							<Button
-								variant="ghost"
-								class={cn(
-									'h-8 justify-start px-3 text-xs font-bold text-left',
-									selectedDepartment === dept
-										? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800 hover:bg-primary-100'
-										: 'text-slate-600'
-								)}
-								onclick={() => setFilter('department', dept)}
-							>
-								<span class="truncate">{dept}</span>
-							</Button>
-						{/each}
+			<div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+				<!-- Summary Stats Header -->
+				<div class="relative border-b border-slate-100 bg-gradient-to-br from-slate-900 via-slate-800 to-primary-900 px-4 py-4">
+					<div class="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(28,85,164,0.3),transparent_60%)]"></div>
+					<div class="relative grid grid-cols-2 gap-2">
+						<button onclick={clearFilters} class="card-pressable flex flex-col items-center gap-0.5 rounded-lg bg-white/10 px-2 py-2 backdrop-blur-sm transition-all hover:bg-white/20">
+							<p class="text-xl font-black tabular-nums text-white">{data.summary.total}</p>
+							<p class="text-[7px] font-black tracking-[0.2em] text-slate-300/80 uppercase">{i18n.t('total')}</p>
+						</button>
+						<button onclick={() => goto('/attendance')} class="card-pressable flex flex-col items-center gap-0.5 rounded-lg bg-white/10 px-2 py-2 backdrop-blur-sm transition-all hover:bg-white/20">
+							<p class="text-xl font-black tabular-nums text-emerald-300">{data.summary.inside}</p>
+							<p class="text-[7px] font-black tracking-[0.2em] text-slate-300/80 uppercase">{i18n.t('inside')}</p>
+						</button>
+						<button onclick={() => setFilter('trained', 'yes')} class="card-pressable flex flex-col items-center gap-0.5 rounded-lg bg-white/10 px-2 py-2 backdrop-blur-sm transition-all hover:bg-white/20">
+							<p class="text-xl font-black tabular-nums text-sky-300">{data.summary.trained}</p>
+							<p class="text-[7px] font-black tracking-[0.2em] text-slate-300/80 uppercase">{i18n.t('trained')}</p>
+						</button>
+						<button onclick={() => setFilter('trained', 'no')} class="card-pressable flex flex-col items-center gap-0.5 rounded-lg bg-white/10 px-2 py-2 backdrop-blur-sm transition-all hover:bg-white/20">
+							<p class="text-xl font-black tabular-nums text-rose-300">{data.summary.untrained}</p>
+							<p class="text-[7px] font-black tracking-[0.2em] text-slate-300/80 uppercase">{i18n.t('untrained')}</p>
+						</button>
 					</div>
 				</div>
-			{/if}
 
-			<!-- Training Status -->
-			<div class="space-y-2">
-				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-					{i18n.t('trainingStatus')}
-				</p>
-				<div class="flex gap-1">
-					{#each [{ label: i18n.t('all'), value: '' }, { label: i18n.t('trained'), value: 'yes' }, { label: i18n.t('untrained'), value: 'no' }] as opt}
-						<button
-							class={cn(
-								'flex-1 cursor-pointer rounded-lg py-2 text-[10px] font-black tracking-wider uppercase transition-all',
-								selectedTrained === opt.value
-									? opt.value === 'yes' ? 'bg-emerald-100 text-emerald-800'
-										: opt.value === 'no' ? 'bg-rose-100 text-rose-700'
-										: 'bg-primary-100 text-primary-800'
-									: 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
-							)}
-							onclick={() => setFilter('trained', opt.value)}
-						>
-							{opt.label}
-						</button>
-					{/each}
+				<div class="p-3">
+					<!-- Category Filter -->
+					<div class="space-y-1.5">
+						<p class="px-1 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
+							{i18n.t('category')}
+						</p>
+						<div class="flex flex-col gap-0.5">
+							<Button
+								variant={!selectedCategoryId ? 'secondary' : 'ghost'}
+								class={cn(
+									'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
+									!selectedCategoryId
+										? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+										: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+								)}
+								onclick={() => changeCategory(null)}
+							>
+								{i18n.t('all')}
+							</Button>
+							{#each ROOT_CATEGORIES as cat}
+								{@const isCatActive = activeRootCategoryId() === cat.id}
+								<div>
+									<Button
+										variant={isCatActive ? 'secondary' : 'ghost'}
+										class={cn(
+											'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
+											isCatActive
+												? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+												: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+										)}
+										onclick={() => changeCategory(cat.id)}
+									>
+										{i18n.t(cat.slug as any) || cat.name}
+									</Button>
+
+									{#if isCatActive && availableSubCategories().length > 0}
+										<div
+											class="mt-1 mb-1.5 ml-3 border-l-2 border-primary-100 pl-2.5"
+											transition:slide={{ duration: 250, easing: sineInOut }}
+										>
+											<div class="flex flex-wrap gap-1 py-0.5">
+												<button
+													class={clsx(
+														'touch-feedback cursor-pointer rounded-md border px-2 py-1 text-[11px] font-bold transition-all active:scale-95',
+														activeRootCategoryId() === selectedCategoryId
+															? 'border-primary-500 bg-primary-600 text-white shadow-sm'
+															: 'border-slate-200 bg-slate-50 text-slate-500 hover:border-primary-200 hover:text-primary-600'
+													)}
+													onclick={() => changeCategory(activeRootCategoryId())}
+												>
+													All
+												</button>
+
+												{#if activeParentCategory() && activeParentCategory()?.id !== activeRootCategoryId()}
+													<button
+														class="touch-feedback cursor-pointer rounded-md bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-500 transition-all active:scale-95 hover:bg-slate-200"
+														onclick={() => changeCategory(activeParentCategory()?.id || null)}
+													>
+														<span class="mr-0.5 opacity-40">↑</span>
+														{activeParentCategory()?.name}
+													</button>
+												{/if}
+
+												{#each availableSubCategories() as subCat}
+													<button
+														class={clsx(
+															'touch-feedback cursor-pointer rounded-md border px-2 py-1 text-[11px] font-bold transition-all active:scale-95',
+															selectedCategoryId === subCat.id
+																? 'border-primary-500 bg-primary-600 text-white shadow-sm'
+																: 'border-slate-200 bg-slate-50 text-slate-500 hover:border-primary-200 hover:text-primary-600'
+														)}
+														onclick={() => changeCategory(subCat.id)}
+													>
+														{i18n.t(subCat.slug as any) || subCat.name}
+													</button>
+												{/each}
+											</div>
+										</div>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					</div>
+
+					<!-- Department Filter -->
+					{#if activeRootCategoryId() === 'employee'}
+						<div class="mt-4 space-y-1.5 border-t border-slate-100 pt-3" transition:slide>
+							<p class="px-1 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">Department</p>
+							<div class="flex flex-col gap-0.5">
+								<Button
+									variant={!selectedDepartment ? 'secondary' : 'ghost'}
+									class={cn(
+										'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
+										!selectedDepartment
+											? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+											: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+									)}
+									onclick={() => setFilter('department', '')}
+								>
+									All Departments
+								</Button>
+								{#each data.departments as dept}
+									<Button
+										variant={selectedDepartment === dept ? 'secondary' : 'ghost'}
+										class={cn(
+											'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all text-left',
+											selectedDepartment === dept
+												? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
+												: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+										)}
+										onclick={() => setFilter('department', dept)}
+									>
+										<span class="truncate">{dept}</span>
+									</Button>
+								{/each}
+							</div>
+						</div>
+					{/if}
+
+					<!-- Training Status -->
+					<div class="mt-4 space-y-1.5 border-t border-slate-100 pt-3">
+						<p class="px-1 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
+							{i18n.t('trainingStatus')}
+						</p>
+						<div class="flex gap-1.5 rounded-xl border border-slate-100 bg-slate-50/50 p-1">
+							{#each [{ label: i18n.t('all'), value: '' }, { label: i18n.t('trained'), value: 'yes' }, { label: i18n.t('untrained'), value: 'no' }] as opt}
+								<button
+									class={cn(
+										'chip-pressable flex-1 cursor-pointer rounded-lg py-2 text-[10px] font-black tracking-wider uppercase transition-all',
+										selectedTrained === opt.value
+											? opt.value === 'yes' ? 'bg-emerald-100 text-emerald-800 shadow-sm'
+												: opt.value === 'no' ? 'bg-rose-100 text-rose-700 shadow-sm'
+												: 'bg-white text-slate-800 shadow-sm'
+											: 'text-slate-400 hover:text-slate-600'
+									)}
+									onclick={() => setFilter('trained', opt.value)}
+								>
+									{opt.label}
+								</button>
+							{/each}
+						</div>
+					</div>
 				</div>
-			</div>
-		<!-- Sidebar Branding -->
-			<div
-				class="flex flex-col items-center gap-1 pt-4 opacity-40 transition-opacity hover:opacity-100"
-			>
-				<p class="text-[8px] font-black tracking-[0.3em] text-slate-400 uppercase">
-					System Developed By
-				</p>
-				<a
-					href="https://autolinium.com"
-					target="_blank"
-					rel="noopener noreferrer"
-					class="group flex items-center gap-1.5"
+
+				<!-- Sidebar Branding -->
+				<div
+					class="flex items-center justify-center gap-1.5 border-t border-slate-100 px-4 py-2.5 opacity-30 transition-opacity hover:opacity-70"
 				>
-					<span
-						class="text-[10px] font-black tracking-widest text-slate-500 transition-colors group-hover:text-primary-600 uppercase"
-						>Autolinium</span
-					>
-				</a>
+					<p class="text-[7px] font-black tracking-[0.2em] text-slate-400 uppercase">Built by</p>
+					<a
+						href="https://autolinium.com"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="text-[8px] font-black tracking-[0.15em] text-slate-500 transition-colors hover:text-primary-600 uppercase"
+					>Autolinium</a>
+				</div>
 			</div>
 		</aside>
 
 		<!-- Main Scrolling Content Area -->
-		<main class="min-w-0 flex-1 space-y-6">
+		<main class="w-full min-w-0 flex-1">
+			<!-- List Area with integrated toolbar -->
+			<div class="lg:overflow-hidden lg:rounded-2xl lg:border lg:border-slate-200/80 lg:bg-white lg:shadow-sm">
+				<!-- Integrated Desktop Toolbar -->
+				<div class="hidden items-center gap-2.5 border-b border-slate-200 bg-slate-50/80 px-4 py-3 lg:flex">
+					<div class="group relative min-w-0 flex-1">
+						<div class="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500">
+							<Search size={17} />
+						</div>
+						<Input
+							bind:ref={searchInputEl}
+							bind:value={searchQuery}
+							oninput={handleSearchInput}
+							placeholder={i18n.t('searchPeoplePlaceholder')}
+							class="h-11 w-full rounded-xl border-2 border-slate-300 bg-white pr-9 pl-10 text-sm font-bold shadow-sm transition-all placeholder:truncate focus-visible:border-primary-500 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-primary-500/20"
+						/>
+						{#if searchQuery}
+							<button
+								class="btn-pressable absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600"
+								aria-label="Clear search"
+								onclick={() => { searchQuery = ''; handleSearch(); }}
+							>
+								<X size={14} />
+							</button>
+						{/if}
+					</div>
+					<button
+						class={cn(
+							'btn-pressable flex shrink-0 items-center gap-1.5 rounded-xl border-2 px-3 py-2 text-[11px] font-black transition-all',
+							hasActiveFilters
+								? 'cursor-pointer border-rose-200 bg-rose-50 text-rose-500 hover:border-rose-300 hover:bg-rose-100 active:scale-95'
+								: 'cursor-default border-slate-100 bg-slate-50 text-slate-300'
+						)}
+						aria-label="Reset filters"
+						disabled={!hasActiveFilters}
+						onclick={clearFilters}
+					>
+						<RotateCcw size={12} />
+						Clear
+					</button>
+					<div class="mx-0.5 h-6 w-px bg-slate-200"></div>
+					<Button variant="ghost" size="icon" class="btn-pressable size-9 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Print report" onclick={confirmPrint}>
+						<Printer size={15} />
+					</Button>
+					{#if data.user?.permissions.includes('people.create')}
+						<Button class="btn-pressable h-9 gap-1.5 rounded-xl px-4 text-xs font-black shadow-lg" onclick={() => (isRegisterOpen = true)}>
+							<PlusCircle size={15} />
+							{i18n.t('register')}
+						</Button>
+					{/if}
+				</div>
+
+				<div class="relative min-h-full lg:bg-slate-100/50">
 			<!-- List Section -->
-			<div class="space-y-4">
+			<div class="space-y-4 lg:p-3">
 				<!-- Mobile Card View -->
 				<div class="space-y-3 lg:hidden">
 					{#each data.people as person (person.id)}
@@ -1010,7 +1016,7 @@
 										</Table.Cell>
 										<Table.Cell>
 											<button
-												class="transition-opacity hover:opacity-70"
+												class="btn-pressable transition-opacity hover:opacity-70"
 												onclick={(e) => openChangeCategory(person, e)}
 											>
 												<Badge
@@ -1103,6 +1109,7 @@
 															variant="ghost"
 															size="icon"
 															class="size-8 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+															aria-label="Delete"
 															onclick={(e: MouseEvent) =>
 																triggerDelete(
 																	person,
@@ -1131,6 +1138,8 @@
 
 				<!-- Pagination -->
 				<Pagination {...data.pagination} />
+			</div>
+				</div>
 			</div>
 		</main>
 	</div>

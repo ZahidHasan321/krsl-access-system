@@ -2,6 +2,10 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getAttendanceLogs } from '$lib/server/attendance-service';
 import { requirePermission } from '$lib/server/rbac';
+import { db } from '$lib/server/db';
+import { attendanceLogs } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
+import { notifyChange } from '$lib/server/events';
 
 export const GET: RequestHandler = async (event) => {
 	requirePermission(event.locals, 'people.view');
@@ -34,11 +38,6 @@ export const PATCH: RequestHandler = async (event) => {
 		if (!logId) {
 			return json({ message: 'Log ID required' }, { status: 400 });
 		}
-
-		const { db } = await import('$lib/server/db');
-		const { attendanceLogs } = await import('$lib/server/db/schema');
-		const { eq } = await import('drizzle-orm');
-		const { notifyChange } = await import('$lib/server/events');
 
 		await db
 			.update(attendanceLogs)

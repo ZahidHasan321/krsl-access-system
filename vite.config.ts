@@ -23,7 +23,7 @@ export default defineConfig({
 				display: 'standalone',
 				orientation: 'portrait',
 				theme_color: '#1C55A4',
-				background_color: '#1C55A4',
+				background_color: '#ffffff',
 				icons: [
 					{
 						src: '/favicon-64x64.png',

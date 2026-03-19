@@ -218,377 +218,168 @@
 	<div class="grid grid-cols-1 gap-6 xl:grid-cols-12">
 		<!-- Left Column: Profile Card -->
 		<div class="space-y-6 xl:col-span-4">
-			<Card.Root class="overflow-hidden border-2 border-slate-200 shadow-lg">
-				<!-- Hero Section with Photo -->
-				<div class="relative bg-gradient-to-br from-primary-600 to-primary-800 p-6 pb-24">
-					<div class="absolute inset-0 opacity-10">
-						<svg class="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-							<defs>
-								<pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-									<path d="M 10 0 L 0 0 0 10" fill="none" stroke="white" stroke-width="0.5" />
-								</pattern>
-							</defs>
-							<rect width="100" height="100" fill="url(#grid)" />
-						</svg>
-					</div>
-					<div class="relative text-center text-white">
-						<h1 class="mb-2 text-2xl font-black tracking-tight md:text-3xl">{data.person.name}</h1>
-						<Badge
-							variant="secondary"
-							class="border-white/30 bg-white/20 text-xs font-bold tracking-wider text-white uppercase"
-						>
-							{data.person.category.name}
-						</Badge>
-					</div>
-				</div>
-
-				<!-- Photo Avatar (overlapping) -->
-				<div class="relative -mt-20 flex justify-center px-6">
+			<Card.Root class="overflow-hidden border-2 border-slate-200 bg-white">
+				<!-- Profile Header -->
+				<div class="flex items-start gap-4 p-5">
 					<button
-						class="group relative cursor-pointer"
+						class="group relative shrink-0"
 						onclick={() => data.person.photoUrl && (isImageViewerOpen = true)}
 						disabled={!data.person.photoUrl}
+						aria-label="View photo of {data.person.name}"
 					>
-						<div
-							class="flex h-32 w-32 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-white text-slate-300 shadow-2xl transition-transform group-hover:scale-105 md:h-40 md:w-40"
-						>
+						<div class="flex size-20 items-center justify-center overflow-hidden rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-300 shadow-sm sm:size-24">
 							{#if data.person.photoUrl}
 								<img
 									src={data.person.thumbUrl || data.person.photoUrl}
 									alt={data.person.name}
-									class="h-full w-full object-cover"
+									class="size-full object-cover"
 								/>
-								<div
-									class="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/40 opacity-0 transition-opacity group-hover:opacity-100"
-								>
-									<ZoomIn size={32} class="text-white" />
-								</div>
 							{:else}
-								<User size={64} />
+								<User size={40} />
 							{/if}
 						</div>
 						{#if data.isInside}
-							<div
-								class="absolute -right-1 -bottom-1 flex h-8 w-8 items-center justify-center rounded-full border-4 border-white bg-emerald-500"
-							>
-								<CheckCircle2 size={16} class="text-white" />
+							<div class="absolute -right-1 -bottom-1 flex size-6 items-center justify-center rounded-full border-2 border-white bg-emerald-500">
+								<CheckCircle2 size={12} class="text-white" />
 							</div>
 						{/if}
 					</button>
+					<div class="min-w-0 flex-1 pt-1">
+						<h1 class="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">{data.person.name}</h1>
+						<div class="mt-1.5 flex flex-wrap items-center gap-2">
+							<Badge variant="outline" class="text-[10px] font-bold tracking-wider uppercase">
+								{data.person.category.name}
+							</Badge>
+							{#if data.isInside}
+								<Badge class="border-emerald-200 bg-emerald-100 text-[10px] font-black tracking-wider text-emerald-700 uppercase">
+									Inside
+								</Badge>
+							{/if}
+							{#if data.person.isTrained}
+								<Badge class="border-emerald-200 bg-emerald-50 text-[10px] font-bold text-emerald-700 uppercase">
+									<ShieldCheck size={11} class="mr-0.5" /> Trained
+								</Badge>
+							{:else}
+								<Badge class="border-rose-200 bg-rose-50 text-[10px] font-bold text-rose-600 uppercase">
+									<ShieldAlert size={11} class="mr-0.5" /> Untrained
+								</Badge>
+							{/if}
+						</div>
+					</div>
 				</div>
 
 				<!-- Info Cards -->
 				<Card.Content class="space-y-4 p-6 pt-4">
-					{#if data.isInside}
-						<div class="flex items-center justify-center">
-							<Badge
-								class="border-emerald-200 bg-emerald-100 px-4 py-1.5 text-xs font-black tracking-wider text-emerald-700 uppercase"
-							>
-								Currently Inside
-							</Badge>
+					<!-- Biometric ID — primary identifier -->
+					<div class="flex items-center gap-3 rounded-xl border-2 border-primary-100 bg-primary-50 p-3">
+						<div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-200 text-primary-700">
+							<Fingerprint size={18} />
 						</div>
-					{/if}
-
-					<!-- Quick Info Grid -->
-					<div class="mt-4 grid grid-cols-1 gap-3">
-						<div class="flex items-center gap-3 rounded-xl border-2 border-primary-100 bg-primary-50 p-3">
-							<div
-								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-200 text-primary-700"
-							>
-								<Fingerprint size={20} />
-							</div>
-							<div class="min-w-0">
-								<p class="text-[10px] font-black tracking-widest text-primary-500 uppercase">
-									Biometric ID (PIN)
-								</p>
-								<p class="truncate font-black text-primary-900">{data.person.biometricId}</p>
-							</div>
+						<div class="min-w-0 flex-1">
+							<p class="text-[9px] font-black tracking-widest text-primary-500 uppercase">Biometric ID</p>
+							<p class="truncate font-black text-primary-900">{data.person.biometricId}</p>
 						</div>
-
-						{#if data.person.department}
-							<div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
-								<div
-									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600"
-								>
-									<Building2 size={20} />
-								</div>
-								<div class="min-w-0">
-									<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-										Department
-									</p>
-									<p class="truncate font-bold text-slate-900">{data.person.department}</p>
-								</div>
-							</div>
-						{/if}
-
-						{#if data.person.joinDate}
-							<div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
-								<div
-									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600"
-								>
-									<Calendar size={20} />
-								</div>
-								<div class="min-w-0">
-									<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-										Join Date
-									</p>
-									<p class="truncate font-bold text-slate-900">{format(new Date(data.person.joinDate), 'dd-MM-yyyy')}</p>
-								</div>
-							</div>
-						{/if}
-
-						{#if data.person.codeNo}
-							<div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
-								<div
-									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600"
-								>
-									<IdCard size={20} />
-								</div>
-								<div class="min-w-0">
-									<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-										{i18n.t('codeNo')}
-									</p>
-									<p class="truncate font-bold text-slate-900">{data.person.codeNo}</p>
-								</div>
-							</div>
-						{/if}
-
-						{#if data.person.cardNo}
-							<div class="flex items-center gap-3 rounded-xl border-2 border-amber-100 bg-amber-50 p-3">
-								<div
-									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-200 text-amber-700"
-								>
-									<CreditCard size={20} />
-								</div>
-								<div class="min-w-0">
-									<p class="text-[10px] font-black tracking-widest text-amber-500 uppercase">
-										{i18n.t('cardNo')}
-									</p>
-									<p class="truncate font-black text-amber-900">{data.person.cardNo}</p>
-								</div>
-							</div>
-						{/if}
-
-						{#if data.person.company}
-							<div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
-								<div
-									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600"
-								>
-									<Building2 size={20} />
-								</div>
-								<div class="min-w-0">
-									<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-										{i18n.t('company')}
-									</p>
-									<p class="truncate font-bold text-slate-900">{data.person.company}</p>
-								</div>
-							</div>
-						{/if}
-
-						{#if data.person.contactNo}
-							<div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
-								<div
-									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600"
-								>
-									<Phone size={20} />
-								</div>
-								<div class="min-w-0">
-									<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-										{i18n.t('phone')}
-									</p>
-									<p class="truncate font-bold text-slate-900">{data.person.contactNo}</p>
-								</div>
-							</div>
-						{/if}
-
-						{#if data.person.designation}
-							<div
-								class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3"
+						{#if data.user?.permissions.includes('people.edit')}
+							<Button
+								variant="outline"
+								size="sm"
+								class="shrink-0 gap-1 border-primary-200 text-[10px] font-bold text-primary-700 hover:bg-primary-100"
+								onclick={() => (isEnrollOpen = true)}
 							>
-								<div
-									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600"
-								>
-									<Briefcase size={20} />
-								</div>
-								<div class="min-w-0">
-									<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-										{i18n.t('designation')}
-									</p>
-									<p class="truncate font-bold text-slate-900">{data.person.designation}</p>
-								</div>
-							</div>
-						{/if}
-
-						{#if data.person.department}
-							<div
-								class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3"
-							>
-								<div
-									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600"
-								>
-									<Building2 size={20} />
-								</div>
-								<div class="min-w-0">
-									<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-										Department
-									</p>
-									<p class="truncate font-bold text-slate-900">{data.person.department}</p>
-								</div>
-							</div>
-						{/if}
-
-						{#if data.person.joinDate}
-							<div
-								class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3"
-							>
-								<div
-									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600"
-								>
-									<Calendar size={20} />
-								</div>
-								<div class="min-w-0">
-									<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-										Joined Date
-									</p>
-									<p class="truncate font-bold text-slate-900">
-										{format(data.person.joinDate, 'PPP')}
-									</p>
-								</div>
-							</div>
-						{/if}
-
-						{#if data.person.auditJoinDate}
-							<div
-								class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3"
-							>
-								<div
-									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600"
-								>
-									<Calendar size={20} />
-								</div>
-								<div class="min-w-0">
-									<p class="text-[10px] font-black tracking-widest text-indigo-400 uppercase">
-										Audit Join Date
-									</p>
-									<p class="truncate font-bold text-slate-900">
-										{format(data.person.auditJoinDate, 'PPP')}
-									</p>
-								</div>
-							</div>
-						{/if}
-
-						{#if data.person.createdAt}
-							<div
-								class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3"
-							>
-								<div
-									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600"
-								>
-									<Calendar size={20} />
-								</div>
-								<div class="min-w-0">
-									<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-										Registered
-									</p>
-									<p class="truncate font-bold text-slate-900">
-										{format(data.person.createdAt, 'PPP')}
-									</p>
-								</div>
-							</div>
+								<Radio size={12} /> Enroll
+							</Button>
 						{/if}
 					</div>
 
-					<!-- Biometric Info -->
-					{#if data.person.biometricId}
-						<div class="space-y-3 rounded-xl border-2 border-indigo-100 bg-indigo-50 p-4">
-							<div class="flex items-center justify-between">
-								<div class="flex items-center gap-3">
-									<div
-										class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600"
-									>
-										<Fingerprint size={20} />
-									</div>
-									<div class="min-w-0">
-										<p class="text-[10px] font-black tracking-widest text-indigo-400 uppercase">
-											Biometric ID
-										</p>
-										<p class="font-bold text-indigo-900">{data.person.biometricId}</p>
-									</div>
-								</div>
-								{#if data.user?.permissions.includes('people.edit')}
-									<Button
-										variant="outline"
-										size="sm"
-										class="gap-1 border-indigo-200 text-xs font-bold text-indigo-700 hover:bg-indigo-100"
-										onclick={() => (isEnrollOpen = true)}
-									>
-										<Radio size={14} /> Enroll
-									</Button>
-								{/if}
-							</div>
-							<div class="flex flex-wrap gap-2">
-								{#if enrolledMethods.includes('finger')}
-									<Badge
-										class="gap-1 border-sky-200 bg-sky-100 text-[10px] font-bold text-sky-700 uppercase"
-									>
-										<Fingerprint size={12} /> Finger
-									</Badge>
-								{/if}
-								{#if enrolledMethods.includes('face')}
-									<Badge
-										class="gap-1 border-violet-200 bg-violet-100 text-[10px] font-bold text-violet-700 uppercase"
-									>
-										<ScanFace size={12} /> Face
-									</Badge>
-								{/if}
-								{#if enrolledMethods.includes('card')}
-									<Badge
-										class="gap-1 border-amber-200 bg-amber-100 text-[10px] font-bold text-amber-700 uppercase"
-									>
-										<CreditCard size={12} /> Card
-									</Badge>
-								{/if}
-								{#if enrolledMethods.length === 0}
-									<p class="text-[10px] font-bold text-indigo-400">Not enrolled on device yet</p>
-								{/if}
-							</div>
+					<!-- Enrolled methods -->
+					{#if enrolledMethods.length > 0}
+						<div class="flex flex-wrap gap-1.5">
+							{#if enrolledMethods.includes('finger')}
+								<Badge class="gap-1 border-sky-200 bg-sky-100 text-[10px] font-bold text-sky-700 uppercase">
+									<Fingerprint size={12} /> Finger
+								</Badge>
+							{/if}
+							{#if enrolledMethods.includes('face')}
+								<Badge class="gap-1 border-violet-200 bg-violet-100 text-[10px] font-bold text-violet-700 uppercase">
+									<ScanFace size={12} /> Face
+								</Badge>
+							{/if}
+							{#if enrolledMethods.includes('card')}
+								<Badge class="gap-1 border-amber-200 bg-amber-100 text-[10px] font-bold text-amber-700 uppercase">
+									<CreditCard size={12} /> Card
+								</Badge>
+							{/if}
 						</div>
 					{/if}
 
-					<!-- Training Status -->
-					<div
-						class="flex items-center justify-between rounded-xl p-4 {data.person.isTrained
-							? 'border-2 border-emerald-100 bg-emerald-50'
-							: 'border-2 border-rose-100 bg-rose-50'}"
-					>
-						<div class="flex items-center gap-3">
-							{#if data.person.isTrained}
-								<div
-									class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600"
-								>
-									<ShieldCheck size={20} />
+					<!-- Details — compact grid -->
+					<div class="overflow-hidden rounded-xl border border-slate-100">
+						<div class="grid grid-cols-2">
+							{#if data.person.codeNo}
+								<div class="border-b border-r border-slate-100 bg-slate-50/50 p-3">
+									<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('codeNo')}</p>
+									<p class="mt-0.5 truncate text-sm font-bold text-slate-900">{data.person.codeNo}</p>
 								</div>
-								<div>
-									<p class="text-xs font-black tracking-wider text-emerald-800 uppercase">
-										{i18n.t('isTrained')}
-									</p>
-									<p class="text-[10px] font-bold text-emerald-600">Safety certified</p>
+							{/if}
+							{#if data.person.designation}
+								<div class="border-b border-slate-100 bg-slate-50/50 p-3">
+									<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('designation')}</p>
+									<p class="mt-0.5 truncate text-sm font-bold text-slate-900">{data.person.designation}</p>
 								</div>
-							{:else}
-								<div
-									class="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-rose-600"
-								>
-									<ShieldAlert size={20} />
+							{/if}
+							{#if data.person.department}
+								<div class="border-b border-r border-slate-100 bg-slate-50/50 p-3">
+									<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">Department</p>
+									<p class="mt-0.5 truncate text-sm font-bold text-slate-900">{data.person.department}</p>
 								</div>
-								<div>
-									<p class="text-xs font-black tracking-wider text-rose-800 uppercase">
-										Pending
-									</p>
-									<p class="text-[10px] font-bold text-rose-600">Requires certification</p>
+							{/if}
+							{#if data.person.company}
+								<div class="border-b border-slate-100 bg-slate-50/50 p-3">
+									<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('company')}</p>
+									<p class="mt-0.5 truncate text-sm font-bold text-slate-900">{data.person.company}</p>
 								</div>
 							{/if}
 						</div>
+						{#if data.person.contactNo}
+							<div class="border-b border-slate-100 bg-slate-50/50 p-3">
+								<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('phone')}</p>
+								<p class="mt-0.5 text-sm font-bold text-slate-900">{data.person.contactNo}</p>
+							</div>
+						{/if}
+						{#if data.person.cardNo}
+							<div class="bg-amber-50/50 p-3">
+								<div class="flex items-center gap-1.5">
+									<CreditCard size={12} class="text-amber-500" />
+									<p class="text-[9px] font-black tracking-widest text-amber-600 uppercase">{i18n.t('cardNo')}</p>
+								</div>
+								<p class="mt-0.5 text-sm font-black tracking-wider text-amber-900">{data.person.cardNo}</p>
+							</div>
+						{/if}
 					</div>
+
+					<!-- Dates — compact horizontal -->
+					{#if data.person.joinDate || data.person.auditJoinDate || data.person.createdAt}
+						<div class="flex flex-wrap gap-x-5 gap-y-2 rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2.5">
+							{#if data.person.joinDate}
+								<div>
+									<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">Joined</p>
+									<p class="text-xs font-bold tabular-nums text-slate-700">{format(data.person.joinDate, 'dd-MM-yyyy')}</p>
+								</div>
+							{/if}
+							{#if data.person.auditJoinDate}
+								<div>
+									<p class="text-[9px] font-black tracking-widest text-indigo-400 uppercase">Audit</p>
+									<p class="text-xs font-bold tabular-nums text-slate-700">{format(data.person.auditJoinDate, 'dd-MM-yyyy')}</p>
+								</div>
+							{/if}
+							{#if data.person.createdAt}
+								<div>
+									<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">Registered</p>
+									<p class="text-xs font-bold tabular-nums text-slate-700">{format(data.person.createdAt, 'dd-MM-yyyy')}</p>
+								</div>
+							{/if}
+						</div>
+					{/if}
 
 					<!-- Action Buttons -->
 					<div class="flex items-center gap-2 border-t border-slate-100 pt-4">
@@ -616,6 +407,7 @@
 									type="button"
 									variant="outline"
 									class="h-11 w-11 border-2 border-rose-100 text-rose-500 hover:bg-rose-50 hover:text-rose-700"
+								aria-label="Delete {data.person.name}"
 									onclick={(e: MouseEvent) =>
 										triggerDelete((e.currentTarget as HTMLButtonElement).form as HTMLFormElement)}
 								>
@@ -627,44 +419,26 @@
 				</Card.Content>
 			</Card.Root>
 
-			<!-- Stats Cards -->
-			<div class="grid grid-cols-2 gap-4">
-				<Card.Root
-					class="border-2 border-primary-200 bg-gradient-to-br from-primary-50 to-primary-100 p-4"
-				>
-					<div class="flex items-center gap-3">
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-200 text-primary-700"
-						>
-							<TrendingUp size={20} />
-						</div>
-						<div>
-							<p class="text-[10px] font-black tracking-widest text-primary-600 uppercase">
-								{i18n.t('totalVisits')}
-							</p>
-							<p class="text-2xl font-black text-primary-900">{data.stats.totalVisits}</p>
-						</div>
-					</div>
-				</Card.Root>
-				<Card.Root
-					class="border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100 p-4"
-				>
-					<div class="flex items-center gap-3">
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-200 text-emerald-700"
-						>
-							<Clock size={20} />
-						</div>
-						<div>
-							<p class="text-[10px] font-black tracking-widest text-emerald-600 uppercase">
-								{i18n.t('totalDuration')}
-							</p>
-							<p class="text-xl font-black text-emerald-900">
-								{formatDuration(data.stats.totalDuration)}
-							</p>
-						</div>
-					</div>
-				</Card.Root>
+			<!-- Stats -->
+			<div class="grid grid-cols-3 gap-3">
+				<div class="rounded-xl border-2 border-slate-100 bg-white p-3 text-center">
+					<p class="text-2xl font-black tabular-nums text-slate-900">{data.stats.totalVisits}</p>
+					<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('totalVisits')}</p>
+				</div>
+				<div class="rounded-xl border-2 border-primary-100 bg-primary-50 p-3 text-center">
+					<p class="text-2xl font-black tabular-nums text-primary-700">{data.stats.monthVisits}</p>
+					<p class="text-[9px] font-black tracking-widest text-primary-500 uppercase">This Month</p>
+				</div>
+				<div class="rounded-xl border-2 border-slate-100 bg-white p-3 text-center">
+					<p class="text-sm font-black text-slate-700">
+						{#if data.stats.lastSeen}
+							{format(data.stats.lastSeen, 'dd MMM')}
+						{:else}
+							-
+						{/if}
+					</p>
+					<p class="text-[9px] font-black tracking-widest text-slate-400 uppercase">Last Seen</p>
+				</div>
 			</div>
 		</div>
 
@@ -685,12 +459,6 @@
 
 					<div class="flex w-full items-center gap-3 md:w-auto">
 						{#if data.isInside}
-							<Badge
-								class="flex h-11 items-center gap-2 border-2 border-emerald-200 bg-emerald-100 px-4 font-bold tracking-wider text-emerald-700 uppercase"
-							>
-								<div class="h-2 w-2 rounded-full bg-emerald-500"></div>
-								Currently Inside
-							</Badge>
 							{#if data.user?.permissions.includes('people.create')}
 								<form
 									method="POST"
@@ -742,7 +510,7 @@
 					<!-- Mobile View -->
 					<div class="divide-y divide-slate-100 md:hidden">
 						{#each logs as log (log.id)}
-							<div class="p-4 transition-colors hover:bg-primary-50/50">
+							<div class="p-4 transition-colors hover:bg-primary-50/50 active:bg-primary-50">
 								<div class="mb-2 flex items-center justify-between">
 									<span class="text-sm font-bold text-slate-700"
 										>{format(parseISO(log.date), 'dd-MM-yyyy')}</span
@@ -892,7 +660,7 @@
 							>
 								{#if isLoadingMore}
 									<Loader2 size={18} class="animate-spin" />
-									Loading...
+									Loading…
 								{:else}
 									Load More Activity
 								{/if}
@@ -942,7 +710,7 @@
 <!-- Enrollment Dialog -->
 {#if data.person.biometricId}
 	<Dialog.Root bind:open={isEnrollOpen}>
-		<Dialog.Content class="overflow-hidden p-0 sm:max-w-[500px]">
+		<Dialog.Content class="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-[500px] sm:rounded-lg">
 			<div class="border-b bg-slate-50 p-6">
 				<Dialog.Title class="text-xl font-black">Device Enrollment</Dialog.Title>
 				<Dialog.Description class="text-xs font-bold tracking-widest text-slate-500 uppercase">
@@ -971,7 +739,7 @@
 
 <!-- Edit Dialog -->
 <Dialog.Root bind:open={isEditOpen}>
-	<Dialog.Content class="flex max-h-[90vh] flex-col overflow-hidden p-0 sm:max-w-[600px]">
+	<Dialog.Content class="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-[600px] sm:rounded-lg">
 		<div class="shrink-0 border-b bg-slate-50 p-6">
 			<Dialog.Title class="text-xl font-black">{i18n.t('edit')}: {data.person.name}</Dialog.Title>
 			<Dialog.Description class="text-xs font-bold tracking-widest text-slate-500 uppercase">
@@ -1257,7 +1025,7 @@
 />
 
 <Dialog.Root bind:open={confirmCheckInOpen}>
-	<Dialog.Content class="overflow-hidden p-0 sm:max-w-[500px]">
+	<Dialog.Content class="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-[500px] sm:rounded-lg">
 		<div class="border-b bg-slate-50 p-6">
 			<Dialog.Title class="text-xl font-black">Manual Check-In</Dialog.Title>
 			<Dialog.Description class="text-xs font-bold tracking-widest text-slate-500 uppercase">

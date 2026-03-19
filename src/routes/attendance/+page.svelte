@@ -415,7 +415,7 @@
 {#if isPreparingPrint}
 	<div class="fixed inset-0 z-100 flex flex-col items-center justify-center bg-white">
 		<Loader2 class="mb-4 animate-spin text-primary-600" size={48} />
-		<h2 class="text-xl font-black text-slate-900">Preparing Entry Log Report...</h2>
+		<h2 class="text-xl font-black text-slate-900">Preparing Entry Log Report…</h2>
 		<p class="mt-2 font-bold text-slate-500">Fetching all entries currently inside</p>
 	</div>
 {/if}
@@ -502,30 +502,32 @@
 
 						<Button
 							variant="outline"
-							class="h-10 shrink-0 gap-2 rounded-xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 lg:h-12 lg:rounded-2xl lg:px-6"
-							onclick={() => goto('/history')}
+							class="h-10 shrink-0 gap-2 rounded-xl border-2 border-primary-200 bg-primary-50 px-4 font-black text-primary-700 transition-all hover:border-primary-300 hover:bg-primary-100 lg:h-12 lg:rounded-2xl lg:px-6"
+							href="/history"
 						>
 							<History size={18} />
 							<span class="hidden sm:inline">{i18n.t('history')}</span>
 						</Button>
 
 						<Button
-							variant="outline"
-							class="h-10 shrink-0 gap-2 rounded-xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 lg:h-12 lg:rounded-2xl lg:px-6"
+							variant="ghost"
+							size="icon"
+							class="size-10 shrink-0 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+							aria-label="Print log"
 							onclick={confirmPrint}
 						>
 							<Printer size={18} />
-							<span class="hidden sm:inline">Print Log</span>
 						</Button>
 
 						{#if hasActiveFilters}
 							<Button
 								variant="ghost"
-								class="h-10 shrink-0 gap-2 rounded-xl border-2 border-transparent px-4 font-black text-rose-500 transition-all hover:border-rose-100 hover:bg-rose-50 hover:text-rose-600 lg:h-12 lg:rounded-2xl lg:px-6"
+								size="icon"
+								class="size-10 shrink-0 text-rose-400 hover:bg-rose-50 hover:text-rose-600"
+								aria-label="Reset filters"
 								onclick={clearFilters}
 							>
 								<RotateCcw size={18} />
-								<span class="hidden sm:inline">Reset</span>
 							</Button>
 						{/if}
 					</div>
@@ -714,7 +716,7 @@
 							class={cn(
 								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
 								selectedCategoryId === ''
-									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+									? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800'
 									: 'text-slate-600'
 							)}
 							onclick={() => changeCategory('')}
@@ -734,7 +736,7 @@
 									class={cn(
 										'h-10 w-full cursor-pointer justify-start px-3 font-bold transition-all',
 										isActive
-											? 'rounded-l-none border-l-4 border-primary-600 bg-primary-50 text-primary-700'
+											? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800'
 											: 'text-slate-600'
 									)}
 									onclick={() => changeCategory(cat.id)}
@@ -808,7 +810,7 @@
 								class={cn(
 									'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
 									!selectedDepartment
-										? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+										? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800'
 										: 'text-slate-600'
 								)}
 								onclick={() => changeDepartment('')}
@@ -826,7 +828,7 @@
 									class={cn(
 										'h-10 cursor-pointer justify-start px-3 font-bold transition-all text-left',
 										selectedDepartment === dept
-											? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+											? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800'
 											: 'text-slate-600'
 									)}
 									onclick={() => changeDepartment(dept)}
@@ -976,12 +978,12 @@
 					{#if logs.length > 0}
 						<div class="flex flex-col gap-3 lg:p-4">
 							{#each logs as log (log.id)}
-								<Card.Root class="card-pressable group overflow-hidden border-2 border-slate-100 bg-white transition-all hover:border-primary-200 active:bg-slate-50/70">
-									<Card.Content class="p-4 sm:p-5">
-										<div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-											<div class="flex min-w-0 flex-1 items-center gap-4">
+								<Card.Root class="card-pressable group overflow-hidden border-2 border-slate-100 bg-white active:bg-slate-50/70">
+									<Card.Content class="p-4">
+										<div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+											<div class="flex min-w-0 flex-1 items-center gap-3">
 												<!-- Avatar -->
-												<div class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-slate-50 bg-white shadow-sm">
+												<div class="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-100 bg-white shadow-sm">
 													{#if log.person.photoUrl}
 														<img
 															src={log.person.thumbUrl || log.person.photoUrl}
@@ -990,7 +992,7 @@
 															loading="lazy"
 														/>
 													{:else}
-														<div class="flex size-full items-center justify-center bg-slate-100 text-sm font-black text-slate-400">
+														<div class="flex size-full items-center justify-center bg-slate-100 text-xs font-black text-slate-400">
 															{log.person.name.trim().split(/\s+/).slice(0, 2).map((n: string) => [...n][0]).join('')}
 														</div>
 													{/if}
@@ -999,144 +1001,96 @@
 												<!-- Primary Info -->
 												<div class="min-w-0 flex-1">
 													<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-														<a href="/people/{log.person.id}" class="text-base font-black text-slate-900 transition-colors hover:text-primary-600 sm:text-lg">
+														<a href="/people/{log.person.id}" class="text-[15px] font-black text-slate-900 transition-colors hover:text-primary-600">
 															{log.person.name}
 														</a>
 														{#if log.person.codeNo}
-															<span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-black tracking-tighter text-slate-500 uppercase">
-																#{log.person.codeNo}
-															</span>
+															<span class="text-[10px] font-bold text-slate-400">#{log.person.codeNo}</span>
 														{/if}
 														{#if log.verifyMethod}
-															<div
-																class={cn(
-																	'flex size-7 shrink-0 items-center justify-center rounded-full border shadow-sm',
-																	log.verifyMethod === 'face'
-																		? 'border-indigo-100 bg-indigo-50 text-indigo-600'
-																		: log.verifyMethod === 'finger'
-																			? 'border-emerald-100 bg-emerald-50 text-emerald-600'
-																			: log.verifyMethod === 'card'
-																				? 'border-amber-100 bg-amber-50 text-amber-600'
-																				: 'border-slate-100 bg-slate-50 text-slate-500'
-																)}
-																title={log.verifyMethod}
-															>
-																{#if log.verifyMethod === 'face'}
-																	<ScanFace size={14} />
-																{:else if log.verifyMethod === 'finger'}
-																	<Fingerprint size={14} />
-																{:else if log.verifyMethod === 'card'}
-																	<IdCard size={14} />
-																{:else}
-																	<PenTool size={14} />
+															<div class={cn(
+																'flex size-5 items-center justify-center rounded-full',
+																log.verifyMethod === 'face' ? 'text-indigo-500'
+																	: log.verifyMethod === 'finger' ? 'text-emerald-500'
+																	: log.verifyMethod === 'card' ? 'text-amber-500'
+																	: 'text-slate-400'
+															)} title={log.verifyMethod}>
+																{#if log.verifyMethod === 'face'}<ScanFace size={12} />
+																{:else if log.verifyMethod === 'finger'}<Fingerprint size={12} />
+																{:else if log.verifyMethod === 'card'}<IdCard size={12} />
+																{:else}<PenTool size={12} />
 																{/if}
 															</div>
 														{/if}
 													</div>
-													<div class="mt-1.5 flex flex-wrap gap-1.5">
+													<div class="mt-1 flex flex-wrap items-center gap-1.5">
 														{#if getCategoryPath(log.person.categoryId).at(-1)}
 															{@const category = getCategoryPath(log.person.categoryId).at(-1)}
-															<Badge
-																variant="outline"
-																class={cn(
-																	'h-5 px-1.5 text-[10px] font-black tracking-wider uppercase',
-																	getCategoryBadgeClass(category.slug)
-																)}
-															>
-																{i18n.t(category.slug as any) || category.name}
+															<Badge variant="outline" class={cn('h-4 px-1 text-[9px] font-bold tracking-wider uppercase', getCategoryBadgeClass(category!.slug))}>
+																{i18n.t(category!.slug as any) || category!.name}
 															</Badge>
 														{/if}
-
 														{#if log.person.department}
-															<Badge
-																variant="outline"
-																class="h-5 border-blue-200 bg-blue-50 px-1.5 text-[10px] font-black tracking-widest text-blue-700 uppercase"
-															>
+															<Badge variant="outline" class="h-4 border-blue-200 bg-blue-50 px-1 text-[9px] font-black tracking-widest text-blue-700 uppercase">
 																{log.person.department}
 															</Badge>
 														{/if}
 													</div>
 												</div>
-											</div>
-
-											<!-- Metrics & Actions -->
-											<div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-slate-50 pt-3 lg:justify-start lg:border-none lg:pt-0 sm:gap-x-8 md:gap-x-10">
-												<!-- Duration -->
-												<div class="min-w-[80px] space-y-0.5">
-													<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Inside For</p>
-													<div class="flex items-center gap-1.5 text-sm font-black text-emerald-600">
-														<Clock size={16} />
-														<span>{formatDuration(log.durationSeconds)}</span>
-													</div>
-												</div>
-
-												<!-- Location Toggle -->
-												<div class="min-w-[120px] space-y-1">
-													<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-														{i18n.t('location')}
-													</p>
-													<div class="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5 w-fit">
-														<form method="POST" action="?/updatePurpose" use:enhance>
-															<input type="hidden" name="logId" value={log.id} />
-															<input type="hidden" name="purpose" value={log.purpose || ''} />
-															<input type="hidden" name="location" value="ship" />
-															<button
-																type="submit"
-																class={cn(
-																	'flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-black transition-all',
-																	log.location === 'ship'
-																		? 'bg-blue-600 text-white shadow-sm'
-																		: 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
-																)}
-															>
-																<Ship size={12} />
-																SHIP
-															</button>
-														</form>
-														<form method="POST" action="?/updatePurpose" use:enhance>
-															<input type="hidden" name="logId" value={log.id} />
-															<input type="hidden" name="purpose" value={log.purpose || ''} />
-															<input type="hidden" name="location" value="yard" />
-															<button
-																type="submit"
-																class={cn(
-																	'flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-black transition-all',
-																	log.location === 'yard'
-																		? 'bg-amber-600 text-white shadow-sm'
-																		: 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
-																)}
-															>
-																<Warehouse size={12} />
-																YARD
-															</button>
-														</form>
-													</div>
-												</div>
-
-												<!-- Entry Time -->
-												<div class="min-w-[90px] space-y-0.5">
-													<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('entryTime')}</p>
-													<div class="flex items-center gap-1.5 text-sm font-black text-slate-500">
-														<Clock size={16} class="opacity-50" />
-														<span>{format(log.entryTime, 'hh:mm a')}</span>
-													</div>
-												</div>
-
-												<!-- Actions -->
+												<!-- Checkout -->
 												{#if data.user?.permissions.includes('people.create')}
-													<form method="POST" action="?/checkOut" use:enhance class="ml-auto lg:ml-0">
+													<form method="POST" action="?/checkOut" use:enhance class="shrink-0">
 														<input type="hidden" name="logId" value={log.id} />
 														<Button
 															type="button"
 															variant="outline"
-															class="h-11 min-w-[110px] gap-2 border-2 border-rose-100 px-4 text-xs font-black text-rose-600 transition-all active:scale-95 hover:bg-rose-50 hover:text-rose-700 sm:h-12 sm:px-6 sm:text-sm"
+															class="h-9 gap-1.5 border-2 border-rose-200 px-3 text-[11px] font-black text-rose-600 active:scale-95 hover:bg-rose-50"
 															onclick={(e) => triggerCheckOut((e.currentTarget as HTMLButtonElement).form as HTMLFormElement)}
 														>
-															<CheckCircle2 size={18} />
-															<span>{i18n.t('checkOut')}</span>
+															<CheckCircle2 size={14} />
+															<span class="hidden sm:inline">{i18n.t('checkOut')}</span>
 														</Button>
 													</form>
 												{/if}
+											</div>
+
+											<!-- Metrics -->
+											<div class="flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-slate-100 pt-3 lg:justify-start lg:border-none lg:pt-0">
+												<!-- Duration -->
+												<div class="flex items-center gap-1.5 text-sm font-black text-emerald-600">
+													<Clock size={14} />
+													<span>{formatDuration(log.durationSeconds)}</span>
+												</div>
+
+												<!-- Location Toggle -->
+												<div class="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5 w-fit">
+													<form method="POST" action="?/updatePurpose" use:enhance>
+														<input type="hidden" name="logId" value={log.id} />
+														<input type="hidden" name="purpose" value={log.purpose || ''} />
+														<input type="hidden" name="location" value="ship" />
+														<button type="submit" class={cn(
+															'flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-black transition-all',
+															log.location === 'ship' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+														)}>
+															<Ship size={12} />
+														</button>
+													</form>
+													<form method="POST" action="?/updatePurpose" use:enhance>
+														<input type="hidden" name="logId" value={log.id} />
+														<input type="hidden" name="purpose" value={log.purpose || ''} />
+														<input type="hidden" name="location" value="yard" />
+														<button type="submit" class={cn(
+															'flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-black transition-all',
+															log.location === 'yard' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+														)}>
+															<Warehouse size={12} />
+														</button>
+													</form>
+												</div>
+
+												<!-- Entry Time -->
+												<span class="text-sm font-bold tabular-nums text-slate-500">{format(log.entryTime, 'hh:mm a')}</span>
+
 											</div>
 										</div>
 									</Card.Content>

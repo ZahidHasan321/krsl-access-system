@@ -446,22 +446,24 @@
 
 					<div class="flex items-center gap-2">
 						<Button
-							variant="outline"
-							class="h-10 shrink-0 cursor-pointer gap-2 rounded-xl border-2 border-slate-200 px-4 font-black transition-all hover:border-primary-300 hover:bg-primary-50 lg:h-12 lg:rounded-2xl lg:px-6"
+							variant="ghost"
+							size="icon"
+							class="size-10 shrink-0 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+							aria-label="Print report"
 							onclick={confirmPrint}
 						>
 							<Printer size={18} />
-							<span class="hidden sm:inline">Print Report</span>
 						</Button>
 
 						{#if hasActiveFilters}
 							<Button
 								variant="ghost"
-								class="h-10 shrink-0 cursor-pointer gap-2 rounded-xl border-2 border-transparent px-4 font-black text-rose-500 transition-all hover:border-rose-100 hover:bg-rose-50 hover:text-rose-600 lg:h-12 lg:rounded-2xl lg:px-6"
+								size="icon"
+								class="size-10 shrink-0 text-rose-400 hover:bg-rose-50 hover:text-rose-600"
+								aria-label="Reset filters"
 								onclick={clearFilters}
 							>
 								<RotateCcw size={18} />
-								<span class="hidden sm:inline">Reset</span>
 							</Button>
 						{/if}
 
@@ -589,62 +591,72 @@
 			class="hidden w-64 shrink-0 flex-col gap-6 lg:sticky lg:top-36 lg:flex lg:h-[calc(100vh-12rem)] print:hidden"
 		>
 			<div class="custom-scrollbar flex-1 space-y-6 overflow-y-auto pr-2">
+			<!-- Summary Stats -->
+			<div class="mb-5 grid grid-cols-2 gap-2">
+				<button onclick={clearFilters} class="card-pressable rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm transition-all hover:border-slate-300 hover:shadow-md">
+					<p class="text-xl font-black tabular-nums text-slate-900">{data.summary.total}</p>
+					<p class="text-[8px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('total')}</p>
+				</button>
+				<button onclick={() => goto('/attendance')} class="card-pressable rounded-xl border border-emerald-200 bg-white p-3 text-center shadow-sm transition-all hover:border-emerald-300 hover:shadow-md">
+					<p class="text-xl font-black tabular-nums text-emerald-600">{data.summary.inside}</p>
+					<p class="text-[8px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('inside')}</p>
+				</button>
+				<button onclick={() => setFilter('trained', 'yes')} class="card-pressable rounded-xl border border-primary-200 bg-white p-3 text-center shadow-sm transition-all hover:border-primary-300 hover:shadow-md">
+					<p class="text-xl font-black tabular-nums text-primary-600">{data.summary.trained}</p>
+					<p class="text-[8px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('trained')}</p>
+				</button>
+				<button onclick={() => setFilter('trained', 'no')} class="card-pressable rounded-xl border border-rose-200 bg-white p-3 text-center shadow-sm transition-all hover:border-rose-300 hover:shadow-md">
+					<p class="text-xl font-black tabular-nums text-rose-500">{data.summary.untrained}</p>
+					<p class="text-[8px] font-black tracking-widest text-slate-400 uppercase">{i18n.t('untrained')}</p>
+				</button>
+			</div>
+
 			<!-- Category Filter -->
-			<div class="space-y-3">
+			<div class="space-y-2">
 				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
 					{i18n.t('category')}
 				</p>
-				<div class="flex flex-col gap-1">
+				<div class="flex flex-col gap-0.5">
 					<Button
-						variant={!selectedCategoryId ? 'secondary' : 'ghost'}
+						variant="ghost"
 						class={cn(
-							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+							'h-9 justify-start px-3 text-sm font-bold',
 							!selectedCategoryId
-								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+								? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800 hover:bg-primary-100'
 								: 'text-slate-600'
 						)}
 						onclick={() => changeCategory(null)}
 					>
-						<div class="flex items-center gap-2">
-							{#if !selectedCategoryId}
-								<div class="size-1.5 rounded-full bg-white"></div>
-							{/if}
-							{i18n.t('all')}
-						</div>
+						{i18n.t('all')}
 					</Button>
 					{#each ROOT_CATEGORIES as cat}
 						{@const isCatActive = activeRootCategoryId() === cat.id}
 						<div>
 							<Button
-								variant={isCatActive ? 'secondary' : 'ghost'}
+								variant="ghost"
 								class={cn(
-									'h-10 w-full cursor-pointer justify-start px-3 font-bold transition-all',
+									'h-9 w-full justify-start px-3 text-sm font-bold',
 									isCatActive
-										? 'rounded-l-none border-l-4 border-primary-600 bg-primary-50 text-primary-700'
+										? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800 hover:bg-primary-100'
 										: 'text-slate-600'
 								)}
 								onclick={() => changeCategory(cat.id)}
 							>
-								<div class="flex items-center gap-2">
-									{#if isCatActive}
-										<div class="size-1.5 rounded-full bg-primary-600"></div>
-									{/if}
-									{i18n.t(cat.slug as any) || cat.name}
-								</div>
+								{i18n.t(cat.slug as any) || cat.name}
 							</Button>
 
 							{#if isCatActive && availableSubCategories().length > 0}
 								<div
-									class="mt-1 mb-2 ml-3 border-l-2 border-primary-100 pl-3"
+									class="mt-1 mb-1 ml-4 border-l-2 border-primary-100 pl-3"
 									transition:slide={{ duration: 250, easing: sineInOut }}
 								>
 									<div class="flex flex-wrap gap-1.5 py-1">
 										<button
 											class={clsx(
-												'cursor-pointer rounded-full border px-3 py-1 text-[11px] font-bold transition-all',
+												'cursor-pointer rounded-full px-3 py-1 text-[11px] font-bold transition-all',
 												activeRootCategoryId() === selectedCategoryId
-													? 'border-primary-600 bg-primary-600 text-white shadow-sm'
-													: 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'
+													? 'bg-primary-600 text-white'
+													: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
 											)}
 											onclick={() => changeCategory(activeRootCategoryId())}
 										>
@@ -664,10 +676,10 @@
 										{#each availableSubCategories() as subCat}
 											<button
 												class={clsx(
-													'cursor-pointer rounded-full border px-3 py-1 text-[11px] font-bold transition-all',
+													'cursor-pointer rounded-full px-3 py-1 text-[11px] font-bold transition-all',
 													selectedCategoryId === subCat.id
-														? 'border-primary-600 bg-primary-600 text-white shadow-sm'
-														: 'border-slate-200 bg-white text-slate-600 hover:border-primary-300'
+														? 'bg-primary-600 text-white'
+														: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
 												)}
 												onclick={() => changeCategory(subCat.id)}
 											>
@@ -682,105 +694,64 @@
 				</div>
 			</div>
 
-			<!-- Department Filter (Only for Employees) -->
+			<!-- Department Filter -->
 			{#if activeRootCategoryId() === 'employee'}
-				<div class="space-y-3" transition:slide>
-					<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
-						Department
-					</p>
-					<div class="flex flex-col gap-1">
+				<div class="space-y-2" transition:slide>
+					<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Department</p>
+					<div class="flex flex-col gap-0.5">
 						<Button
-							variant={!selectedDepartment ? 'secondary' : 'ghost'}
+							variant="ghost"
 							class={cn(
-								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+								'h-8 justify-start px-3 text-xs font-bold',
 								!selectedDepartment
-									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+									? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800 hover:bg-primary-100'
 									: 'text-slate-600'
 							)}
 							onclick={() => setFilter('department', '')}
 						>
-							<div class="flex items-center gap-2">
-								{#if !selectedDepartment}
-									<div class="size-1.5 rounded-full bg-white"></div>
-								{/if}
-								All Departments
-							</div>
+							All
 						</Button>
 						{#each data.departments as dept}
 							<Button
-								variant={selectedDepartment === dept ? 'secondary' : 'ghost'}
+								variant="ghost"
 								class={cn(
-									'h-10 cursor-pointer justify-start px-3 font-bold transition-all text-left',
+									'h-8 justify-start px-3 text-xs font-bold text-left',
 									selectedDepartment === dept
-										? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+										? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800 hover:bg-primary-100'
 										: 'text-slate-600'
 								)}
 								onclick={() => setFilter('department', dept)}
 							>
-								<div class="flex items-center gap-2 truncate">
-									{#if selectedDepartment === dept}
-										<div class="size-1.5 rounded-full bg-white"></div>
-									{/if}
-									<span class="truncate">{dept}</span>
-								</div>
+								<span class="truncate">{dept}</span>
 							</Button>
 						{/each}
 					</div>
 				</div>
 			{/if}
 
-			<!-- Training Status Filter -->
-			<div class="space-y-3">
+			<!-- Training Status -->
+			<div class="space-y-2">
 				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">
 					{i18n.t('trainingStatus')}
 				</p>
-				<div class="flex flex-col gap-1">
+				<div class="flex gap-1">
 					{#each [{ label: i18n.t('all'), value: '' }, { label: i18n.t('trained'), value: 'yes' }, { label: i18n.t('untrained'), value: 'no' }] as opt}
-						<Button
-							variant={selectedTrained === opt.value ? 'secondary' : 'ghost'}
+						<button
 							class={cn(
-								'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
+								'flex-1 cursor-pointer rounded-lg py-2 text-[10px] font-black tracking-wider uppercase transition-all',
 								selectedTrained === opt.value
-									? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
-									: 'text-slate-600'
+									? opt.value === 'yes' ? 'bg-emerald-100 text-emerald-800'
+										: opt.value === 'no' ? 'bg-rose-100 text-rose-700'
+										: 'bg-primary-100 text-primary-800'
+									: 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
 							)}
 							onclick={() => setFilter('trained', opt.value)}
 						>
-							<div class="flex items-center gap-2">
-								{#if selectedTrained === opt.value}
-									<div class="size-1.5 rounded-full bg-white"></div>
-								{/if}
-								{opt.label}
-							</div>
-						</Button>
+							{opt.label}
+						</button>
 					{/each}
 				</div>
 			</div>
-
-			<!-- Summary Stats -->
-			<div class="space-y-3 rounded-xl border-2 border-slate-100 bg-white p-4 shadow-sm">
-				<p class="text-[10px] font-black tracking-widest text-slate-400 uppercase">Summary</p>
-				<div class="grid grid-cols-2 gap-3">
-					<div>
-						<p class="text-2xl font-black text-slate-900">{data.summary.total}</p>
-						<p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('total')}</p>
-					</div>
-					<div>
-						<p class="text-2xl font-black text-emerald-600">{data.summary.inside}</p>
-						<p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('inside')}</p>
-					</div>
-					<div>
-						<p class="text-2xl font-black text-primary-600">{data.summary.trained}</p>
-						<p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('trained')}</p>
-					</div>
-					<div>
-						<p class="text-2xl font-black text-rose-500">{data.summary.untrained}</p>
-						<p class="text-[10px] font-bold text-slate-500 uppercase">{i18n.t('untrained')}</p>
-					</div>
-				</div>
-			</div>
-		</div>
-
 		<!-- Sidebar Branding -->
 			<div
 				class="flex flex-col items-center gap-1 pt-4 opacity-40 transition-opacity hover:opacity-100"
@@ -983,17 +954,17 @@
 
 				<!-- Desktop Table View -->
 				<div class="hidden lg:block">
-					<Card.Root class="overflow-hidden rounded-3xl border-2 bg-white shadow-sm">
+					<Card.Root class="overflow-hidden rounded-xl border-2 border-slate-200 bg-white shadow-sm">
 						<Table.Root>
 							<Table.Header>
-								<Table.Row class="bg-slate-50 hover:bg-transparent">
-									<Table.Head class="font-black text-slate-900">{i18n.t('name')}</Table.Head>
-									<Table.Head class="font-black text-slate-900">{i18n.t('category')}</Table.Head>
-									<Table.Head class="font-black text-slate-900">{i18n.t('codeNo')}</Table.Head>
-									<Table.Head class="font-black text-slate-900">{i18n.t('company')}</Table.Head>
-									<Table.Head class="font-black text-slate-900">{i18n.t('isTrained')}</Table.Head>
-									<Table.Head class="font-black text-slate-900">{i18n.t('status')}</Table.Head>
-									<Table.Head class="text-right font-black text-slate-900 print:hidden"
+								<Table.Row class="bg-slate-200 hover:bg-slate-200">
+									<Table.Head class="font-black text-slate-800">{i18n.t('name')}</Table.Head>
+									<Table.Head class="font-black text-slate-800">{i18n.t('category')}</Table.Head>
+									<Table.Head class="font-black text-slate-800">{i18n.t('codeNo')}</Table.Head>
+									<Table.Head class="font-black text-slate-800">{i18n.t('company')}</Table.Head>
+									<Table.Head class="font-black text-slate-800">{i18n.t('isTrained')}</Table.Head>
+									<Table.Head class="font-black text-slate-800">{i18n.t('status')}</Table.Head>
+									<Table.Head class="text-right font-black text-slate-800 print:hidden"
 										>{i18n.t('actions')}</Table.Head
 									>
 								</Table.Row>
@@ -1001,7 +972,7 @@
 							<Table.Body>
 								{#each data.people as person (person.id)}
 									<Table.Row
-										class="group cursor-pointer"
+										class="group cursor-pointer even:bg-slate-50/50 hover:!bg-primary-50/40"
 										onclick={() => goto(`/people/${person.id}`)}
 									>
 										<Table.Cell class="py-4">
@@ -1053,7 +1024,7 @@
 												</Badge>
 											</button>
 										</Table.Cell>
-										<Table.Cell class="font-medium text-slate-500"
+										<Table.Cell class="font-medium tabular-nums text-slate-500"
 											>{person.codeNo || '-'}</Table.Cell
 										>
 										<Table.Cell class="font-medium text-slate-500"

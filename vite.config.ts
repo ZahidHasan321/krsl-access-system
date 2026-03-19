@@ -11,9 +11,8 @@ export default defineConfig({
 			registerType: 'autoUpdate',
 			injectRegister: false,
 			manifestFilename: 'app-manifest.json',
-			workbox: {
-				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}']
-			},
+			// Using SvelteKit's native service worker (src/service-worker.ts)
+			selfDestroying: true,
 			manifest: {
 				name: 'KR Steel HRM',
 				short_name: 'KR Steel',
@@ -24,13 +23,17 @@ export default defineConfig({
 				display: 'standalone',
 				orientation: 'portrait',
 				theme_color: '#1C55A4',
-				background_color: '#ffffff',
+				background_color: '#1C55A4',
 				icons: [
+					{
+						src: '/favicon-64x64.png',
+						sizes: '64x64',
+						type: 'image/png'
+					},
 					{
 						src: '/icon-192x192.png',
 						sizes: '192x192',
-						type: 'image/png',
-						purpose: 'any'
+						type: 'image/png'
 					},
 					{
 						src: '/icon-512x512.png',

@@ -132,9 +132,9 @@
 	--muted: #f8fafc;
 	--muted-foreground: var(--color-brand-muted);
 
-	/* Accent */
-	--accent: oklch(0.95 0.03 var(--theme-hue));
-	--accent-foreground: oklch(0.25 0.05 var(--theme-hue));
+	/* Accent — used for ghost button hover */
+	--accent: oklch(0.92 0.02 var(--theme-hue));
+	--accent-foreground: oklch(0.30 0.05 var(--theme-hue));
 
 	/* Destructive - Red, independent of theme */
 	--destructive: oklch(0.577 0.245 27.325);
@@ -681,6 +681,7 @@
 
 	/* Touch improvements */
 	.touch-feedback {
+		touch-action: manipulation;
 		-webkit-tap-highlight-color: transparent;
 		transition: transform 0.1s ease-out;
 	}
@@ -695,6 +696,7 @@
 
 	/* Tappable card — press-in effect for mobile cards */
 	.card-pressable {
+		touch-action: manipulation;
 		-webkit-tap-highlight-color: transparent;
 		transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
 	}
@@ -709,6 +711,7 @@
 
 	/* Filter chip — small pressable elements */
 	.chip-pressable {
+		touch-action: manipulation;
 		-webkit-tap-highlight-color: transparent;
 		transition: transform 0.1s ease-out, background-color 0.15s ease-out, border-color 0.15s ease-out, color 0.15s ease-out, box-shadow 0.15s ease-out;
 	}
@@ -718,10 +721,27 @@
 
 	/* Action button — icon/small buttons with press feedback */
 	.btn-pressable {
+		touch-action: manipulation;
 		-webkit-tap-highlight-color: transparent;
 		transition: transform 0.1s ease-out, background-color 0.15s ease-out, color 0.15s ease-out;
 	}
 	.btn-pressable:active {
 		transform: scale(0.9);
+	}
+
+	/* Respect reduced motion preference */
+	@media (prefers-reduced-motion: reduce) {
+		.card-pressable,
+		.chip-pressable,
+		.btn-pressable,
+		.touch-feedback {
+			transition: none;
+		}
+		.card-pressable:active,
+		.chip-pressable:active,
+		.btn-pressable:active,
+		.touch-feedback:active {
+			transform: none;
+		}
 	}
 }

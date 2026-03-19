@@ -223,7 +223,7 @@
 					<div
 						class="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-emerald-600"
 					>
-						<div class="size-1.5 rounded-full bg-emerald-500"></div>
+						<div class="size-1.5 animate-pulse rounded-full bg-emerald-500"></div>
 						<span class="text-[10px] font-black tracking-widest capitalize">Live</span>
 					</div>
 				{/if}
@@ -288,7 +288,7 @@
 							<div
 								class="flex flex-col items-end rounded-xl border-2 border-primary-100 bg-primary-50 px-3 py-1.5"
 							>
-								<span class="text-xl leading-none font-black tracking-tighter text-primary-700"
+								<span class="text-xl leading-none font-black tracking-tighter text-primary-700 tabular-nums"
 									><CountUp value={data.currentlyInside?.totalPeople || 0} /></span
 								>
 								<span class="text-[9px] font-black tracking-widest text-primary-500 capitalize"
@@ -328,7 +328,7 @@
 									{@const insideCount = new Map(data.currentlyInside.insideByDepartment.map(d => [d.department, d.count])).get(dept.department) || 0}
 									{@const percentage = Math.round((insideCount / (data.currentlyInside.totalPeople || 1)) * 100)}
 									<button 
-										class="group space-y-1.5 rounded-xl border border-slate-100 bg-white/50 p-2.5 transition-all hover:border-primary-200 hover:bg-white hover:shadow-sm w-full text-left"
+										class="card-pressable group space-y-1.5 rounded-xl border border-slate-100 bg-white/50 p-2.5 transition-all hover:border-primary-200 hover:bg-white hover:shadow-sm w-full text-left active:bg-slate-50"
 										onclick={() => goto(`/attendance?category=employee&department=${encodeURIComponent(dept.department || '')}`)}
 									>
 										<div class="flex items-center justify-between text-xs">
@@ -345,7 +345,7 @@
 										</div>
 										<div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
 											<div 
-												class="h-full rounded-full bg-gradient-to-r from-primary-500 to-primary-600 transition-all duration-1000" 
+												class="h-full rounded-full bg-gradient-to-r from-primary-500 to-primary-600 transition-[width] duration-1000" 
 												style="width: {percentage}%"
 											></div>
 										</div>
@@ -383,7 +383,7 @@
 								</div>
 								<div class="text-right">
 									<span
-										class="block text-xl leading-none font-black tracking-tighter text-amber-700"
+										class="block text-xl leading-none font-black tracking-tighter text-amber-700 tabular-nums"
 										><CountUp value={data.currentlyInside?.vehicleStats?.total || 0} /></span
 									>
 								</div>
@@ -409,7 +409,7 @@
 									</div>
 								</div>
 								<div class="text-right">
-									<span class="block text-lg leading-none font-black tracking-tighter text-blue-700"
+									<span class="block text-lg leading-none font-black tracking-tighter text-blue-700 tabular-nums"
 										><CountUp value={data.currentlyInside?.vehicleStats?.transport || 0} /></span
 									>
 								</div>
@@ -436,7 +436,7 @@
 								</div>
 								<div class="text-right">
 									<span
-										class="block text-lg leading-none font-black tracking-tighter text-indigo-700"
+										class="block text-lg leading-none font-black tracking-tighter text-indigo-700 tabular-nums"
 										><CountUp value={data.currentlyInside?.vehicleStats?.regular || 0} /></span
 									>
 								</div>
@@ -459,7 +459,7 @@
 						<div
 							class="flex flex-col items-end rounded-xl border-2 border-indigo-100 bg-indigo-50 px-3 py-1.5"
 						>
-							<span class="text-xl leading-none font-black tracking-tighter text-indigo-700"
+							<span class="text-xl leading-none font-black tracking-tighter text-indigo-700 tabular-nums"
 								><CountUp value={data.totalPeople || 0} /></span
 							>
 							<span class="text-[9px] font-black tracking-widest text-indigo-500 capitalize"
@@ -473,7 +473,7 @@
 						{#each data.currentlyInside.categoryTree as root}
 							{@const Icon = getCategoryById(root.id)?.icon}
 							<div
-								class="flex flex-col gap-2 rounded-2xl border-2 border-slate-100 bg-white p-4 transition-all hover:border-indigo-200 hover:shadow-md"
+								class="card-pressable flex flex-col gap-2 rounded-2xl border-2 border-slate-100 bg-white p-4 transition-all hover:border-indigo-200 hover:shadow-md"
 							>
 								<div class="flex items-center justify-between">
 									<div
@@ -523,7 +523,7 @@
 						<Ship size={14} />
 						<span class="text-[9px] font-black tracking-widest capitalize">Ship</span>
 					</div>
-					<span class="text-xl font-black tracking-tighter text-slate-900"
+					<span class="text-xl font-black tracking-tighter text-slate-900 tabular-nums"
 						><CountUp value={data.locationStats?.ship || 0} /></span
 					>
 				</div>
@@ -532,7 +532,7 @@
 						<Warehouse size={14} />
 						<span class="text-[9px] font-black tracking-widest capitalize">Yard</span>
 					</div>
-					<span class="text-xl font-black tracking-tighter text-slate-900"
+					<span class="text-xl font-black tracking-tighter text-slate-900 tabular-nums"
 						><CountUp value={data.locationStats?.yard || 0} /></span
 					>
 				</div>
@@ -545,28 +545,28 @@
 						<ScanFace size={18} />
 					</div>
 					<span class="block text-[9px] font-black tracking-widest text-slate-400 uppercase">Face</span>
-					<span class="text-sm font-black text-slate-900"><CountUp value={data.methodStats?.face || 0} /></span>
+					<span class="text-sm font-black tabular-nums text-slate-900"><CountUp value={data.methodStats?.face || 0} /></span>
 				</div>
 				<div class="group flex flex-col items-center justify-center rounded-2xl border-2 border-slate-50 bg-white py-3 shadow-sm text-center transition-all hover:border-emerald-200 hover:bg-emerald-50/30">
 					<div class="mb-2 flex size-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 transition-transform group-hover:scale-110">
 						<Fingerprint size={18} />
 					</div>
 					<span class="block text-[9px] font-black tracking-widest text-slate-400 uppercase">Finger</span>
-					<span class="text-sm font-black text-slate-900"><CountUp value={data.methodStats?.finger || 0} /></span>
+					<span class="text-sm font-black tabular-nums text-slate-900"><CountUp value={data.methodStats?.finger || 0} /></span>
 				</div>
 				<div class="group flex flex-col items-center justify-center rounded-2xl border-2 border-slate-50 bg-white py-3 shadow-sm text-center transition-all hover:border-amber-200 hover:bg-amber-50/30">
 					<div class="mb-2 flex size-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600 transition-transform group-hover:scale-110">
 						<IdCard size={18} />
 					</div>
 					<span class="block text-[9px] font-black tracking-widest text-slate-400 uppercase">Card</span>
-					<span class="text-sm font-black text-slate-900"><CountUp value={data.methodStats?.card || 0} /></span>
+					<span class="text-sm font-black tabular-nums text-slate-900"><CountUp value={data.methodStats?.card || 0} /></span>
 				</div>
 				<div class="group flex flex-col items-center justify-center rounded-2xl border-2 border-slate-50 bg-white py-3 shadow-sm text-center transition-all hover:border-slate-200 hover:bg-slate-50">
 					<div class="mb-2 flex size-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition-transform group-hover:scale-110">
 						<PenTool size={18} />
 					</div>
 					<span class="block text-[9px] font-black tracking-widest text-slate-400 uppercase">Manual</span>
-					<span class="text-sm font-black text-slate-900"><CountUp value={data.methodStats?.manual || 0} /></span>
+					<span class="text-sm font-black tabular-nums text-slate-900"><CountUp value={data.methodStats?.manual || 0} /></span>
 				</div>
 			</div>
 
@@ -594,7 +594,7 @@
 					<div class="divide-y-2 divide-slate-50">
 						{#each data.recentLogs as log (log.id)}
 							<button
-								class="group flex w-full cursor-pointer items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-slate-50"
+								class="group flex w-full cursor-pointer items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-slate-50 active:bg-slate-100/50"
 								onclick={() => goto(`/people/${log.personId}`)}
 							>
 								<div class="flex min-w-0 items-center gap-3">
@@ -685,7 +685,7 @@
 		</Dialog.Header>
 		<div class="grid grid-cols-2 gap-4 py-4">
 			<button
-				class="group flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-slate-100 p-6 transition-all hover:border-primary-500 hover:bg-primary-50"
+				class="card-pressable group flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-slate-100 p-6 transition-all hover:border-primary-500 hover:bg-primary-50 active:bg-primary-100"
 				onclick={openPersonCheckIn}
 			>
 				<div
@@ -699,7 +699,7 @@
 			</button>
 
 			<button
-				class="group flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-slate-100 p-6 transition-all hover:border-amber-500 hover:bg-amber-50"
+				class="card-pressable group flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-slate-100 p-6 transition-all hover:border-amber-500 hover:bg-amber-50 active:bg-amber-100"
 				onclick={openVehicleCheckIn}
 			>
 				<div

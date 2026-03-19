@@ -360,7 +360,7 @@
 {#if isPreparingPrint}
 	<div class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white">
 		<Loader2 class="mb-4 animate-spin text-primary-600" size={48} />
-		<h2 class="text-xl font-black text-slate-900">Preparing Print Report...</h2>
+		<h2 class="text-xl font-black text-slate-900">Preparing Print Report…</h2>
 		<p class="mt-2 font-bold text-slate-500">Fetching {data.pagination.totalCount} records</p>
 	</div>
 {/if}
@@ -379,7 +379,7 @@
 							variant="ghost"
 							size="icon"
 							class="shrink-0 rounded-xl hover:bg-slate-100"
-							onclick={() => history.back()}
+							href="/attendance"
 						>
 							<ArrowLeft size={20} />
 						</Button>
@@ -417,10 +417,11 @@
 					<!-- Left Side (Mobile View) -->
 					<div class="flex items-center gap-2 lg:hidden">
 						<Button
-							variant="outline"
-							size="sm"
-							class="h-10 w-10 shrink-0 rounded-xl border-2 border-slate-200 bg-white p-0"
-							onclick={() => history.back()}
+							variant="ghost"
+							size="icon"
+							class="size-10 shrink-0 text-slate-500 hover:bg-slate-100"
+							href="/attendance"
+							aria-label="Back to entry log"
 						>
 							<ArrowLeft size={20} />
 						</Button>
@@ -440,13 +441,7 @@
 							Filters
 						</Button>
 
-						<!-- Mobile Info Badge Moved Here -->
-						<div class="flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2">
-							<span class="text-[9px] font-black tracking-widest text-slate-400 capitalize"
-								>Records</span
-							>
-							<span class="text-xs font-black text-primary-700">{data.pagination.totalCount}</span>
-						</div>
+						
 					</div>
 
 					<!-- Desktop/Standard Actions -->
@@ -490,6 +485,46 @@
 							</Button>
 						{/if}
 					</div>
+				</div>
+			</div>
+
+			
+			<!-- View Toggle — always visible on mobile -->
+			<div class="mt-3 lg:hidden">
+				<div class="flex w-full items-center gap-1 rounded-xl border-2 border-slate-100 bg-white p-1 shadow-sm">
+					<button
+						class={cn(
+							'flex-1 rounded-lg py-2 text-[10px] font-black tracking-widest uppercase transition-all',
+							data.view === 'detailed'
+								? 'bg-primary-600 text-white shadow-md'
+								: 'text-slate-500 hover:bg-slate-50'
+						)}
+						onclick={() => changeView('detailed')}
+					>
+						{i18n.t('detailed')}
+					</button>
+					<button
+						class={cn(
+							'flex-1 rounded-lg py-2 text-[10px] font-black tracking-widest uppercase transition-all',
+							data.view === 'daily'
+								? 'bg-primary-600 text-white shadow-md'
+								: 'text-slate-500 hover:bg-slate-50'
+						)}
+						onclick={() => changeView('daily')}
+					>
+						{i18n.t('dailySummary')}
+					</button>
+					<button
+						class={cn(
+							'flex-1 rounded-lg py-2 text-[10px] font-black tracking-widest uppercase transition-all',
+							data.view === 'monthly'
+								? 'bg-primary-600 text-white shadow-md'
+								: 'text-slate-500 hover:bg-slate-50'
+						)}
+						onclick={() => changeView('monthly')}
+					>
+						{i18n.t('monthlySummary')}
+					</button>
 				</div>
 			</div>
 
@@ -569,51 +604,7 @@
 						</div>
 					{/if}
 
-					<!-- Mobile View Toggles -->
-					<div class="mt-4 flex gap-4">
-						<div class="flex-1 space-y-2">
-							<p class="ml-1 text-[9px] font-black tracking-widest text-slate-400 uppercase">
-								View Type
-							</p>
-							<div
-								class="flex w-full items-center gap-1 rounded-2xl border-2 border-slate-100 bg-white p-1 shadow-sm"
-							>
-								<button
-									class={cn(
-										'flex-1 rounded-xl py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
-										data.view === 'detailed'
-											? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
-											: 'text-slate-500 hover:bg-slate-50'
-									)}
-									onclick={() => changeView('detailed')}
-								>
-									{i18n.t('detailed')}
-								</button>
-								<button
-									class={cn(
-										'flex-1 rounded-xl py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
-										data.view === 'daily'
-											? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
-											: 'text-slate-500 hover:bg-slate-50'
-									)}
-									onclick={() => changeView('daily')}
-								>
-									{i18n.t('dailySummary')}
-								</button>
-								<button
-									class={cn(
-										'flex-1 rounded-xl py-1.5 text-[10px] font-black tracking-widest uppercase transition-all',
-										data.view === 'monthly'
-											? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
-											: 'text-slate-500 hover:bg-slate-50'
-									)}
-									onclick={() => changeView('monthly')}
-								>
-									{i18n.t('monthlySummary')}
-								</button>
-							</div>
-						</div>
-					</div>
+	
 				</div>
 			{/if}
 		</div>
@@ -636,7 +627,7 @@
 						class={cn(
 							'h-10 cursor-pointer justify-start px-3 font-bold transition-all',
 							!selectedCategoryId
-								? 'bg-primary-600 text-white shadow-md hover:bg-primary-700'
+								? 'rounded-l-none border-l-[3px] border-primary-600 bg-primary-100 text-primary-800'
 								: 'text-slate-600'
 						)}
 						onclick={() => changeCategory(null)}
@@ -865,82 +856,39 @@
 					{#if data.view === 'detailed'}
 						{#each data.data as log (log.id)}
 							<Card.Root
-								class="cursor-pointer bg-white transition-shadow hover:shadow-lg"
+								class="card-pressable cursor-pointer border-2 border-slate-100 bg-white active:bg-slate-50/80"
 								onclick={() => goto(`/people/${log.person.id}`)}
 							>
 								<Card.Content class="p-4">
-									<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-										<div>
-											<div class="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-												<h3 class="text-base font-black leading-tight text-slate-900 sm:text-lg">
-													{log.person.name}
-												</h3>
+									<div class="flex items-center justify-between">
+										<div class="min-w-0 flex-1">
+											<div class="flex items-center gap-2">
+												<h3 class="truncate text-[15px] font-black text-slate-900">{log.person.name}</h3>
 												{#if !log.exitTime}
-													<Badge
-														class={cn(
-															'shrink-0 text-[9px] font-bold capitalize',
-															statusBadgeClasses.on_premises
-														)}
-													>
+													<Badge class={cn('shrink-0 text-[9px] font-bold capitalize', statusBadgeClasses.on_premises)}>
 														{i18n.t('inside')}
 													</Badge>
 												{/if}
 											</div>
-											<div class="flex flex-wrap items-center gap-2">
-												<Badge
-													variant="outline"
-													class={cn(
-														'text-[9px] font-bold tracking-wider capitalize',
-														getCategoryBadgeClass(log.category.slug)
-													)}
-												>
-													{log.category.name}
-												</Badge>
-												{#if log.person.department}
-													<Badge
-														variant="outline"
-														class="border-blue-200 bg-blue-50 text-[9px] font-black tracking-widest text-blue-700 uppercase"
-													>
-														{log.person.department}
-													</Badge>
+											<div class="mt-0.5 flex items-center gap-2 text-[10px] text-slate-400">
+												<span class="font-bold">{log.category.name}</span>
+												{#if log.person.codeNo}
+													<span>#{log.person.codeNo}</span>
 												{/if}
-												<span class="text-[10px] font-bold tracking-tight text-slate-400 uppercase">
-													{#if log.person.codeNo}#{log.person.codeNo}{/if}
-													{#if log.person.codeNo && log.person.company} • {/if}
-													{#if log.person.company}{log.person.company}{/if}
-													{#if !log.person.codeNo && !log.person.company}-{/if}
-												</span>
+												{#if log.person.department}
+													<span>{log.person.department}</span>
+												{/if}
 											</div>
+										</div>
+										<div class="shrink-0 text-right">
+											<p class="text-sm font-black tabular-nums text-primary-700">{formatDuration(log.durationSeconds)}</p>
 										</div>
 									</div>
-									<div class="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4 text-xs sm:grid-cols-3">
-										<div class="space-y-1">
-											<p class="font-medium text-slate-400">{i18n.t('date')}</p>
-											<p class="font-black text-slate-700">{format(parseISO(log.date), 'dd-MM-yyyy')}</p>
-										</div>
-										<div class="space-y-1">
-											<p class="font-medium text-slate-400">{i18n.t('entryTime')}</p>
-											<p class="font-black text-slate-700">{format(log.entryTime, 'hh:mm a')}</p>
-										</div>
-										<div class="space-y-1">
-											<p class="font-medium text-slate-400">{i18n.t('exitTime')}</p>
-											<p class="font-black text-slate-700">
-												{log.exitTime ? format(log.exitTime, 'hh:mm a') : '-'}
-											</p>
-										</div>
-										<div class="space-y-1">
-											<span class="font-medium text-slate-400"
-												>{log.exitTime ? i18n.t('duration') : 'Inside For'}</span
-											>
-											<p class="font-black text-primary-600">
-												{formatDuration(log.durationSeconds)}
-											</p>
-										</div>
+									<div class="mt-2 flex items-center gap-3 text-[11px] font-bold text-slate-400">
+										<span class="tabular-nums">{format(parseISO(log.date), 'dd-MM-yyyy')}</span>
+										<span class="tabular-nums">{format(log.entryTime, 'hh:mm a')} → {log.exitTime ? format(log.exitTime, 'hh:mm a') : 'now'}</span>
 										{#if !isEmployeeView && log.purpose}
-											<div class="col-span-2 space-y-1 sm:col-span-3">
-												<p class="font-medium text-slate-400">{i18n.t('purpose')}</p>
-												<p class="font-medium text-slate-600">{log.purpose}</p>
-											</div>
+											<span class="truncate text-slate-500">{log.purpose}</span>
 										{/if}
 									</div>
 								</Card.Content>
@@ -1027,20 +975,20 @@
 
 				<!-- Desktop Table View -->
 				<div class="hidden lg:block">
-					<Card.Root class="overflow-hidden rounded-3xl border-2 bg-white shadow-sm">
+					<Card.Root class="overflow-hidden rounded-xl border-2 border-slate-200 bg-white shadow-sm">
 						<Table.Root>
 							{#if data.view === 'detailed'}
 								<Table.Header>
-									<Table.Row class="bg-slate-50 hover:bg-transparent">
-										<Table.Head class="font-black text-slate-900">{i18n.t('name')}</Table.Head>
-										<Table.Head class="font-black text-slate-900">{i18n.t('category')}</Table.Head>
-										<Table.Head class="font-black text-slate-900">{i18n.t('date')}</Table.Head>
-										<Table.Head class="font-black text-slate-900">{i18n.t('entryTime')}</Table.Head>
-										<Table.Head class="font-black text-slate-900">{i18n.t('exitTime')}</Table.Head>
+									<Table.Row class="bg-slate-200 hover:bg-slate-200">
+										<Table.Head class="font-black text-slate-800">{i18n.t('name')}</Table.Head>
+										<Table.Head class="font-black text-slate-800">{i18n.t('category')}</Table.Head>
+										<Table.Head class="font-black text-slate-800">{i18n.t('date')}</Table.Head>
+										<Table.Head class="font-black text-slate-800">{i18n.t('entryTime')}</Table.Head>
+										<Table.Head class="font-black text-slate-800">{i18n.t('exitTime')}</Table.Head>
 										{#if !isEmployeeView}
-											<Table.Head class="font-black text-slate-900">{i18n.t('purpose')}</Table.Head>
+											<Table.Head class="font-black text-slate-800">{i18n.t('purpose')}</Table.Head>
 										{/if}
-										<Table.Head class="font-black text-slate-900">{i18n.t('duration')}</Table.Head>
+										<Table.Head class="font-black text-slate-800">{i18n.t('duration')}</Table.Head>
 									</Table.Row>
 								</Table.Header>
 								<Table.Body>
@@ -1099,7 +1047,7 @@
 													{log.purpose || '-'}
 												</Table.Cell>
 											{/if}
-											<Table.Cell class="py-4 font-bold text-slate-500">
+											<Table.Cell class="py-4 font-bold tabular-nums text-slate-700">
 												<div class="flex flex-col gap-1">
 													<span>{formatDuration(log.durationSeconds)}</span>
 													{#if !log.exitTime}
@@ -1127,11 +1075,11 @@
 								</Table.Body>
 							{:else if data.view === 'daily'}
 								<Table.Header>
-									<Table.Row class="bg-slate-50 hover:bg-transparent">
-										<Table.Head class="font-black text-slate-900">{i18n.t('date')}</Table.Head>
-										<Table.Head class="font-black text-slate-900">{i18n.t('entries')}</Table.Head>
-										<Table.Head class="font-black text-slate-900">Unique People</Table.Head>
-										<Table.Head class="font-black text-slate-900">Total Hours</Table.Head>
+									<Table.Row class="bg-slate-200 hover:bg-slate-200">
+										<Table.Head class="font-black text-slate-800">{i18n.t('date')}</Table.Head>
+										<Table.Head class="font-black text-slate-800">{i18n.t('entries')}</Table.Head>
+										<Table.Head class="font-black text-slate-800">Unique People</Table.Head>
+										<Table.Head class="font-black text-slate-800">Total Hours</Table.Head>
 									</Table.Row>
 								</Table.Header>
 								<Table.Body>
@@ -1154,17 +1102,17 @@
 								</Table.Body>
 							{:else if data.view === 'monthly'}
 								<Table.Header>
-									<Table.Row class="bg-slate-50 hover:bg-transparent">
-										<Table.Head class="font-black text-slate-900">{i18n.t('month')}</Table.Head>
-										<Table.Head class="font-black text-slate-900">{i18n.t('entries')}</Table.Head>
-										<Table.Head class="font-black text-slate-900">Unique People</Table.Head>
-										<Table.Head class="font-black text-slate-900">Active Days</Table.Head>
+									<Table.Row class="bg-slate-200 hover:bg-slate-200">
+										<Table.Head class="font-black text-slate-800">{i18n.t('month')}</Table.Head>
+										<Table.Head class="font-black text-slate-800">{i18n.t('entries')}</Table.Head>
+										<Table.Head class="font-black text-slate-800">Unique People</Table.Head>
+										<Table.Head class="font-black text-slate-800">Active Days</Table.Head>
 									</Table.Row>
 								</Table.Header>
 								<Table.Body>
 									{#each data.data as month}
 										<Table.Row>
-											<Table.Cell class="py-4 font-black text-slate-900 uppercase">
+											<Table.Cell class="py-4 font-bold text-slate-900 uppercase">
 												{format(parseISO(month.month + '-01'), 'MMMM yyyy')}
 											</Table.Cell>
 											<Table.Cell class="py-4 font-black text-primary-600"

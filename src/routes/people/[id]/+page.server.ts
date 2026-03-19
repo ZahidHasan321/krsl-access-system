@@ -114,20 +114,16 @@ export const load: PageServerLoad = async (event) => {
 	const [statsResult] = await db
 		.select({
 			totalVisits: count(),
-			totalSeconds: sql<string>`COALESCE(SUM(
-                CASE 
-                    WHEN ${attendanceLogs.exitTime} IS NOT NULL 
-                    THEN EXTRACT(EPOCH FROM (${attendanceLogs.exitTime} - ${attendanceLogs.entryTime}))
-                    ELSE EXTRACT(EPOCH FROM (NOW() - ${attendanceLogs.entryTime}))
-                END
-            ), 0)`
+			lastEntry: sql<string>`MAX(${attendanceLogs.entryTime})`,
+			monthVisits: sql<number>`COUNT(*) FILTER (WHERE ${attendanceLogs.entryTime} >= date_trunc('month', CURRENT_DATE))`
 		})
 		.from(attendanceLogs)
 		.where(eq(attendanceLogs.personId, id));
 
 	const stats = {
 		totalVisits: statsResult.totalVisits,
-		totalDuration: Math.floor(parseFloat(statsResult.totalSeconds))
+		lastSeen: statsResult.lastEntry ? new Date(statsResult.lastEntry) : null,
+		monthVisits: Number(statsResult.monthVisits) || 0
 	};
 
 	const isInside = await db.query.attendanceLogs.findFirst({

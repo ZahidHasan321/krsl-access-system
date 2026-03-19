@@ -133,7 +133,7 @@ export const attendanceLogs = pgTable(
 		id: text('id').primaryKey(),
 		personId: text('person_id')
 			.notNull()
-			.references(() => people.id, { onDelete: 'cascade' }),
+			.references(() => people.id, { onDelete: 'restrict' }),
 		entryTime: timestamp('entry_time', { withTimezone: true, mode: 'date' }).notNull(),
 		exitTime: timestamp('exit_time', { withTimezone: true, mode: 'date' }), // null = currently inside
 		status: text('status', { enum: ['on_premises', 'checked_out'] }).notNull(),
@@ -284,7 +284,7 @@ export const auditEntries = pgTable(
 		id: text('id').primaryKey(),
 		personId: text('person_id')
 			.notNull()
-			.references(() => people.id, { onDelete: 'cascade' }),
+			.references(() => people.id, { onDelete: 'restrict' }),
 		entryTime: timestamp('entry_time', { withTimezone: true, mode: 'date' }).notNull(),
 		exitTime: timestamp('exit_time', { withTimezone: true, mode: 'date' }),
 		purpose: text('purpose'),

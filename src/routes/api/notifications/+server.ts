@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
 import { notifications } from '$lib/server/db/schema';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, or, isNull, and } from 'drizzle-orm';
 
 export const GET: RequestHandler = async ({ locals }) => {
 	if (!locals.user) {
@@ -10,10 +10,11 @@ export const GET: RequestHandler = async ({ locals }) => {
 	}
 
 	try {
-		// Fetch last 20 notifications for the history feed
+		// Fetch last 20 notifications for this user (includes broadcasts where userId is null)
 		const history = await db
 			.select()
 			.from(notifications)
+			.where(or(eq(notifications.userId, locals.user.id), isNull(notifications.userId)))
 			.orderBy(desc(notifications.createdAt))
 			.limit(20);
 
@@ -25,7 +26,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 };
 
 /**
- * Mark all notifications as read
+ * Mark all of the current user's notifications as read
  */
 export const POST: RequestHandler = async ({ locals }) => {
 	if (!locals.user) {
@@ -33,7 +34,15 @@ export const POST: RequestHandler = async ({ locals }) => {
 	}
 
 	try {
-		await db.update(notifications).set({ isRead: true }).where(eq(notifications.isRead, false));
+		await db
+			.update(notifications)
+			.set({ isRead: true })
+			.where(
+				and(
+					eq(notifications.isRead, false),
+					or(eq(notifications.userId, locals.user.id), isNull(notifications.userId))
+				)
+			);
 		return json({ success: true });
 	} catch (err) {
 		return json({ error: 'Database error' }, { status: 500 });

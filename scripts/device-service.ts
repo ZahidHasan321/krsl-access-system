@@ -15,7 +15,7 @@ import http from 'node:http';
 import { URL } from 'node:url';
 import pg from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq, and, or, asc, sql } from 'drizzle-orm';
+import { eq, and, or, asc } from 'drizzle-orm';
 import * as schema from '../src/lib/server/db/schema';
 import {
 	buildHandshakeResponse,
@@ -102,14 +102,6 @@ async function readBuffer(req: http.IncomingMessage): Promise<Buffer> {
 		req.on('end', () => resolve(Buffer.concat(chunks)));
 		req.on('error', reject);
 	});
-}
-
-/** Get next sequential command ID */
-async function nextCommandId(): Promise<number> {
-	const [row] = await db
-		.select({ maxId: sql<number>`COALESCE(MAX(id), 999)` })
-		.from(schema.deviceCommands);
-	return (row.maxId || 999) + 1;
 }
 
 /** Save photo and generate thumbnail. Returns { photoUrl, thumbUrl }. */
@@ -231,7 +223,7 @@ const server = http.createServer(async (req, res) => {
 											thumbUrl: result.thumbUrl
 										})
 										.where(eq(schema.people.id, person.id));
-									console.log(`[ZK:Photo] Saved ATTPHOTO for ${person.name}: ${result.photoUrl}`);
+									console.log(`[ZK:Photo] Saved ATTPHOTO for person ${person.id}: ${result.photoUrl}`);
 									notifySvelte('change');
 								}
 							}
@@ -280,7 +272,7 @@ const server = http.createServer(async (req, res) => {
 											})
 											.where(eq(schema.people.id, person.id));
 										console.log(
-											`[ZK:OperLog] Saved face photo for ${person.name}: ${result.photoUrl} (thumb: ${result.thumbUrl})`
+											`[ZK:OperLog] Saved face photo for person ${person.id}: ${result.photoUrl}`
 										);
 										notifySvelte('change');
 									}
@@ -325,7 +317,7 @@ const server = http.createServer(async (req, res) => {
 								.set({ enrolledMethods: JSON.stringify(methods) })
 								.where(eq(schema.people.id, person.id));
 							console.log(
-								`[ZK:Enroll] Detected ${entry.enrollMethod} enrollment for ${person.name}`
+								`[ZK:Enroll] Detected ${entry.enrollMethod} enrollment for person ${person.id}`
 							);
 						}
 						// Always notify SvelteKit so the UI can close its waiting dialog
@@ -380,7 +372,7 @@ const server = http.createServer(async (req, res) => {
 									.update(schema.bioTemplates)
 									.set({ templateData, updatedAt: new Date() })
 									.where(eq(schema.bioTemplates.id, existingTemplate.id));
-								console.log(`[ZK:BioData] Updated ${templateType} template for ${person.name} (FID=${fid}, No=${templateNo})`);
+								console.log(`[ZK:BioData] Updated ${templateType} template for person ${person.id} (FID=${fid}, No=${templateNo})`);
 							} else {
 								await db.insert(schema.bioTemplates).values({
 									id: crypto.randomUUID(),
@@ -390,7 +382,7 @@ const server = http.createServer(async (req, res) => {
 									fid,
 									templateNo
 								});
-								console.log(`[ZK:BioData] Stored new ${templateType} template for ${person.name} (FID=${fid}, No=${templateNo})`);
+								console.log(`[ZK:BioData] Stored new ${templateType} template for person ${person.id} (FID=${fid}, No=${templateNo})`);
 							}
 
 							// Track enrolled methods
@@ -470,7 +462,7 @@ const server = http.createServer(async (req, res) => {
 						const method = verifyCodeToMethod(entry.verify);
 						if (!activeLog) {
 							const newLogId = crypto.randomUUID();
-							console.log(`[ZK:Punch] CHECK-IN for ${person.name} (${method})`);
+							console.log(`[ZK:Punch] CHECK-IN for person ${person.id} (${method})`);
 							await db.insert(schema.attendanceLogs).values({
 								id: newLogId,
 								personId: person.id,
@@ -490,7 +482,7 @@ const server = http.createServer(async (req, res) => {
 								isTrained: person.isTrained
 							});
 						} else {
-							console.log(`[ZK:Punch] CHECK-OUT for ${person.name} (${method})`);
+							console.log(`[ZK:Punch] CHECK-OUT for person ${person.id} (${method})`);
 							await db
 								.update(schema.attendanceLogs)
 								.set({ exitTime: entry.timestamp, status: 'checked_out' })
@@ -596,7 +588,6 @@ const server = http.createServer(async (req, res) => {
 								console.log(`[DRY-RUN] Would confirm enrollment and sync user back to device for PIN ${pin}`);
 							} else {
 								await db.insert(schema.deviceCommands).values({
-									id: await nextCommandId(),
 									deviceSn: sn,
 									commandString: Commands.setUser(pin, person.name),
 									status: 'PENDING'

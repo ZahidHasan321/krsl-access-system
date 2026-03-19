@@ -125,7 +125,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 							thumbUrl: result.thumbUrl
 						})
 						.where(eq(people.id, person.id));
-					console.log(`[ZK:Photo] Saved ATTPHOTO for ${person.name}: ${result.photoUrl}`);
+					console.log(`[ZK:Photo] Saved ATTPHOTO for PIN ${pin}: ${result.photoUrl}`);
 					notifyChange();
 				}
 			}
@@ -181,7 +181,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 							})
 							.where(eq(people.id, person.id));
 						console.log(
-							`[ZK:OperLog] Saved face photo for ${person.name}: ${result.photoUrl} (thumb: ${result.thumbUrl})`
+							`[ZK:OperLog] Saved face photo for PIN ${photoPin}: ${result.photoUrl}`
 						);
 						notifyChange();
 					}
@@ -220,7 +220,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 					.update(people)
 					.set({ enrolledMethods: JSON.stringify(methods) })
 					.where(eq(people.id, person.id));
-				console.log(`[ZK:Enroll] Detected ${entry.enrollMethod} enrollment for ${person.name}`);
+				console.log(`[ZK:Enroll] Detected ${entry.enrollMethod} enrollment for person ${person.id}`);
 				notifyEnrollment({ personId: person.id, personName: person.name, method: entry.enrollMethod });
 			}
 		}
@@ -286,7 +286,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 						.update(bioTemplates)
 						.set({ templateData: kvData, updatedAt: new Date() })
 						.where(eq(bioTemplates.id, existingTemplate.id));
-					console.log(`[ZK:BioData] Updated ${table} template for ${person.name} (FID=${fid}, No=${templateNo})`);
+					console.log(`[ZK:BioData] Updated ${table} template for person ${person.id} (FID=${fid}, No=${templateNo})`);
 				} else {
 					await db.insert(bioTemplates).values({
 						id: crypto.randomUUID(),
@@ -296,7 +296,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 						fid,
 						templateNo
 					});
-					console.log(`[ZK:BioData] Stored new ${table} template for ${person.name} (FID=${fid}, No=${templateNo})`);
+					console.log(`[ZK:BioData] Stored new ${table} template for person ${person.id} (FID=${fid}, No=${templateNo})`);
 				}
 
 				// Track enrolled methods
@@ -315,7 +315,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 						.update(people)
 						.set({ enrolledMethods: JSON.stringify(Array.from(new Set(methods))) })
 						.where(eq(people.id, person.id));
-					console.log(`[ZK:BioData] Added ${method} to enrolledMethods for ${person.name}`);
+					console.log(`[ZK:BioData] Added ${method} to enrolledMethods for person ${person.id}`);
 				}
 				notifyEnrollment({ personId: person.id, personName: person.name, method });
 				notifyChange();
@@ -340,89 +340,99 @@ export const POST: RequestHandler = async ({ url, request }) => {
 	}
 	const entries = parseAttLog(body);
 
-	for (const entry of entries) {
-		const rawId = crypto.randomUUID();
+	// Collect events to emit after transaction commits
+	const pendingEvents: Array<() => void> = [];
 
-		// 1. Store raw punch (audit trail)
-		await db.insert(rawPunches).values({
-			id: rawId,
-			deviceSn: sn,
-			pin: entry.pin,
-			punchTime: entry.timestamp,
-			status: entry.status,
-			verify: entry.verify,
-			rawLine: entry.rawLine,
-			processed: false
-		});
+	await db.transaction(async (tx) => {
+		for (const entry of entries) {
+			const rawId = crypto.randomUUID();
 
-		// 2. Look up person by biometricId
-		const [person] = await db
-			.select()
-			.from(people)
-			.where(
-				or(
-					eq(people.biometricId, entry.pin),
-					eq(people.biometricId, parseInt(entry.pin, 10).toString())
-				)
-			);
-
-		if (!person) continue; // No matching person — raw punch still stored
-
-		// 3. Punch-to-attendance mapping
-		const punchDate = toDateString(entry.timestamp);
-
-		const [activeLog] = await db
-			.select()
-			.from(attendanceLogs)
-			.where(and(eq(attendanceLogs.personId, person.id), eq(attendanceLogs.status, 'on_premises')));
-
-		const method = verifyCodeToMethod(entry.verify);
-
-		if (!activeLog) {
-			// CHECK-IN: no active log → create new entry
-			const newLogId = crypto.randomUUID();
-			await db.insert(attendanceLogs).values({
-				id: newLogId,
-				personId: person.id,
-				entryTime: entry.timestamp,
-				verifyMethod: method,
-				status: 'on_premises',
-				date: punchDate
+			// 1. Store raw punch (audit trail)
+			await tx.insert(rawPunches).values({
+				id: rawId,
+				deviceSn: sn,
+				pin: entry.pin,
+				punchTime: entry.timestamp,
+				status: entry.status,
+				verify: entry.verify,
+				rawLine: entry.rawLine,
+				processed: false
 			});
 
-			// Notify real-time check-in
-			notifyCheckIn({
-				personId: person.id,
-				personName: person.name,
-				verifyMethod: method,
-				photoUrl: person.photoUrl,
-				thumbUrl: person.thumbUrl,
-				logId: newLogId,
-				categoryId: person.categoryId,
-				isTrained: person.isTrained
-			});
-		} else {
-			// CHECK-OUT: active log exists → mark as checked out
-			await db
-				.update(attendanceLogs)
-				.set({ exitTime: entry.timestamp, status: 'checked_out' })
-				.where(eq(attendanceLogs.id, activeLog.id));
+			// 2. Look up person by biometricId
+			const [person] = await tx
+				.select()
+				.from(people)
+				.where(
+					or(
+						eq(people.biometricId, entry.pin),
+						eq(people.biometricId, parseInt(entry.pin, 10).toString())
+					)
+				);
 
-			// Notify real-time check-out
-			notifyCheckOut({
-				personId: person.id,
-				personName: person.name,
-				verifyMethod: method,
-				photoUrl: person.photoUrl,
-				thumbUrl: person.thumbUrl,
-				logId: activeLog.id,
-				categoryId: person.categoryId
-			});
+			if (!person) continue; // No matching person — raw punch still stored
+
+			// 3. Punch-to-attendance mapping
+			const punchDate = toDateString(entry.timestamp);
+
+			const [activeLog] = await tx
+				.select()
+				.from(attendanceLogs)
+				.where(and(eq(attendanceLogs.personId, person.id), eq(attendanceLogs.status, 'on_premises')));
+
+			const method = verifyCodeToMethod(entry.verify);
+
+			if (!activeLog) {
+				// CHECK-IN: no active log → create new entry
+				const newLogId = crypto.randomUUID();
+				await tx.insert(attendanceLogs).values({
+					id: newLogId,
+					personId: person.id,
+					entryTime: entry.timestamp,
+					verifyMethod: method,
+					status: 'on_premises',
+					date: punchDate
+				});
+
+				pendingEvents.push(() =>
+					notifyCheckIn({
+						personId: person.id,
+						personName: person.name,
+						verifyMethod: method,
+						photoUrl: person.photoUrl,
+						thumbUrl: person.thumbUrl,
+						logId: newLogId,
+						categoryId: person.categoryId,
+						isTrained: person.isTrained
+					})
+				);
+			} else {
+				// CHECK-OUT: active log exists → mark as checked out
+				await tx
+					.update(attendanceLogs)
+					.set({ exitTime: entry.timestamp, status: 'checked_out' })
+					.where(eq(attendanceLogs.id, activeLog.id));
+
+				pendingEvents.push(() =>
+					notifyCheckOut({
+						personId: person.id,
+						personName: person.name,
+						verifyMethod: method,
+						photoUrl: person.photoUrl,
+						thumbUrl: person.thumbUrl,
+						logId: activeLog.id,
+						categoryId: person.categoryId
+					})
+				);
+			}
+
+			// 4. Mark raw punch as processed
+			await tx.update(rawPunches).set({ processed: true }).where(eq(rawPunches.id, rawId));
 		}
+	});
 
-		// 4. Mark raw punch as processed
-		await db.update(rawPunches).set({ processed: true }).where(eq(rawPunches.id, rawId));
-	}
+	// Emit events only after transaction successfully commits
+	for (const emit of pendingEvents) emit();
 
 	notifyChange();
 

@@ -104,7 +104,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			.offset(offset);
 	}
 
-	console.log(`[Search API] query="${query}", category="${categoryId}", limit=${limit}, offset=${offset}, found=${foundPeople.length} people`);
+	console.log(`[Search API] category="${categoryId}", limit=${limit}, offset=${offset}, found=${foundPeople.length} people`);
 
 	// Build a map for quick root slug lookup
 	const catMap = new Map(allCategories.map((c) => [c.id, c]));

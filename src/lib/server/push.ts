@@ -3,9 +3,8 @@ import { env } from '$env/dynamic/private';
 import { env as publicEnv } from '$env/dynamic/public';
 import { db } from '$lib/server/db';
 import { pushSubscriptions, notifications } from '$lib/server/db/schema';
-import { eq, lt } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { eventHub } from './event-hub';
-import { subDays } from 'date-fns';
 
 // Initialize web-push with VAPID keys from environment
 const publicVapidKey = publicEnv.PUBLIC_VAPID_KEY;
@@ -45,13 +44,6 @@ export async function createNotification(data: {
 		
 		// Notify connected clients to refresh their notification UI via SSE
 		eventHub.emit('change');
-
-		// Auto-cleanup: silently remove notifications older than 30 days
-		// Fire and forget, don't await so it doesn't block the critical path
-		const thirtyDaysAgo = subDays(new Date(), 30);
-		db.delete(notifications).where(lt(notifications.createdAt, thirtyDaysAgo)).catch(err => {
-			console.error('[Push Service] Failed to cleanup old notifications:', err);
-		});
 	} catch (err) {
 		console.error('[Push Service] Failed to create notification:', err);
 	}
@@ -83,7 +75,7 @@ export async function sendPushNotification(userId: string, payload: any) {
 		} catch (error: any) {
 			// If subscription is expired or revoked, remove it from DB
 			if (error.statusCode === 404 || error.statusCode === 410) {
-				console.log(`Removing expired subscription: ${sub.endpoint}`);
+				console.log(`[Push] Removing expired subscription id=${sub.id}`);
 				await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, sub.id));
 			} else {
 				console.error('Error sending push notification:', error);

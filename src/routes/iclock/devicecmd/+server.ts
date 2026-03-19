@@ -1,16 +1,9 @@
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
 import { deviceCommands, people } from '$lib/server/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { Commands } from '$lib/zkteco';
 import { notifyEnrollment, notifyEnrollmentFailed } from '$lib/server/events';
-
-async function nextCommandId(): Promise<number> {
-	const [row] = await db
-		.select({ maxId: sql<number>`COALESCE(MAX(id), 999)` })
-		.from(deviceCommands);
-	return (row.maxId || 999) + 1;
-}
 
 /** POST — Command confirmation from device */
 export const POST: RequestHandler = async ({ request, url }) => {
@@ -53,7 +46,6 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				if (newStatus === 'SUCCESS' && person) {
 					// Enrollment succeeded — create/sync user on device
 					await db.insert(deviceCommands).values({
-						id: await nextCommandId(),
 						deviceSn: sn,
 						commandString: Commands.setUser(pin, person.name),
 						status: 'PENDING'
@@ -86,7 +78,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				} else if (newStatus === 'FAILED' && person) {
 					// Enrollment failed — notify UI so it can stop spinning
 					console.log(
-						`[ZK:Enroll] Enrollment FAILED for ${person.name} (PIN=${pin}, Return=${returnCode})`
+						`[ZK:Enroll] Enrollment FAILED for person ${person.id} (PIN=${pin}, Return=${returnCode})`
 					);
 					notifyEnrollmentFailed({ personId: person.id, personName: person.name, returnCode: returnCode || 'unknown' });
 				}

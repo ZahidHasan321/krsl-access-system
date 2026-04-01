@@ -343,8 +343,29 @@ export const POST: RequestHandler = async ({ url, request }) => {
 	// Collect events to emit after transaction commits
 	const pendingEvents: Array<() => void> = [];
 
+	/** Minimum seconds a person must be checked in before a punch triggers check-out.
+	 *  Prevents accidental double-scans from immediately checking someone out. */
+	const MIN_CHECKIN_DURATION_SEC = 60;
+
 	await db.transaction(async (tx) => {
 		for (const entry of entries) {
+			// --- Deduplication: skip if we already have this exact punch ---
+			const [existingPunch] = await tx
+				.select({ id: rawPunches.id })
+				.from(rawPunches)
+				.where(
+					and(
+						eq(rawPunches.pin, entry.pin),
+						eq(rawPunches.punchTime, entry.timestamp),
+						eq(rawPunches.deviceSn, sn)
+					)
+				);
+
+			if (existingPunch) {
+				console.log(`[ZK:ATTLOG] Skipping duplicate punch PIN=${entry.pin} time=${entry.timestamp.toISOString()}`);
+				continue;
+			}
+
 			const rawId = crypto.randomUUID();
 
 			// 1. Store raw punch (audit trail)
@@ -408,6 +429,14 @@ export const POST: RequestHandler = async ({ url, request }) => {
 				);
 			} else {
 				// CHECK-OUT: active log exists → mark as checked out
+				// Guard: ignore if checked in less than MIN_CHECKIN_DURATION_SEC ago
+				const elapsedSec = (entry.timestamp.getTime() - activeLog.entryTime.getTime()) / 1000;
+				if (elapsedSec < MIN_CHECKIN_DURATION_SEC) {
+					console.log(`[ZK:ATTLOG] Ignoring too-quick checkout for PIN=${entry.pin} (${elapsedSec.toFixed(0)}s < ${MIN_CHECKIN_DURATION_SEC}s)`);
+					await tx.update(rawPunches).set({ processed: true }).where(eq(rawPunches.id, rawId));
+					continue;
+				}
+
 				await tx
 					.update(attendanceLogs)
 					.set({ exitTime: entry.timestamp, status: 'checked_out' })

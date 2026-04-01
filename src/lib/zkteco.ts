@@ -32,7 +32,7 @@ export function buildHandshakeResponse(sn: string): string {
 			'BioDataFun=1',
 			'VisilightFun=1',
 			'PostBackTmpFlag=1',
-			'DuplicatePunchTimer=1',
+			'DuplicatePunchTimer=60',
 			'MultiBioDataSupport=0:1:0:0:0:0:0:0:1:1',
 			'MultiBioPhotoSupport=0:0:0:0:0:0:0:0:0:1',
 			'PushOptions=UserPicURLFunOn,MultiBioDataSupport,MultiBioPhotoSupport'

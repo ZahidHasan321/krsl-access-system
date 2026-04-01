@@ -58,6 +58,15 @@ echo "    postgres is ready."
 echo "==> Enabling database extensions..."
 docker compose exec -T postgres psql -U krcrm -d krcrm -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 
+echo "==> Cleaning up duplicate raw punches before migration..."
+docker compose exec -T postgres psql -U krcrm -d krcrm -c "
+DELETE FROM raw_punches a USING raw_punches b
+WHERE a.created_at > b.created_at
+  AND a.device_sn = b.device_sn
+  AND a.pin = b.pin
+  AND a.punch_time = b.punch_time;
+"
+
 echo "==> Running database migrations..."
 docker compose exec -T app npx drizzle-kit migrate
 

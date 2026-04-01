@@ -6,6 +6,7 @@ import {
 	serial,
 	timestamp,
 	index,
+	uniqueIndex,
 	primaryKey
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -273,7 +274,9 @@ export const rawPunches = pgTable(
 	(table) => ({
 		deviceSnIdx: index('raw_punches_device_sn_idx').on(table.deviceSn),
 		pinIdx: index('raw_punches_pin_idx').on(table.pin),
-		processedIdx: index('raw_punches_processed_idx').on(table.processed)
+		processedIdx: index('raw_punches_processed_idx').on(table.processed),
+		/** Prevent duplicate punch records from device re-transmissions */
+		uniquePunchIdx: uniqueIndex('raw_punches_dedup_idx').on(table.deviceSn, table.pin, table.punchTime)
 	})
 );
 

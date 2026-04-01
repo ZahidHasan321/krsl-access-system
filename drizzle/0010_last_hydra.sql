@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "raw_punches_dedup_idx" ON "raw_punches" USING btree ("device_sn","pin","punch_time");

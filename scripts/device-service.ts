@@ -629,6 +629,7 @@ const server = http.createServer(async (req, res) => {
 
 		// ZKTeco Registry
 		if (pathname === '/iclock/registry') {
+			console.log(`[Device:Registry] GET ${url.pathname}${url.search} from ${remoteIp}`);
 			if (!sn) return res.writeHead(400).end('Missing SN');
 			// Registry logic is similar to handshake GET cdata
 			const response = buildHandshakeResponse(sn);
@@ -641,6 +642,14 @@ const server = http.createServer(async (req, res) => {
 	} catch (e: any) {
 		console.error(`[Device:Error] Internal Error:`, e.message);
 		res.writeHead(500).end('Internal Server Error');
+	}
+});
+
+server.listen(PORT, () => {
+	console.log(`[DeviceService] Listening on port ${PORT}`);
+	console.log(`[DeviceService] SvelteKit Internal URL: ${SVELTE_INTERNAL_URL}`);
+});
+);
 	}
 });
 

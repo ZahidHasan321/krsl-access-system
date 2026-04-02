@@ -37,7 +37,14 @@ export const load: PageServerLoad = async (event) => {
 		registeredByDepartment,
 		recentLogs
 	] = await Promise.all([
-		db.select({ lastHeartbeat: devices.lastHeartbeat }).from(devices),
+		db.select({
+			id: devices.id,
+			name: devices.name,
+			serialNumber: devices.serialNumber,
+			location: devices.location,
+			lastHeartbeat: devices.lastHeartbeat,
+			status: devices.status
+		}).from(devices),
 		db
 			.select({
 				categoryId: people.categoryId,
@@ -111,11 +118,15 @@ export const load: PageServerLoad = async (event) => {
 			.from(attendanceLogs)
 			.innerJoin(people, eq(attendanceLogs.personId, people.id))
 			.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
-			.orderBy(desc(attendanceLogs.entryTime))
+			.orderBy(desc(sql`COALESCE(${attendanceLogs.exitTime}, ${attendanceLogs.entryTime})`))
 			.limit(30)
 	]);
 
 	const anyDeviceOnline = allDevices.some((d) => isDeviceOnline(d.lastHeartbeat));
+	const deviceStatus = allDevices.map((d) => ({
+		...d,
+		isOnline: isDeviceOnline(d.lastHeartbeat)
+	}));
 
 	const insideCountMap = new Map(insideByCategory.map((r) => [r.categoryId, r.count]));
 	const registeredCountMap = new Map(registeredByCategory.map((r) => [r.categoryId, r.count]));
@@ -222,6 +233,7 @@ export const load: PageServerLoad = async (event) => {
 		locationStats,
 		methodStats,
 		recentLogs,
-		anyDeviceOnline
+		anyDeviceOnline,
+		deviceStatus
 	};
 };

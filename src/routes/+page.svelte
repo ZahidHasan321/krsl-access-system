@@ -24,7 +24,10 @@
 		Fingerprint,
 		IdCard,
 		PenTool,
-		Printer
+		Printer,
+		Radio,
+		Wifi,
+		WifiOff
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import { format, parseISO } from 'date-fns';
@@ -343,7 +346,9 @@
 								</div>
 								<div class="flex shrink-0 flex-col items-end gap-0.5 pl-2">
 									<span class="text-[10px] font-black tabular-nums text-slate-600">
-										{log.entryTime ? format(new Date(log.entryTime), 'hh:mm a') : '--:--'}
+										{log.status === 'checked_out' && log.exitTime
+											? format(new Date(log.exitTime), 'hh:mm a')
+											: log.entryTime ? format(new Date(log.entryTime), 'hh:mm a') : '--:--'}
 									</span>
 									{#if log.status === 'on_premises'}
 										<span class={cn('rounded px-1 py-0.5 text-[7px] font-black tracking-wider uppercase', statusBadgeClasses.on_premises)}>In</span>
@@ -472,6 +477,65 @@
 					<span class="text-[8px] font-black tracking-widest text-slate-500/70 uppercase">Manual</span>
 				</div>
 			</div>
+
+			<!-- Device Status -->
+			{#if data.deviceStatus?.length}
+				<div class="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+					<div class="relative overflow-hidden border-b border-slate-700 bg-gradient-to-r from-slate-700 via-slate-800 to-slate-700 px-4 py-3">
+						<div class="absolute inset-0 bg-[radial-gradient(circle_at_0%_50%,rgba(28,85,164,0.15),transparent_50%)]"></div>
+						<div class="relative flex items-center justify-between">
+							<div class="flex items-center gap-2">
+								<Radio size={14} class="text-slate-400" />
+								<h2 class="text-xs font-black tracking-widest text-slate-300 uppercase">Device Status</h2>
+							</div>
+							<Button variant="ghost" size="sm" class="h-7 text-[10px] font-black text-primary-300 hover:bg-white/10 hover:text-white" href="/devices">
+								Manage
+							</Button>
+						</div>
+					</div>
+					<div class="divide-y divide-slate-100">
+						{#each data.deviceStatus as device (device.id)}
+							<div class="flex items-center gap-3 px-4 py-3">
+								<div class={cn(
+									'flex size-9 shrink-0 items-center justify-center rounded-lg',
+									device.isOnline
+										? 'bg-emerald-100 text-emerald-600'
+										: 'bg-red-50 text-red-400'
+								)}>
+									{#if device.isOnline}<Wifi size={16} />{:else}<WifiOff size={16} />{/if}
+								</div>
+								<div class="min-w-0 flex-1">
+									<div class="flex items-center gap-2">
+										<p class="truncate text-xs font-black text-slate-900">{device.name}</p>
+										{#if device.isOnline}
+											<div class="flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 ring-1 ring-emerald-200/60">
+												<div class="size-1.5 animate-pulse rounded-full bg-emerald-500"></div>
+												<span class="text-[8px] font-black tracking-widest text-emerald-600 uppercase">Online</span>
+											</div>
+										{:else}
+											<div class="flex items-center gap-1 rounded-full bg-red-50 px-1.5 py-0.5 ring-1 ring-red-200/60">
+												<div class="size-1.5 rounded-full bg-red-400"></div>
+												<span class="text-[8px] font-black tracking-widest text-red-500 uppercase">Offline</span>
+											</div>
+										{/if}
+									</div>
+									<div class="mt-0.5 flex items-center gap-2 text-[10px] font-bold text-slate-400">
+										<span>{device.serialNumber}</span>
+										{#if device.location}
+											<span>·</span>
+											<span class="capitalize">{device.location}</span>
+										{/if}
+										{#if device.lastHeartbeat}
+											<span>·</span>
+											<span>Last seen {format(new Date(device.lastHeartbeat), 'hh:mm a')}</span>
+										{/if}
+									</div>
+								</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
 
 		</div>
 	</div>

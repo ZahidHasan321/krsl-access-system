@@ -649,11 +649,3 @@ server.listen(PORT, () => {
 	console.log(`[DeviceService] Listening on port ${PORT}`);
 	console.log(`[DeviceService] SvelteKit Internal URL: ${SVELTE_INTERNAL_URL}`);
 });
-);
-	}
-});
-
-server.listen(PORT, () => {
-	console.log(`[DeviceService] Listening on port ${PORT}`);
-	console.log(`[DeviceService] SvelteKit Internal URL: ${SVELTE_INTERNAL_URL}`);
-});

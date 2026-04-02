@@ -74,11 +74,13 @@ export const actions: Actions = {
 			await db.update(table.user).set(updates).where(eq(table.user.id, existingUser.id));
 
 			if (newAttempts >= MAX_ATTEMPTS) {
+				console.error(`[Auth] Account locked: user "${username}" after ${newAttempts} failed attempts`);
 				return fail(403, {
 					message: 'Account locked for 15 minutes due to too many failed attempts.'
 				});
 			}
 
+			console.log(`[Auth] Failed login attempt for user "${username}" (attempt ${newAttempts}/${MAX_ATTEMPTS})`);
 			return fail(400, { message: 'Incorrect username or password' });
 		}
 

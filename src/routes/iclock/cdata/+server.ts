@@ -25,7 +25,9 @@ async function savePersonPhoto(
 	const uploadDir = join(process.cwd(), 'static', 'uploads', 'people');
 	try {
 		mkdirSync(uploadDir, { recursive: true });
-	} catch {}
+	} catch (e) {
+		console.error(`[Photo] Failed to create upload directory:`, e);
+	}
 
 	const baseName = `user_${pin}_face`;
 

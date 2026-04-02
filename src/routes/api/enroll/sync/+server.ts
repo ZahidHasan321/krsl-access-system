@@ -20,6 +20,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return new Response(JSON.stringify({ error: 'Person not found' }), { status: 404 });
 	}
 
-	await queueDeviceSync(person.biometricId, person.name, person.cardNo);
-	return new Response(JSON.stringify({ success: true }));
+	try {
+		await queueDeviceSync(person.biometricId, person.name, person.cardNo);
+		console.log(`[Enroll] Synced person ${personId} (PIN ${person.biometricId}) to device (enrollment skipped)`);
+		return new Response(JSON.stringify({ success: true }));
+	} catch (e: any) {
+		console.error(`[Enroll] Failed to sync person ${personId} to device:`, e.message);
+		return new Response(JSON.stringify({ error: 'Sync failed' }), { status: 500 });
+	}
 };

@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { rawPunches, deviceCommands, notifications } from '$lib/server/db/schema';
-import { and, eq, lt, inArray } from 'drizzle-orm';
+import { and, eq, lt, inArray, sql } from 'drizzle-orm';
 import { subDays } from 'date-fns';
 
 /** Track last cleanup time to avoid running on every request */
@@ -17,30 +17,52 @@ export async function runPeriodicCleanup() {
 	if (now - lastCleanupTime < CLEANUP_INTERVAL_MS) return;
 	lastCleanupTime = now;
 
+	const ninetyDaysAgo = subDays(new Date(), 90);
+	const thirtyDaysAgo = subDays(new Date(), 30);
+
+	// 1. Delete processed raw punches older than 90 days
 	try {
-		const ninetyDaysAgo = subDays(new Date(), 90);
-		const thirtyDaysAgo = subDays(new Date(), 30);
-
-		// 1. Delete processed raw punches older than 90 days
-		await db
+		const result = await db
 			.delete(rawPunches)
-			.where(and(eq(rawPunches.processed, true), lt(rawPunches.createdAt, ninetyDaysAgo)));
+			.where(and(eq(rawPunches.processed, true), lt(rawPunches.createdAt, ninetyDaysAgo)))
+			.returning({ id: rawPunches.id });
+		if (result.length > 0) {
+			console.log(`[Cleanup] Deleted ${result.length} processed raw punches older than 90 days`);
+		}
+	} catch (err) {
+		console.error('[Cleanup] Failed to clean raw_punches:', err);
+	}
 
-		// 2. Delete completed/failed device commands older than 30 days (never delete PENDING/SENT)
-		await db
+	// 2. Delete completed/failed device commands older than 30 days (never delete PENDING/SENT)
+	try {
+		const result = await db
 			.delete(deviceCommands)
 			.where(
 				and(
 					lt(deviceCommands.createdAt, thirtyDaysAgo),
 					inArray(deviceCommands.status, ['SUCCESS', 'FAILED'])
 				)
-			);
-
-		// 3. Delete old notifications (older than 30 days)
-		await db.delete(notifications).where(lt(notifications.createdAt, thirtyDaysAgo));
-
-		console.log('[Cleanup] Periodic cleanup completed successfully');
+			)
+			.returning({ id: deviceCommands.id });
+		if (result.length > 0) {
+			console.log(`[Cleanup] Deleted ${result.length} old device commands`);
+		}
 	} catch (err) {
-		console.error('[Cleanup] Periodic cleanup failed:', err);
+		console.error('[Cleanup] Failed to clean device_commands:', err);
 	}
+
+	// 3. Delete old notifications (older than 30 days)
+	try {
+		const result = await db
+			.delete(notifications)
+			.where(lt(notifications.createdAt, thirtyDaysAgo))
+			.returning({ id: notifications.id });
+		if (result.length > 0) {
+			console.log(`[Cleanup] Deleted ${result.length} old notifications`);
+		}
+	} catch (err) {
+		console.error('[Cleanup] Failed to clean notifications:', err);
+	}
+
+	console.log('[Cleanup] Periodic cleanup completed');
 }

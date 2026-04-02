@@ -114,7 +114,9 @@ async function savePersonPhoto(
 	const uploadDir = join(process.cwd(), 'static', 'uploads', 'people');
 	try {
 		mkdirSync(uploadDir, { recursive: true });
-	} catch {}
+	} catch (e) {
+		console.error(`[ZK:Photo] Failed to create upload directory:`, e);
+	}
 
 	const baseName = `user_${pin}_face`;
 
@@ -301,12 +303,16 @@ const server = http.createServer(async (req, res) => {
 									eq(schema.people.biometricId, parseInt(entry.pin, 10).toString())
 								)
 							);
-						if (!person) continue;
+						if (!person) {
+							console.log(`[ZK:OperLog] Enrollment for unknown PIN ${entry.pin} (${entry.enrollMethod}) — no matching person in DB`);
+							continue;
+						}
 
 						let methods: string[] = [];
 						try {
 							methods = person.enrolledMethods ? JSON.parse(person.enrolledMethods) : [];
 						} catch {
+							console.error(`[ZK:OperLog] Malformed enrolledMethods JSON for person ${person.id}: ${person.enrolledMethods}`);
 							methods = [];
 						}
 
@@ -616,6 +622,7 @@ const server = http.createServer(async (req, res) => {
 								});
 							}
 						} else if (newStatus === 'FAILED' && person) {
+							console.error(`[ZK:Enroll] Enrollment FAILED for person ${person.id} (PIN ${pin}), return code: ${returnCode || 'unknown'}`);
 							notifySvelte('enrollment-failed', {
 								personId: person.id,
 								returnCode: returnCode || 'unknown'

@@ -5,7 +5,7 @@ services:
       driver: "json-file"
       options:
         max-size: "10m"
-        max-file: "7"
+        max-file: "3"
     restart: unless-stopped
     environment:
       TZ: Asia/Dhaka
@@ -28,7 +28,7 @@ services:
       driver: "json-file"
       options:
         max-size: "10m"
-        max-file: "7"
+        max-file: "3"
     restart: unless-stopped
     env_file: .env
     environment:
@@ -53,7 +53,7 @@ services:
       driver: "json-file"
       options:
         max-size: "10m"
-        max-file: "7"
+        max-file: "3"
     restart: unless-stopped
     command: node --env-file=.env --import=tsx scripts/device-service.ts
     env_file: .env
@@ -82,7 +82,7 @@ services:
       driver: "json-file"
       options:
         max-size: "10m"
-        max-file: "7"
+        max-file: "3"
     restart: unless-stopped
     ports:
       - '80:80'

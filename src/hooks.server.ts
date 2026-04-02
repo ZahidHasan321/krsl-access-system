@@ -39,7 +39,9 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 	}
 
 	// Fire-and-forget periodic cleanup (internally throttled to once every 6 hours)
-	runPeriodicCleanup().catch(() => {});
+	runPeriodicCleanup().catch((err) => {
+		console.error('[Cleanup] Failed to run periodic cleanup:', err);
+	});
 
 	return resolve(event);
 };

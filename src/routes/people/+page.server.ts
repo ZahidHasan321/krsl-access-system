@@ -283,13 +283,8 @@ export const actions: Actions = {
 				return nextId;
 			});
 
-			// Sync to device immediately if cardNo is provided
-			if (cardNo) {
-				await queueDeviceSync(nextBiometricId, name, cardNo);
-			}
-
-			// No device sync during registration — user is synced to device
-			// after enrollment succeeds (devicecmd handler) or when enrollment is skipped.
+			// Always sync to device so it knows about the user before enrollment
+			await queueDeviceSync(nextBiometricId, name, cardNo || undefined);
 
 			// Optional: Auto check-in if requested
 			if (data.get('autoCheckIn') === 'true') {

@@ -429,7 +429,7 @@ const server = http.createServer(async (req, res) => {
 						}
 
 						const rawId = crypto.randomUUID();
-						await db.insert(schema.rawPunches).values({
+						const inserted = await db.insert(schema.rawPunches).values({
 							id: rawId,
 							deviceSn: sn,
 							pin: entry.pin,
@@ -438,7 +438,12 @@ const server = http.createServer(async (req, res) => {
 							verify: entry.verify,
 							rawLine: entry.rawLine,
 							processed: false
-						});
+						}).onConflictDoNothing().returning({ id: schema.rawPunches.id });
+
+						if (inserted.length === 0) {
+							console.log(`[ZK:Punch] Duplicate punch PIN=${entry.pin} time=${entry.timestamp.toISOString()}, skipping`);
+							continue;
+						}
 
 						const [person] = await db
 							.select()

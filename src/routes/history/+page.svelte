@@ -48,12 +48,13 @@
 	let startDate = $state('');
 	let endDate = $state('');
 
-	// Initialize state from data prop once
+	// Sync dates from server on every navigation (data.filters always has resolved defaults)
 	$effect.pre(() => {
+		const { startDate: s, endDate: e, query: q } = data.filters;
 		untrack(() => {
-			if (!searchQuery && data.filters.query) searchQuery = data.filters.query;
-			if (!startDate && data.filters.startDate) startDate = data.filters.startDate;
-			if (!endDate && data.filters.endDate) endDate = data.filters.endDate;
+			startDate = s;
+			endDate = e;
+			if (!searchQuery && q) searchQuery = q;
 		});
 	});
 	let isPreparingPrint = $state(false);
@@ -140,10 +141,12 @@
 		const url = new URL(page.url);
 		if (searchQuery) url.searchParams.set('q', searchQuery);
 		else url.searchParams.delete('q');
-		if (startDate) url.searchParams.set('startDate', startDate);
-		else url.searchParams.delete('startDate');
-		if (endDate) url.searchParams.set('endDate', endDate);
-		else url.searchParams.delete('endDate');
+		// Always keep explicit dates in the URL so filtering is shareable.
+		// If one date is cleared, mirror the other (single-day view).
+		const effectiveStart = startDate || endDate || data.filters.startDate;
+		const effectiveEnd = endDate || startDate || data.filters.endDate;
+		url.searchParams.set('startDate', effectiveStart);
+		url.searchParams.set('endDate', effectiveEnd);
 		url.searchParams.set('page', '1');
 		goto(url.toString(), { keepFocus: true, noScroll: true });
 	}
@@ -169,6 +172,7 @@
 		endDate = '';
 		const url = new URL(page.url);
 		url.searchParams.delete('q');
+		// Remove dates so server re-applies its defaults (last 30 days)
 		url.searchParams.delete('startDate');
 		url.searchParams.delete('endDate');
 		url.searchParams.delete('category');
@@ -186,6 +190,64 @@
 	}
 
 	const hasActiveFilters = $derived(!!searchQuery || !!startDate || !!endDate || !!selectedCategoryId || !!selectedDepartment);
+
+	// --- Date Presets ---
+	function bdFmt(d: Date): string {
+		return new Intl.DateTimeFormat('en-CA', {
+			timeZone: 'Asia/Dhaka',
+			year: 'numeric', month: '2-digit', day: '2-digit'
+		}).format(d);
+	}
+
+	function presetDates(preset: string): { start: string; end: string } {
+		const now = new Date();
+		const todayBD = bdFmt(now);
+		if (preset === 'today') return { start: todayBD, end: todayBD };
+		if (preset === 'yesterday') {
+			const d = new Date(now); d.setDate(d.getDate() - 1);
+			const y = bdFmt(d); return { start: y, end: y };
+		}
+		if (preset === 'week') {
+			const d = new Date(now); d.setDate(d.getDate() - 6);
+			return { start: bdFmt(d), end: todayBD };
+		}
+		if (preset === 'month') {
+			const [yr, mo] = todayBD.split('-');
+			return { start: `${yr}-${mo}-01`, end: todayBD };
+		}
+		if (preset === 'lastmonth') {
+			const d = new Date(now); d.setDate(1); d.setDate(0); // last day of prev month
+			const lastEnd = bdFmt(d);
+			const [yr, mo] = lastEnd.split('-');
+			return { start: `${yr}-${mo}-01`, end: lastEnd };
+		}
+		return { start: '', end: '' };
+	}
+
+	function applyPreset(preset: string) {
+		const { start, end } = presetDates(preset);
+		const url = new URL(page.url);
+		url.searchParams.set('startDate', start);
+		url.searchParams.set('endDate', end);
+		url.searchParams.set('page', '1');
+		goto(url.toString(), { keepFocus: true, noScroll: true });
+	}
+
+	const activePreset = $derived.by(() => {
+		for (const p of ['today', 'yesterday', 'week', 'month', 'lastmonth'] as const) {
+			const { start, end } = presetDates(p);
+			if (startDate === start && endDate === end) return p;
+		}
+		return null;
+	});
+
+	const DATE_PRESETS = [
+		{ key: 'today',     label: 'Today' },
+		{ key: 'yesterday', label: 'Yesterday' },
+		{ key: 'week',      label: '7 Days' },
+		{ key: 'month',     label: 'This Month' },
+		{ key: 'lastmonth', label: 'Last Month' },
+	] as const;
 
 	const activeCategoryName = $derived(() => {
 		if (!selectedCategoryId) return '';
@@ -435,6 +497,21 @@
 						<p class="ml-0.5 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
 							Date Range
 						</p>
+						<div class="flex flex-wrap gap-1.5">
+							{#each DATE_PRESETS as preset}
+								<button
+									class={cn(
+										'chip-pressable rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-all',
+										activePreset === preset.key
+											? 'border-primary-500 bg-primary-600 text-white shadow-sm'
+											: 'border-slate-200 bg-white text-slate-500'
+									)}
+									onclick={() => { applyPreset(preset.key); showMobileFilters = false; }}
+								>
+									{preset.label}
+								</button>
+							{/each}
+						</div>
 						<div
 							class="flex h-12 items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white px-4 shadow-sm"
 						>
@@ -588,8 +665,33 @@
 				</div>
 
 				<div class="p-3">
+					<!-- Date Presets -->
+					<div class="mb-4 space-y-2">
+						<p class="px-1 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">Date Range</p>
+						<div class="flex flex-wrap gap-1">
+							{#each DATE_PRESETS as preset}
+								<button
+									class={cn(
+										'chip-pressable rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-all',
+										activePreset === preset.key
+											? 'border-primary-500 bg-primary-600 text-white shadow-sm'
+											: 'border-slate-200 bg-slate-50 text-slate-500 hover:border-primary-300 hover:text-primary-600'
+									)}
+									onclick={() => applyPreset(preset.key)}
+								>
+									{preset.label}
+								</button>
+							{/each}
+						</div>
+						<div class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5">
+							<DatePicker bind:value={startDate} onchange={applyFilters} placeholder="Start" className="flex-1 min-w-0" />
+							<div class="h-0.5 w-2 shrink-0 rounded-full bg-slate-300"></div>
+							<DatePicker bind:value={endDate} onchange={applyFilters} placeholder="End" className="flex-1 min-w-0" />
+						</div>
+					</div>
+
 					<!-- Category Filter -->
-					<div class="space-y-1.5">
+					<div class="space-y-1.5 border-t border-slate-100 pt-3">
 						<p class="px-1 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
 							{i18n.t('category')}
 						</p>
@@ -810,10 +912,24 @@
 							</button>
 						{/if}
 					</div>
-					<div class="flex h-11 items-center gap-3 rounded-xl border-2 border-slate-100 bg-white px-2 shadow-sm">
-						<DatePicker bind:value={startDate} onchange={applyFilters} placeholder="Start" className="w-[160px]" />
+					<div class="flex items-center gap-1.5 rounded-xl border-2 border-slate-100 bg-white px-2 py-1.5 shadow-sm">
+						{#each DATE_PRESETS as preset}
+							<button
+								class={cn(
+									'chip-pressable rounded-lg border px-2 py-1 text-[10px] font-bold transition-all whitespace-nowrap',
+									activePreset === preset.key
+										? 'border-primary-500 bg-primary-600 text-white shadow-sm'
+										: 'border-slate-200 bg-slate-50 text-slate-500 hover:border-primary-300 hover:text-primary-600'
+								)}
+								onclick={() => applyPreset(preset.key)}
+							>
+								{preset.label}
+							</button>
+						{/each}
+						<div class="mx-1 h-4 w-px shrink-0 bg-slate-200"></div>
+						<DatePicker bind:value={startDate} onchange={applyFilters} placeholder="Start" className="w-[130px]" />
 						<div class="h-0.5 w-2 shrink-0 rounded-full bg-slate-200"></div>
-						<DatePicker bind:value={endDate} onchange={applyFilters} placeholder="End" className="w-[160px]" />
+						<DatePicker bind:value={endDate} onchange={applyFilters} placeholder="End" className="w-[130px]" />
 					</div>
 					<button
 						class={cn(

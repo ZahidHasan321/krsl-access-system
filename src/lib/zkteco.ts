@@ -6,6 +6,31 @@
 /** Device timezone offset — Bangladesh Standard Time (UTC+6) */
 const DEVICE_TZ_OFFSET = '+06:00';
 
+/** IANA timezone for Bangladesh */
+export const BD_TIMEZONE = 'Asia/Dhaka';
+
+/** Return today's date as YYYY-MM-DD in Bangladesh time */
+export function todayStringBD(): string {
+	return bdDateString(new Date());
+}
+
+/** Format a Date as YYYY-MM-DD in Bangladesh time */
+export function bdDateString(date: Date): string {
+	return new Intl.DateTimeFormat('en-CA', {
+		timeZone: BD_TIMEZONE,
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit'
+	}).format(date);
+}
+
+/** Return YYYY-MM-DD for N days before today in Bangladesh time */
+export function bdDateStringDaysAgo(daysAgo: number): string {
+	const d = new Date();
+	d.setDate(d.getDate() - daysAgo);
+	return bdDateString(d);
+}
+
 /** Parse a device timestamp string as Bangladesh local time.
  *  Device sends "2026-02-07 15:57:00" — we append the TZ offset
  *  so it's correctly interpreted regardless of server timezone. */
@@ -77,12 +102,9 @@ export function formatCommand(id: number | string, commandString: string): strin
 	return `C:${id}:${commandString}`;
 }
 
-/** Format date as YYYY-MM-DD */
+/** Format date as YYYY-MM-DD in Bangladesh time (device data is always BD local) */
 export function toDateString(date: Date): string {
-	const y = date.getFullYear();
-	const m = String(date.getMonth() + 1).padStart(2, '0');
-	const d = String(date.getDate()).padStart(2, '0');
-	return `${y}-${m}-${d}`;
+	return bdDateString(date);
 }
 
 /** ZKTeco FID constants for biometric enrollment */

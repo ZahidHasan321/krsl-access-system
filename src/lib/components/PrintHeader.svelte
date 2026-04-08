@@ -1,8 +1,19 @@
 <script lang="ts">
 	import logo from '$lib/assets/kr_logo.svg';
-	import { format } from 'date-fns';
 
 	let { title, subtitle }: { title: string; subtitle?: string } = $props();
+
+	const BD_TZ = 'Asia/Dhaka';
+	const now = new Date();
+	const printDate = new Intl.DateTimeFormat('en-BD', {
+		timeZone: BD_TZ,
+		weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+	}).format(now);
+	const printTime = new Intl.DateTimeFormat('en-US', {
+		timeZone: BD_TZ,
+		hour: '2-digit', minute: '2-digit', hour12: true
+	}).format(now);
+	const defaultSubtitle = `${printDate} | ${printTime}`;
 </script>
 
 <div
@@ -25,7 +36,7 @@
 			{title}
 		</h2>
 		<p style="font-size: 12px; font-weight: 700; color: #64748b; margin: 4px 0 0 0;">
-			{subtitle ?? `${format(new Date(), 'PPPP')} | ${format(new Date(), 'hh:mm a')}`}
+			{subtitle ?? defaultSubtitle}
 		</p>
 	</div>
 </div>

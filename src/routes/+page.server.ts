@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { attendanceLogs, people, personCategories, vehicles, devices } from '$lib/server/db/schema';
 import { count, eq, gte, lte, and, or, sql, desc } from 'drizzle-orm';
-import { format, subDays } from 'date-fns';
+import { todayStringBD, bdDateStringDaysAgo } from '$lib/zkteco';
 import type { PageServerLoad } from './$types';
 import { requirePermission } from '$lib/server/rbac';
 import { CATEGORIES } from '$lib/constants/categories';
@@ -14,8 +14,8 @@ export const load: PageServerLoad = async (event) => {
 	}
 
 	const now = new Date();
-	const today = format(now, 'yyyy-MM-dd');
-	const sevenDaysAgo = format(subDays(now, 7), 'yyyy-MM-dd');
+	const today = todayStringBD();
+	const sevenDaysAgo = bdDateStringDaysAgo(7);
 
 	// Start/end of today as epoch seconds for exitTime comparisons (cross-midnight)
 	const todayStart = new Date(now);

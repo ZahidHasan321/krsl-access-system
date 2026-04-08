@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { attendanceLogs, people, personCategories } from '$lib/server/db/schema';
 import { eq, and, desc, sql, gte, lte, or, ilike, count, inArray, type SQL } from 'drizzle-orm';
-import { format, subDays } from 'date-fns';
+import { todayStringBD, bdDateStringDaysAgo } from '$lib/zkteco';
 import { requirePermission } from '$lib/server/rbac';
 import { getFlatCategoryList } from '$lib/server/db/category-utils';
 import { getUniqueDepartments } from '$lib/server/db/department-utils';
@@ -45,9 +45,13 @@ export const load: PageServerLoad = async (event) => {
 
 	const rawView = event.url.searchParams.get('view') || 'detailed';
 	const view = ['detailed', 'daily', 'monthly'].includes(rawView) ? rawView : 'detailed';
-	const startDate =
-		event.url.searchParams.get('startDate') || format(subDays(new Date(), 30), 'yyyy-MM-dd');
-	const endDate = event.url.searchParams.get('endDate') || format(new Date(), 'yyyy-MM-dd');
+	const startDateParam = event.url.searchParams.get('startDate');
+	const endDateParam = event.url.searchParams.get('endDate');
+
+	// If only one date is provided, use it as both (single-day view).
+	// If neither is provided, default to last 30 days in BD time.
+	const startDate = startDateParam || (endDateParam ?? bdDateStringDaysAgo(30));
+	const endDate = endDateParam || (startDateParam ?? todayStringBD());
 	const categoryId = event.url.searchParams.get('category') || '';
 	const department = event.url.searchParams.get('department') || '';
 	const query = (event.url.searchParams.get('q') || '').trim();

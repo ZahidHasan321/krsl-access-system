@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { vehicles } from '$lib/server/db/schema';
 import { desc, eq, and, or, ilike, count, sql } from 'drizzle-orm';
-import { format } from 'date-fns';
+import { bdDateString } from '$lib/zkteco';
 import { fail, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { requirePermission } from '$lib/server/rbac';
@@ -125,7 +125,7 @@ export const actions: Actions = {
 		}
 
 		const now = new Date();
-		const today = format(now, 'yyyy-MM-dd');
+		const today = bdDateString(now);
 
 		try {
 			const [newVehicle] = await db.insert(vehicles).values({

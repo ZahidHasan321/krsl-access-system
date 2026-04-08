@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { attendanceLogs, people } from '$lib/server/db/schema';
 import { eq, and, count } from 'drizzle-orm';
-import { format } from 'date-fns';
+import { bdDateString } from '$lib/zkteco';
 import { fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { requirePermission } from '$lib/server/rbac';
@@ -104,7 +104,7 @@ export const actions: Actions = {
 				status: 'on_premises',
 				purpose,
 				location,
-				date: format(now, 'yyyy-MM-dd')
+				date: bdDateString(now)
 			});
 
 			notifyCheckIn({

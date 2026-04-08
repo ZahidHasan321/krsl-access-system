@@ -515,7 +515,10 @@ const server = http.createServer(async (req, res) => {
 							.where(eq(schema.rawPunches.id, rawId));
 					}
 					notifySvelte('change');
-					return res.writeHead(200).end('OK');
+					// Respond with count so device knows how many records were accepted.
+					// Per ZKTeco PUSH SDK spec, the server must reply "OK: N" for ATTLOG,
+					// otherwise the device assumes failure and retries infinitely.
+					return res.writeHead(200).end(`OK: ${entries.length}`);
 				}
 
 				// Generic OK for any other tables
@@ -527,9 +530,62 @@ const server = http.createServer(async (req, res) => {
 		if (pathname === '/iclock/getrequest') {
 			if (!sn) return res.writeHead(400).end('Missing SN');
 
+			const now = new Date();
+
+			// Check for offline gap before updating heartbeat
+			const [currentDevice] = await db
+				.select({ lastHeartbeat: schema.devices.lastHeartbeat })
+				.from(schema.devices)
+				.where(eq(schema.devices.serialNumber, sn));
+
+			if (currentDevice?.lastHeartbeat) {
+				const gapMs = now.getTime() - currentDevice.lastHeartbeat.getTime();
+				const OFFLINE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+
+				if (gapMs > OFFLINE_THRESHOLD_MS) {
+					const gapMinutes = Math.round(gapMs / 60000);
+					console.log(`[ZK:Sync] Device ${sn} was offline for ~${gapMinutes} min. Queuing missed-punch sync.`);
+
+					// Format timestamps in BD timezone for the device command
+					// Device expects: YYYY-MM-DD HH:MM:SS
+					const bdFormatter = new Intl.DateTimeFormat('en-CA', {
+						timeZone: 'Asia/Dhaka',
+						year: 'numeric', month: '2-digit', day: '2-digit',
+						hour: '2-digit', minute: '2-digit', second: '2-digit',
+						hour12: false
+					});
+
+					// Go back 1 minute before last heartbeat to avoid missing edge punches
+					const syncFrom = new Date(currentDevice.lastHeartbeat.getTime() - 60 * 1000);
+					const fmtStart = bdFormatter.format(syncFrom).replace(',', '');
+					const fmtEnd = bdFormatter.format(now).replace(',', '');
+
+					// Check if there's already a pending sync command to avoid duplicates
+					const [existingSync] = await db
+						.select({ id: schema.deviceCommands.id })
+						.from(schema.deviceCommands)
+						.where(
+							and(
+								eq(schema.deviceCommands.deviceSn, sn),
+								eq(schema.deviceCommands.status, 'PENDING')
+							)
+						)
+						.limit(1);
+
+					if (!existingSync) {
+						await db.insert(schema.deviceCommands).values({
+							deviceSn: sn,
+							commandString: `DATA QUERY ATTLOG StartTime=${fmtStart}\tEndTime=${fmtEnd}`,
+							status: 'PENDING'
+						});
+						console.log(`[ZK:Sync] Queued ATTLOG sync: ${fmtStart} → ${fmtEnd}`);
+					}
+				}
+			}
+
 			await db
 				.update(schema.devices)
-				.set({ lastHeartbeat: new Date(), status: 'online' })
+				.set({ lastHeartbeat: now, status: 'online' })
 				.where(eq(schema.devices.serialNumber, sn));
 
 			const [cmd] = await db

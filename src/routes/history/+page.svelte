@@ -191,7 +191,7 @@
 
 	const hasActiveFilters = $derived(!!searchQuery || !!startDate || !!endDate || !!selectedCategoryId || !!selectedDepartment);
 
-	// --- Date Presets ---
+	// --- Date Navigator ---
 	function bdFmt(d: Date): string {
 		return new Intl.DateTimeFormat('en-CA', {
 			timeZone: 'Asia/Dhaka',
@@ -199,33 +199,32 @@
 		}).format(d);
 	}
 
-	function presetDates(preset: string): { start: string; end: string } {
-		const now = new Date();
-		const todayBD = bdFmt(now);
-		if (preset === 'today') return { start: todayBD, end: todayBD };
-		if (preset === 'yesterday') {
-			const d = new Date(now); d.setDate(d.getDate() - 1);
-			const y = bdFmt(d); return { start: y, end: y };
-		}
-		if (preset === 'week') {
-			const d = new Date(now); d.setDate(d.getDate() - 6);
-			return { start: bdFmt(d), end: todayBD };
-		}
-		if (preset === 'month') {
-			const [yr, mo] = todayBD.split('-');
-			return { start: `${yr}-${mo}-01`, end: todayBD };
-		}
-		if (preset === 'lastmonth') {
-			const d = new Date(now); d.setDate(1); d.setDate(0); // last day of prev month
-			const lastEnd = bdFmt(d);
-			const [yr, mo] = lastEnd.split('-');
-			return { start: `${yr}-${mo}-01`, end: lastEnd };
-		}
-		return { start: '', end: '' };
+	function bdTodayStr(): string { return bdFmt(new Date()); }
+
+	// Parse YYYY-MM-DD safely as a local Date (avoids UTC midnight shift)
+	function parseDate(s: string): Date {
+		const [y, m, d] = s.split('-').map(Number);
+		return new Date(y, m - 1, d);
 	}
 
-	function applyPreset(preset: string) {
-		const { start, end } = presetDates(preset);
+	// dateMode: 'day' shows single day nav, 'month' shows month nav
+	let dateMode = $state<'day' | 'month'>('day');
+
+	// The anchor date for navigation — derived from current startDate
+	const navDate = $derived(startDate ? parseDate(startDate) : parseDate(bdTodayStr()));
+
+	const navLabel = $derived.by(() => {
+		if (dateMode === 'day') {
+			return new Intl.DateTimeFormat('en-US', {
+				month: 'long', day: 'numeric', year: 'numeric'
+			}).format(navDate);
+		}
+		return new Intl.DateTimeFormat('en-US', {
+			month: 'long', year: 'numeric'
+		}).format(navDate);
+	});
+
+	function applyDateRange(start: string, end: string) {
 		const url = new URL(page.url);
 		url.searchParams.set('startDate', start);
 		url.searchParams.set('endDate', end);
@@ -233,21 +232,45 @@
 		goto(url.toString(), { keepFocus: true, noScroll: true });
 	}
 
-	const activePreset = $derived.by(() => {
-		for (const p of ['today', 'yesterday', 'week', 'month', 'lastmonth'] as const) {
-			const { start, end } = presetDates(p);
-			if (startDate === start && endDate === end) return p;
+	function navigate(dir: -1 | 1) {
+		const todayBD = bdTodayStr();
+		if (dateMode === 'day') {
+			const d = new Date(navDate);
+			d.setDate(d.getDate() + dir);
+			const s = bdFmt(d);
+			if (s > todayBD) return; // can't go to future
+			applyDateRange(s, s);
+		} else {
+			const y = navDate.getFullYear();
+			const m = navDate.getMonth(); // 0-indexed
+			const newDate = new Date(y, m + dir, 1);
+			const ny = newDate.getFullYear();
+			const nm = newDate.getMonth();
+			const firstDay = `${ny}-${String(nm + 1).padStart(2, '0')}-01`;
+			// Last day of that month
+			const lastD = new Date(ny, nm + 1, 0);
+			const lastDay = bdFmt(lastD);
+			// Cap end at today for current/future months
+			const cappedEnd = lastDay > todayBD ? todayBD : lastDay;
+			if (firstDay > todayBD) return; // can't go to future month
+			applyDateRange(firstDay, cappedEnd);
 		}
-		return null;
-	});
+	}
 
-	const DATE_PRESETS = [
-		{ key: 'today',     label: 'Today' },
-		{ key: 'yesterday', label: 'Yesterday' },
-		{ key: 'week',      label: '7 Days' },
-		{ key: 'month',     label: 'This Month' },
-		{ key: 'lastmonth', label: 'Last Month' },
-	] as const;
+	function setDateMode(mode: 'day' | 'month') {
+		dateMode = mode;
+		const todayBD = bdTodayStr();
+		if (mode === 'day') {
+			// Jump to today as single day
+			applyDateRange(todayBD, todayBD);
+		} else {
+			// Jump to current month
+			const [yr, mo] = todayBD.split('-');
+			applyDateRange(`${yr}-${mo}-01`, todayBD);
+		}
+	}
+
+	const isToday = $derived(startDate === endDate && startDate === bdTodayStr());
 
 	const activeCategoryName = $derived(() => {
 		if (!selectedCategoryId) return '';
@@ -497,20 +520,33 @@
 						<p class="ml-0.5 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
 							Date Range
 						</p>
-						<div class="flex flex-wrap gap-1.5">
-							{#each DATE_PRESETS as preset}
-								<button
-									class={cn(
-										'chip-pressable rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-all',
-										activePreset === preset.key
-											? 'border-primary-500 bg-primary-600 text-white shadow-sm'
-											: 'border-slate-200 bg-white text-slate-500'
-									)}
-									onclick={() => { applyPreset(preset.key); showMobileFilters = false; }}
-								>
-									{preset.label}
-								</button>
-							{/each}
+						<!-- Mode toggle -->
+						<div class="flex gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+							<button
+								class={cn('flex-1 rounded-md py-1.5 text-[11px] font-black transition-all',
+									dateMode === 'day' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-500')}
+								onclick={() => { setDateMode('day'); showMobileFilters = false; }}
+							>Day</button>
+							<button
+								class={cn('flex-1 rounded-md py-1.5 text-[11px] font-black transition-all',
+									dateMode === 'month' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-500')}
+								onclick={() => { setDateMode('month'); showMobileFilters = false; }}
+							>Month</button>
+						</div>
+						<!-- Arrow nav -->
+						<div class="flex items-center gap-2">
+							<button
+								class="chip-pressable flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500"
+								onclick={() => navigate(-1)} aria-label="Previous"
+							><ChevronLeft size={18} /></button>
+							<span class="flex-1 text-center text-[13px] font-black text-slate-700">{navLabel}</span>
+							<button
+								class={cn('chip-pressable flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500',
+									(isToday && dateMode === 'day') && 'opacity-30 cursor-default')}
+								onclick={() => navigate(1)}
+								disabled={isToday && dateMode === 'day'}
+								aria-label="Next"
+							><ChevronRight size={18} /></button>
 						</div>
 						<div
 							class="flex h-12 items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white px-4 shadow-sm"
@@ -665,25 +701,40 @@
 				</div>
 
 				<div class="p-3">
-					<!-- Date Presets -->
+					<!-- Date Navigator -->
 					<div class="mb-4 space-y-2">
-						<p class="px-1 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">Date Range</p>
-						<div class="flex flex-wrap gap-1">
-							{#each DATE_PRESETS as preset}
-								<button
-									class={cn(
-										'chip-pressable rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-all',
-										activePreset === preset.key
-											? 'border-primary-500 bg-primary-600 text-white shadow-sm'
-											: 'border-slate-200 bg-slate-50 text-slate-500 hover:border-primary-300 hover:text-primary-600'
-									)}
-									onclick={() => applyPreset(preset.key)}
-								>
-									{preset.label}
-								</button>
-							{/each}
+						<p class="px-1 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">Date</p>
+						<!-- Mode toggle -->
+						<div class="flex gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+							<button
+								class={cn('flex-1 rounded-md py-1.5 text-[11px] font-black transition-all',
+									dateMode === 'day' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700')}
+								onclick={() => setDateMode('day')}
+							>Day</button>
+							<button
+								class={cn('flex-1 rounded-md py-1.5 text-[11px] font-black transition-all',
+									dateMode === 'month' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700')}
+								onclick={() => setDateMode('month')}
+							>Month</button>
 						</div>
-						<div class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5">
+						<!-- Arrow navigation -->
+						<div class="flex items-center gap-1">
+							<button
+								class="chip-pressable flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:border-primary-300 hover:text-primary-600"
+								onclick={() => navigate(-1)}
+								aria-label="Previous"
+							><ChevronLeft size={16} /></button>
+							<span class="flex-1 text-center text-[12px] font-black text-slate-700 leading-tight">{navLabel}</span>
+							<button
+								class={cn('chip-pressable flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:border-primary-300 hover:text-primary-600',
+									isToday && dateMode === 'day' && 'opacity-30 cursor-default')}
+								onclick={() => navigate(1)}
+								disabled={isToday && dateMode === 'day'}
+								aria-label="Next"
+							><ChevronRight size={16} /></button>
+						</div>
+						<!-- Custom range (collapsed by default, shown only when range doesn't match nav) -->
+						<div class="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50 px-1.5 py-1">
 							<DatePicker bind:value={startDate} onchange={applyFilters} placeholder="Start" className="flex-1 min-w-0" />
 							<div class="h-0.5 w-2 shrink-0 rounded-full bg-slate-300"></div>
 							<DatePicker bind:value={endDate} onchange={applyFilters} placeholder="End" className="flex-1 min-w-0" />
@@ -912,24 +963,38 @@
 							</button>
 						{/if}
 					</div>
-					<div class="flex items-center gap-1.5 rounded-xl border-2 border-slate-100 bg-white px-2 py-1.5 shadow-sm">
-						{#each DATE_PRESETS as preset}
+					<!-- Date navigator (toolbar) -->
+					<div class="flex items-center gap-1 rounded-xl border-2 border-slate-100 bg-white px-1.5 py-1 shadow-sm">
+						<!-- Mode toggle -->
+						<div class="flex gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
 							<button
-								class={cn(
-									'chip-pressable rounded-lg border px-2 py-1 text-[10px] font-bold transition-all whitespace-nowrap',
-									activePreset === preset.key
-										? 'border-primary-500 bg-primary-600 text-white shadow-sm'
-										: 'border-slate-200 bg-slate-50 text-slate-500 hover:border-primary-300 hover:text-primary-600'
-								)}
-								onclick={() => applyPreset(preset.key)}
-							>
-								{preset.label}
-							</button>
-						{/each}
+								class={cn('rounded-md px-2.5 py-1 text-[10px] font-black transition-all',
+									dateMode === 'day' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700')}
+								onclick={() => setDateMode('day')}
+							>Day</button>
+							<button
+								class={cn('rounded-md px-2.5 py-1 text-[10px] font-black transition-all',
+									dateMode === 'month' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700')}
+								onclick={() => setDateMode('month')}
+							>Month</button>
+						</div>
+						<!-- Arrow nav -->
+						<button
+							class="chip-pressable flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-primary-600"
+							onclick={() => navigate(-1)} aria-label="Previous"
+						><ChevronLeft size={14} /></button>
+						<span class="min-w-[140px] text-center text-[11px] font-black text-slate-700">{navLabel}</span>
+						<button
+							class={cn('chip-pressable flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-primary-600',
+								(isToday && dateMode === 'day') && 'opacity-30 cursor-default')}
+							onclick={() => navigate(1)}
+							disabled={isToday && dateMode === 'day'}
+							aria-label="Next"
+						><ChevronRight size={14} /></button>
 						<div class="mx-1 h-4 w-px shrink-0 bg-slate-200"></div>
-						<DatePicker bind:value={startDate} onchange={applyFilters} placeholder="Start" className="w-[130px]" />
+						<DatePicker bind:value={startDate} onchange={applyFilters} placeholder="Start" className="w-[120px]" />
 						<div class="h-0.5 w-2 shrink-0 rounded-full bg-slate-200"></div>
-						<DatePicker bind:value={endDate} onchange={applyFilters} placeholder="End" className="w-[130px]" />
+						<DatePicker bind:value={endDate} onchange={applyFilters} placeholder="End" className="w-[120px]" />
 					</div>
 					<button
 						class={cn(

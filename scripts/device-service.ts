@@ -493,6 +493,17 @@ const server = http.createServer(async (req, res) => {
 								isTrained: person.isTrained
 							});
 						} else {
+							// Guard: punch must be after the active entry to be a valid check-out
+							if (entry.timestamp <= activeLog.entryTime) {
+								console.log(
+									`[ZK:Punch] Stale punch for person ${person.id} (${entry.timestamp.toISOString()} <= entryTime ${activeLog.entryTime.toISOString()}), skipping`
+								);
+								await db
+									.update(schema.rawPunches)
+									.set({ processed: true })
+									.where(eq(schema.rawPunches.id, rawId));
+								continue;
+							}
 							console.log(`[ZK:Punch] CHECK-OUT for person ${person.id} (${method})`);
 							await db
 								.update(schema.attendanceLogs)

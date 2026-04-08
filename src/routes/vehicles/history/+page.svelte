@@ -53,11 +53,10 @@
 			tick().then(() => {
 				window.print();
 				isPreparingPrint = false;
-				if (window.opener === null) {
-					const url = new URL(page.url);
-					url.searchParams.delete('print');
-					goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
-				}
+				const url = new URL(page.url);
+				url.searchParams.delete('print');
+				url.searchParams.delete('limit');
+				goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
 			});
 		}
 	});
@@ -125,7 +124,7 @@
 		url.searchParams.set('limit', '5000');
 		url.searchParams.set('page', '1');
 		url.searchParams.set('print', '1');
-		window.open(url.toString(), '_blank');
+		goto(url.toString(), { noScroll: true });
 	}
 
 	const hasActiveFilters = $derived(
@@ -143,21 +142,8 @@
 <div class={cn('print-only', !isPrintMode && 'hidden')}>
 	<PrintHeader title="Vehicle History Report" />
 
-	<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.25rem 2rem; background: #fff; border: 1px solid #cbd5e1; border-radius: 0;">
-		<div style="display: flex; flex-direction: column; gap: 2px;">
-			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Scope</span>
-			<span style="font-size: 15px; font-weight: 900; color: #0f172a;">HISTORICAL DATA</span>
-		</div>
-		
-		<div style="display: flex; flex-direction: column; gap: 2px; align-items: center; border-left: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; padding: 0 3rem;">
-			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Total Visits</span>
-			<span style="font-size: 15px; font-weight: 900; color: #1c55a4;">{data.pagination.totalCount} Records</span>
-		</div>
-
-		<div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
-			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Report Type</span>
-			<span style="font-size: 15px; font-weight: 900; color: #0f172a;">Full Activity Log</span>
-		</div>
+	<div style="display: flex !important; gap: 2rem; margin-bottom: 1rem; font-size: 11px; font-weight: 900; color: #334155;">
+		<span>Total Records: <span style="color: #1c55a4;">{data.pagination.totalCount}</span></span>
 	</div>
 
 	<table style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: inherit;">

@@ -81,7 +81,7 @@
 		const url = new URL(page.url);
 		url.searchParams.set('print', '');
 		url.searchParams.set('limit', '999');
-		window.open(url.toString(), '_blank');
+		goto(url.toString(), { noScroll: true });
 	}
 </script>
 
@@ -94,22 +94,10 @@
 	<div style="padding: 15px 30px; font-family: 'Inter', sans-serif; color: #000; background: #fff; max-height: 100vh; overflow: hidden;">
 		<PrintHeader title="Operations Summary" />
 
-		<!-- Quick Overview Bar -->
-		<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding: 1rem 2rem; background: #fff; border: 1px solid #cbd5e1; border-radius: 0;">
-			<div style="display: flex; flex-direction: column; gap: 2px;">
-				<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Personnel Inside</span>
-				<span style="font-size: 15px; font-weight: 900; color: #000;">{data.currentlyInside.totalPeople} INDIVIDUALS</span>
-			</div>
-			
-			<div style="display: flex; flex-direction: column; gap: 2px; align-items: center; border-left: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; padding: 0 3rem;">
-				<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Total Registered</span>
-				<span style="font-size: 15px; font-weight: 900; color: #1c55a4;">{data.totalPeople} RECORDS</span>
-			</div>
-
-			<div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
-				<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Vehicles Inside</span>
-				<span style="font-size: 15px; font-weight: 900; color: #b45309;">{data.currentlyInside.totalVehicles} ON-PREMISES</span>
-			</div>
+		<div style="display: flex !important; gap: 2rem; margin-bottom: 1rem; font-size: 11px; font-weight: 900; color: #334155;">
+			<span>Personnel Inside: <span style="color: #1c55a4;">{data.currentlyInside.totalPeople}</span></span>
+			<span>Total Registered: <span style="color: #1c55a4;">{data.totalPeople}</span></span>
+			<span>Vehicles Inside: <span style="color: #b45309;">{data.currentlyInside.totalVehicles}</span></span>
 		</div>
 
 		<!-- Section 1: Summary of Personnel -->

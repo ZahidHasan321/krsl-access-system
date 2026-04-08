@@ -11,14 +11,12 @@
 		Filter,
 		Clock,
 		Users,
-		TrendingUp,
 		X,
 		RotateCcw,
 		ChevronRight,
 		ChevronLeft,
 		Printer,
 		Loader2,
-		UserCheck,
 		ArrowLeft
 	} from 'lucide-svelte';
 	import PrintHeader from '$lib/components/PrintHeader.svelte';
@@ -54,7 +52,7 @@
 		untrack(() => {
 			startDate = s;
 			endDate = e;
-			if (!searchQuery && q) searchQuery = q;
+			searchQuery = q;
 		});
 	});
 	let isPreparingPrint = $state(false);
@@ -70,11 +68,10 @@
 			tick().then(() => {
 				window.print();
 				isPreparingPrint = false;
-				if (window.opener === null) {
-					const url = new URL(page.url);
-					url.searchParams.delete('print');
-					goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
-				}
+				const url = new URL(page.url);
+				url.searchParams.delete('print');
+				url.searchParams.delete('limit');
+				goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
 			});
 		}
 	});
@@ -119,7 +116,7 @@
 		return getCategoryById(selected.parentId);
 	});
 
-	const isEmployeeView = $derived(activeRootCategoryName() === i18n.t('employee'));
+	const isEmployeeView = $derived(activeRootCategoryId() === 'employee');
 
 	const availableSubCategories = $derived(() => {
 		if (!selectedCategoryId) return [];
@@ -142,18 +139,12 @@
 		if (searchQuery) url.searchParams.set('q', searchQuery);
 		else url.searchParams.delete('q');
 		// Always keep explicit dates in the URL so filtering is shareable.
-		// If one date is cleared, mirror the other (single-day view).
 		const effectiveStart = startDate || endDate || data.filters.startDate;
 		const effectiveEnd = endDate || startDate || data.filters.endDate;
+		// Ensure end is never before start
+		const clampedEnd = effectiveEnd < effectiveStart ? effectiveStart : effectiveEnd;
 		url.searchParams.set('startDate', effectiveStart);
-		url.searchParams.set('endDate', effectiveEnd);
-		url.searchParams.set('page', '1');
-		goto(url.toString(), { keepFocus: true, noScroll: true });
-	}
-
-	function changeView(view: string) {
-		const url = new URL(page.url);
-		url.searchParams.set('view', view);
+		url.searchParams.set('endDate', clampedEnd);
 		url.searchParams.set('page', '1');
 		goto(url.toString(), { keepFocus: true, noScroll: true });
 	}
@@ -168,13 +159,12 @@
 
 	function clearFilters() {
 		searchQuery = '';
-		startDate = '';
-		endDate = '';
+		dateMode = 'day';
+		const todayBD = bdTodayStr();
 		const url = new URL(page.url);
 		url.searchParams.delete('q');
-		// Remove dates so server re-applies its defaults (last 30 days)
-		url.searchParams.delete('startDate');
-		url.searchParams.delete('endDate');
+		url.searchParams.set('startDate', todayBD);
+		url.searchParams.set('endDate', todayBD);
 		url.searchParams.delete('category');
 		url.searchParams.delete('department');
 		url.searchParams.set('page', '1');
@@ -189,7 +179,13 @@
 		return `${minutes}m`;
 	}
 
-	const hasActiveFilters = $derived(!!searchQuery || !!startDate || !!endDate || !!selectedCategoryId || !!selectedDepartment);
+	const hasActiveFilters = $derived(
+		!!searchQuery ||
+		!!selectedCategoryId ||
+		!!selectedDepartment ||
+		page.url.searchParams.has('startDate') ||
+		page.url.searchParams.has('endDate')
+	);
 
 	// --- Date Navigator ---
 	function bdFmt(d: Date): string {
@@ -272,6 +268,10 @@
 
 	const isToday = $derived(startDate === endDate && startDate === bdTodayStr());
 
+	const isSingleDay = $derived(data.filters.startDate === data.filters.endDate);
+	const printTh = "border: 1px solid #cbd5e1; padding: 6px 4px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.04em; font-size: 8px; vertical-align: bottom;";
+	const printTd = "border: 1px solid #e2e8f0; padding: 5px 4px; color: #475569; vertical-align: top;";
+
 	const activeCategoryName = $derived(() => {
 		if (!selectedCategoryId) return '';
 		const cat = getCategoryById(selectedCategoryId);
@@ -291,7 +291,7 @@
 		url.searchParams.set('limit', '5000');
 		url.searchParams.set('page', '1');
 		url.searchParams.set('print', '1');
-		window.open(url.toString(), '_blank');
+		goto(url.toString(), { noScroll: true });
 	}
 </script>
 
@@ -301,105 +301,61 @@
 
 <!-- Print-only section -->
 <div class={cn('print-only', !isPrintMode && 'hidden')}>
-	<PrintHeader title={data.view === 'detailed' ? 'People History Report' : data.view === 'daily' ? 'Daily Summary Report' : 'Monthly Summary Report'} />
+	<PrintHeader title="People History Report" subtitle="{data.filters.startDate === data.filters.endDate ? data.filters.startDate : `${data.filters.startDate} — ${data.filters.endDate}`}{activeCategoryName() ? ` | ${activeCategoryName()}` : ''}{selectedDepartment ? ` | ${selectedDepartment}` : ''}" />
 
-	<div style="display: flex !important; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.25rem 2rem; background: #fff; border: 1px solid #cbd5e1; border-radius: 0;">
-		<div style="display: flex; flex-direction: column; gap: 2px;">
-			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Total Entries</span>
-			<span style="font-size: 15px; font-weight: 900; color: #1c55a4;">{data.summary.totalEntries} Records</span>
-		</div>
-		
-		<div style="display: flex; flex-direction: column; gap: 2px; align-items: center; border-left: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; padding: 0 3rem;">
-			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Unique People</span>
-			<span style="font-size: 15px; font-weight: 900; color: #0f172a;">{data.summary.uniquePeople}</span>
-		</div>
-
-		<div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
-			<span style="font-size: 9px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em;">Activity Period</span>
-			<span style="font-size: 15px; font-weight: 900; color: #0f172a;">{data.summary.activeDays} Active Days</span>
-		</div>
+	<div style="display: flex !important; gap: 2rem; margin-bottom: 1rem; font-size: 11px; font-weight: 900; color: #334155;">
+		<span>Total Entries: <span style="color: #1c55a4;">{data.summary.totalEntries}</span></span>
+		<span>Unique People: <span style="color: #1c55a4;">{data.summary.uniquePeople}</span></span>
+		<span>Active Days: <span style="color: #1c55a4;">{data.summary.activeDays}</span></span>
 	</div>
 
-	{#if data.view === 'detailed'}
-		<table style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: inherit;">
+	<table style="width: 100%; border-collapse: collapse; font-size: 9px; font-family: inherit; table-layout: fixed;">
+			<colgroup>
+				<col style="width: 3%" />                                   <!-- # -->
+				<col style={isSingleDay ? 'width: 18%' : 'width: 15%'} />  <!-- Name -->
+				<col style="width: 7%" />                                   <!-- ID -->
+				<col style={isSingleDay ? 'width: 10%' : 'width: 9%'} />   <!-- Category -->
+				<col style={isSingleDay ? 'width: 12%' : 'width: 10%'} />  <!-- Dept -->
+				<col style={isSingleDay ? 'width: 14%' : 'width: 12%'} />  <!-- Designation -->
+				<col style="width: 4%" />                                   <!-- Trained -->
+				{#if !isSingleDay}<col style="width: 8%" />{/if}            <!-- Date -->
+				<col style="width: 9%" />                                   <!-- Entry -->
+				<col style="width: 9%" />                                   <!-- Exit -->
+				<col style="width: 6%" />                                   <!-- Duration -->
+			</colgroup>
 			<thead>
 				<tr style="background: #f0f0f0;">
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">#</th>
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Name</th>
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Identity No.</th>
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Category</th>
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Dept.</th>
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Training</th>
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Joined</th>
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Date</th>
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Entry</th>
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Exit</th>
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Duration</th>
+					<th style={printTh}>#</th>
+					<th style={printTh}>Name</th>
+					<th style={printTh}>ID</th>
+					<th style={printTh}>Cat.</th>
+					<th style={printTh}>Dept.</th>
+					<th style={printTh}>Designation</th>
+					<th style={printTh}>Trnd</th>
+					{#if !isSingleDay}<th style={printTh}>Date</th>{/if}
+					<th style={printTh}>Entry</th>
+					<th style={printTh}>Exit</th>
+					<th style={printTh}>Dur.</th>
 				</tr>
 			</thead>
 			<tbody>
 				{#each data.data as log, index (log.id || index)}
-					<tr style={index % 2 === 0 ? '' : 'background: #fff;'}>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #64748b;">{index + 1}</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: #0f172a;">{log.person.name}</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.person.codeNo || '-'}</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.category.name}</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.person.department || '-'}</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: {log.person.isTrained ? '#059669' : '#e11d48'};">
-							{log.person.isTrained ? 'TRAINED' : 'PENDING'}
-						</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">
-							{log.person.auditJoinDate ? format(log.person.auditJoinDate, 'dd-MM-yyyy') : '-'}
-						</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #64748b;">{format(parseISO(log.date), 'dd-MM-yyyy')}</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #64748b;">{format(log.entryTime, 'hh:mm a')}</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.exitTime ? format(log.exitTime, 'hh:mm a') : 'Inside'}</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 700; color: #000;">{formatDuration(log.durationSeconds)}</td>
+					<tr style={index % 2 === 0 ? 'background: #f8fafc;' : 'background: #fff;'}>
+						<td style="{printTd} color: #94a3b8;">{index + 1}</td>
+						<td style="{printTd} font-weight: 800; color: #0f172a;">{log.person.name}</td>
+						<td style={printTd}>{log.person.codeNo || '-'}</td>
+						<td style={printTd}>{log.category.name}</td>
+						<td style={printTd}>{log.person.department || '-'}</td>
+						<td style={printTd}>{log.person.designation || '-'}</td>
+						<td style="{printTd} font-weight: 800; color: {log.person.isTrained ? '#059669' : '#e11d48'}; text-align: center;">{log.person.isTrained ? 'Yes' : 'No'}</td>
+						{#if !isSingleDay}<td style="{printTd} color: #64748b;">{format(parseISO(log.date), 'dd-MM-yy')}</td>{/if}
+						<td style="{printTd} color: #64748b; white-space: nowrap;">{format(log.entryTime, 'hh:mm a')}</td>
+						<td style={printTd}>{log.exitTime ? format(log.exitTime, 'hh:mm a') : 'In'}</td>
+						<td style="{printTd} font-weight: 700; color: #000; white-space: nowrap;">{formatDuration(log.durationSeconds)}</td>
 					</tr>
 				{/each}
 			</tbody>
 		</table>
-	{:else if data.view === 'daily'}
-		<table style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: inherit;">
-			<thead>
-				<tr style="background: #f0f0f0;">
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Date</th>
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Total Entries</th>
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Unique People</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each data.data as day, index (day.date)}
-					<tr style={index % 2 === 0 ? '' : 'background: #fff;'}>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: #0f172a;">{format(parseISO(day.date), 'PPPP')}</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 700; color: #1c55a4;">{day.totalEntries}</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{day.uniquePeople}</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-	{:else if data.view === 'monthly'}
-		<table style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: inherit;">
-			<thead>
-				<tr style="background: #f0f0f0;">
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Month</th>
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Total Entries</th>
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Unique People</th>
-					<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Active Days</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each data.data as month, index (month.month)}
-					<tr style={index % 2 === 0 ? '' : 'background: #fff;'}>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: #0f172a;">{format(new Date(month.month + '-01'), 'MMMM yyyy')}</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 700; color: #1c55a4;">{month.totalEntries}</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{month.uniquePeople}</td>
-						<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{month.activeDays}</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-	{/if}
 
 	<div
 		style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em;"
@@ -474,102 +430,16 @@
 					<ArrowLeft size={16} />
 				</a>
 			</div>
-
-			<!-- Row 2: View Toggle (always visible) -->
-			<div class="flex w-full items-center gap-0.5 rounded-xl border-2 border-slate-100 bg-white p-0.5">
-				<button
-					class={cn(
-						'chip-pressable flex-1 rounded-lg py-2 text-[10px] font-black tracking-widest uppercase transition-all',
-						data.view === 'detailed'
-							? 'bg-primary-600 text-white shadow-sm'
-							: 'text-slate-400'
-					)}
-					onclick={() => changeView('detailed')}
-				>
-					{i18n.t('detailed')}
-				</button>
-				<button
-					class={cn(
-						'chip-pressable flex-1 rounded-lg py-2 text-[10px] font-black tracking-widest uppercase transition-all',
-						data.view === 'daily'
-							? 'bg-primary-600 text-white shadow-sm'
-							: 'text-slate-400'
-					)}
-					onclick={() => changeView('daily')}
-				>
-					{i18n.t('dailySummary')}
-				</button>
-				<button
-					class={cn(
-						'chip-pressable flex-1 rounded-lg py-2 text-[10px] font-black tracking-widest uppercase transition-all',
-						data.view === 'monthly'
-							? 'bg-primary-600 text-white shadow-sm'
-							: 'text-slate-400'
-					)}
-					onclick={() => changeView('monthly')}
-				>
-					{i18n.t('monthlySummary')}
-				</button>
+			<!-- Row 2: Date pickers -->
+			<div class="flex flex-wrap gap-2">
+				<DatePicker bind:value={startDate} onchange={applyFilters} placeholder="Start" className="min-w-0 flex-1" />
+				<DatePicker bind:value={endDate} onchange={applyFilters} placeholder="End" className="min-w-0 flex-1" />
 			</div>
 
 			<!-- Expandable: Date Range, Categories, Departments -->
 			{#if showMobileFilters}
 				<div class="lg:hidden" transition:slide={{ duration: 200, easing: sineInOut }}>
 					<!-- Date Range -->
-					<div class="space-y-2">
-						<p class="ml-0.5 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">
-							Date Range
-						</p>
-						<!-- Mode toggle -->
-						<div class="flex gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
-							<button
-								class={cn('flex-1 rounded-md py-1.5 text-[11px] font-black transition-all',
-									dateMode === 'day' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-500')}
-								onclick={() => { setDateMode('day'); showMobileFilters = false; }}
-							>Day</button>
-							<button
-								class={cn('flex-1 rounded-md py-1.5 text-[11px] font-black transition-all',
-									dateMode === 'month' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-500')}
-								onclick={() => { setDateMode('month'); showMobileFilters = false; }}
-							>Month</button>
-						</div>
-						<!-- Arrow nav -->
-						<div class="flex items-center gap-2">
-							<button
-								class="chip-pressable flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500"
-								onclick={() => navigate(-1)} aria-label="Previous"
-							><ChevronLeft size={18} /></button>
-							<span class="flex-1 text-center text-[13px] font-black text-slate-700">{navLabel}</span>
-							<button
-								class={cn('chip-pressable flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500',
-									(isToday && dateMode === 'day') && 'opacity-30 cursor-default')}
-								onclick={() => navigate(1)}
-								disabled={isToday && dateMode === 'day'}
-								aria-label="Next"
-							><ChevronRight size={18} /></button>
-						</div>
-						<div
-							class="flex h-12 items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white px-4 shadow-sm"
-						>
-							<Calendar size={18} class="text-slate-400" />
-							<div class="flex flex-1 items-center justify-between gap-2">
-								<DatePicker
-									bind:value={startDate}
-									onchange={applyFilters}
-									placeholder="Start"
-									className="flex-1"
-								/>
-								<div class="h-0.5 w-4 shrink-0 rounded-full bg-slate-200"></div>
-								<DatePicker
-									bind:value={endDate}
-									onchange={applyFilters}
-									placeholder="End"
-									className="flex-1"
-								/>
-							</div>
-						</div>
-					</div>
-
 					<!-- Categories -->
 					<div class="custom-scrollbar mt-3 flex gap-1.5 overflow-x-auto pb-2">
 						<button
@@ -633,6 +503,7 @@
 									onclick={() => {
 										const url = new URL(page.url);
 										url.searchParams.delete('department');
+										url.searchParams.set('page', '1');
 										goto(url.toString());
 									}}
 								>
@@ -649,6 +520,7 @@
 										onclick={() => {
 											const url = new URL(page.url);
 											url.searchParams.set('department', dept);
+											url.searchParams.set('page', '1');
 											goto(url.toString());
 										}}
 									>
@@ -732,12 +604,6 @@
 								disabled={isToday && dateMode === 'day'}
 								aria-label="Next"
 							><ChevronRight size={16} /></button>
-						</div>
-						<!-- Custom range (collapsed by default, shown only when range doesn't match nav) -->
-						<div class="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50 px-1.5 py-1">
-							<DatePicker bind:value={startDate} onchange={applyFilters} placeholder="Start" className="flex-1 min-w-0" />
-							<div class="h-0.5 w-2 shrink-0 rounded-full bg-slate-300"></div>
-							<DatePicker bind:value={endDate} onchange={applyFilters} placeholder="End" className="flex-1 min-w-0" />
 						</div>
 					</div>
 
@@ -842,6 +708,7 @@
 									onclick={() => {
 										const url = new URL(page.url);
 										url.searchParams.delete('department');
+										url.searchParams.set('page', '1');
 										goto(url.toString());
 									}}
 								>
@@ -859,6 +726,7 @@
 										onclick={() => {
 											const url = new URL(page.url);
 											url.searchParams.set('department', dept);
+											url.searchParams.set('page', '1');
 											goto(url.toString());
 										}}
 									>
@@ -869,57 +737,6 @@
 						</div>
 					{/if}
 
-					<!-- View Selector -->
-					<div class="mt-4 space-y-1.5 border-t border-slate-100 pt-3">
-						<p class="px-1 text-[9px] font-black tracking-[0.15em] text-slate-400 uppercase">Views</p>
-						<div class="flex flex-col gap-0.5">
-							<Button
-								variant={data.view === 'detailed' ? 'secondary' : 'ghost'}
-								class={cn(
-									'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
-									data.view === 'detailed'
-										? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
-										: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
-								)}
-								onclick={() => changeView('detailed')}
-							>
-								<div class="flex items-center gap-2">
-									<Clock size={14} />
-									{i18n.t('detailed')}
-								</div>
-							</Button>
-							<Button
-								variant={data.view === 'daily' ? 'secondary' : 'ghost'}
-								class={cn(
-									'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
-									data.view === 'daily'
-										? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
-										: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
-								)}
-								onclick={() => changeView('daily')}
-							>
-								<div class="flex items-center gap-2">
-									<Calendar size={14} />
-									{i18n.t('dailySummary')}
-								</div>
-							</Button>
-							<Button
-								variant={data.view === 'monthly' ? 'secondary' : 'ghost'}
-								class={cn(
-									'h-8 w-full cursor-pointer justify-start rounded-lg px-2.5 text-[13px] font-bold transition-all',
-									data.view === 'monthly'
-										? 'border-l-[3px] border-primary-600 bg-primary-50 text-primary-800'
-										: 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
-								)}
-								onclick={() => changeView('monthly')}
-							>
-								<div class="flex items-center gap-2">
-									<TrendingUp size={14} />
-									{i18n.t('monthlySummary')}
-								</div>
-							</Button>
-						</div>
-					</div>
 				</div>
 
 				<!-- Sidebar Branding -->
@@ -942,7 +759,7 @@
 			<!-- List Area with integrated toolbar -->
 			<div class="lg:overflow-hidden lg:rounded-2xl lg:border lg:border-slate-200/80 lg:bg-white lg:shadow-sm">
 				<!-- Integrated Desktop Toolbar -->
-				<div class="hidden items-center gap-2.5 border-b border-slate-200 bg-slate-50/80 px-4 py-3 lg:flex">
+				<div class="hidden flex-wrap items-center gap-2.5 border-b border-slate-200 bg-slate-50/80 px-4 py-3 lg:flex">
 					<div class="group relative min-w-0 flex-1">
 						<div class="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500">
 							<Search size={17} />
@@ -963,38 +780,11 @@
 							</button>
 						{/if}
 					</div>
-					<!-- Date navigator (toolbar) -->
-					<div class="flex items-center gap-1 rounded-xl border-2 border-slate-100 bg-white px-1.5 py-1 shadow-sm">
-						<!-- Mode toggle -->
-						<div class="flex gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
-							<button
-								class={cn('rounded-md px-2.5 py-1 text-[10px] font-black transition-all',
-									dateMode === 'day' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700')}
-								onclick={() => setDateMode('day')}
-							>Day</button>
-							<button
-								class={cn('rounded-md px-2.5 py-1 text-[10px] font-black transition-all',
-									dateMode === 'month' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700')}
-								onclick={() => setDateMode('month')}
-							>Month</button>
-						</div>
-						<!-- Arrow nav -->
-						<button
-							class="chip-pressable flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-primary-600"
-							onclick={() => navigate(-1)} aria-label="Previous"
-						><ChevronLeft size={14} /></button>
-						<span class="min-w-[140px] text-center text-[11px] font-black text-slate-700">{navLabel}</span>
-						<button
-							class={cn('chip-pressable flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-primary-600',
-								(isToday && dateMode === 'day') && 'opacity-30 cursor-default')}
-							onclick={() => navigate(1)}
-							disabled={isToday && dateMode === 'day'}
-							aria-label="Next"
-						><ChevronRight size={14} /></button>
-						<div class="mx-1 h-4 w-px shrink-0 bg-slate-200"></div>
-						<DatePicker bind:value={startDate} onchange={applyFilters} placeholder="Start" className="w-[120px]" />
-						<div class="h-0.5 w-2 shrink-0 rounded-full bg-slate-200"></div>
-						<DatePicker bind:value={endDate} onchange={applyFilters} placeholder="End" className="w-[120px]" />
+					<!-- Date inputs -->
+					<div class="flex w-[340px] items-center gap-1 rounded-xl border-2 border-slate-200 bg-white px-1 shadow-sm">
+						<DatePicker bind:value={startDate} onchange={applyFilters} placeholder="Start date" className="flex-1 min-w-0" />
+						<div class="h-0.5 w-2 shrink-0 rounded-full bg-slate-300"></div>
+						<DatePicker bind:value={endDate} onchange={applyFilters} placeholder="End date" className="flex-1 min-w-0" />
 					</div>
 					<button
 						class={cn(
@@ -1019,284 +809,99 @@
 				<div class="relative min-h-full lg:bg-slate-100/50">
 			<!-- List Section -->
 			<div class="space-y-4 lg:p-3">
-				<!-- Mobile Card View -->
-				<div class="space-y-3 lg:hidden">
-					{#if data.view === 'detailed'}
-						{#each data.data as log (log.id)}
-							<Card.Root
-								class="card-pressable cursor-pointer border-2 border-slate-100 bg-white active:bg-slate-50/80"
-								onclick={() => goto(`/people/${log.person.id}`)}
-							>
-								<Card.Content class="p-4">
-									<div class="flex items-center justify-between">
-										<div class="min-w-0 flex-1">
-											<div class="flex items-center gap-2">
-												<h3 class="truncate text-[15px] font-black text-slate-900">{log.person.name}</h3>
-												{#if !log.exitTime}
-													<Badge class={cn('shrink-0 text-[9px] font-bold capitalize', statusBadgeClasses.on_premises)}>
-														{i18n.t('inside')}
-													</Badge>
-												{/if}
-											</div>
-											<div class="mt-0.5 flex items-center gap-2 text-[10px] text-slate-400">
-												<span class="font-bold">{log.category.name}</span>
-												{#if log.person.codeNo}
-													<span>#{log.person.codeNo}</span>
-												{/if}
-												{#if log.person.department}
-													<span>{log.person.department}</span>
-												{/if}
-											</div>
-										</div>
-										<div class="shrink-0 text-right">
-											<p class="text-sm font-black tabular-nums text-primary-700">{formatDuration(log.durationSeconds)}</p>
-										</div>
-									</div>
-									<div class="mt-2 flex items-center gap-3 text-[11px] font-bold text-slate-400">
-										<span class="tabular-nums">{format(parseISO(log.date), 'dd-MM-yyyy')}</span>
-										<span class="tabular-nums">{format(log.entryTime, 'hh:mm a')} → {log.exitTime ? format(log.exitTime, 'hh:mm a') : 'now'}</span>
-										{#if !isEmployeeView && log.purpose}
-											<span class="truncate text-slate-500">{log.purpose}</span>
-										{/if}
-									</div>
-								</Card.Content>
-							</Card.Root>
-						{:else}
-							<div
-								class="flex flex-col items-center justify-center space-y-6 rounded-3xl py-24 text-center"
-							>
-								<div
-									class="flex size-16 items-center justify-center mx-auto rounded-full bg-slate-100 text-slate-300 md:size-24"
-								>
-									<Users size={48} />
-								</div>
-								<div class="space-y-2 px-6">
-									<p class="text-lg font-black text-slate-600 md:text-xl">{i18n.t('noResults')}</p>
-									<p
-										class="text-[10px] font-bold tracking-widest text-slate-400 uppercase md:text-sm"
-									>
-										No history records found matching your criteria
-									</p>
-								</div>
-							</div>
-						{/each}
-					{:else if data.view === 'daily'}
-						{#each data.data as day}
-							<Card.Root class="card-pressable border-2 border-slate-100 bg-white active:bg-slate-50/80">
-								<Card.Content class="p-4">
-									<div class="mb-2 font-bold text-slate-900">
-										{format(parseISO(day.date), 'dd-MM-yyyy')}
-									</div>
-									<div class="grid grid-cols-3 gap-2 text-center">
-										<div class="rounded-lg bg-primary-50 p-2">
-											<p class="text-xl font-black text-primary-600">{day.totalEntries}</p>
-											<p class="text-[10px] font-bold text-primary-500 uppercase">
-												{i18n.t('entries')}
-											</p>
-										</div>
-										<div class="rounded-lg bg-emerald-50 p-2">
-											<p class="text-xl font-black text-emerald-600">{day.uniquePeople}</p>
-											<p class="text-[10px] font-bold text-emerald-500 uppercase">
-												{i18n.t('people')}
-											</p>
-										</div>
-										<div class="rounded-lg bg-slate-100 p-2">
-											<p class="text-xl font-black text-slate-700">
-												{formatDuration(day.totalDuration)}
-											</p>
-											<p class="text-[10px] font-bold text-slate-500 uppercase">Hours</p>
-										</div>
-									</div>
-								</Card.Content>
-							</Card.Root>
-						{/each}
-					{:else}
-						{#each data.data as month}
-							<Card.Root class="card-pressable border-2 border-slate-100 bg-white active:bg-slate-50/80">
-								<Card.Content class="p-4">
-									<div class="mb-2 font-black text-slate-900 uppercase">
-										{format(parseISO(month.month + '-01'), 'MMMM yyyy')}
-									</div>
-									<div class="grid grid-cols-3 gap-2 text-center">
-										<div class="rounded-lg bg-primary-50 p-2">
-											<p class="text-xl font-black text-primary-600">{month.totalEntries}</p>
-											<p class="text-[10px] font-bold text-primary-500 uppercase">
-												{i18n.t('entries')}
-											</p>
-										</div>
-										<div class="rounded-lg bg-emerald-50 p-2">
-											<p class="text-xl font-black text-emerald-600">{month.uniquePeople}</p>
-											<p class="text-[10px] font-bold text-emerald-500 uppercase">
-												{i18n.t('people')}
-											</p>
-										</div>
-										<div class="rounded-lg bg-amber-50 p-2">
-											<p class="text-xl font-black text-amber-600">{month.activeDays}</p>
-											<p class="text-[10px] font-bold text-amber-500 uppercase">Days</p>
-										</div>
-									</div>
-								</Card.Content>
-							</Card.Root>
-						{/each}
-					{/if}
-				</div>
-
-				<!-- Desktop Table View -->
-				<div class="hidden lg:block">
+				<!-- Table View -->
+				<div class="overflow-x-auto">
 					<Card.Root class="overflow-hidden rounded-xl border-2 border-slate-200 bg-white shadow-sm">
 						<Table.Root>
-							{#if data.view === 'detailed'}
-								<Table.Header>
-									<Table.Row class="bg-slate-200 hover:bg-slate-200">
-										<Table.Head class="font-black text-slate-800">{i18n.t('name')}</Table.Head>
-										<Table.Head class="font-black text-slate-800">{i18n.t('category')}</Table.Head>
-										<Table.Head class="font-black text-slate-800">{i18n.t('date')}</Table.Head>
-										<Table.Head class="font-black text-slate-800">{i18n.t('entryTime')}</Table.Head>
-										<Table.Head class="font-black text-slate-800">{i18n.t('exitTime')}</Table.Head>
-										{#if !isEmployeeView}
-											<Table.Head class="font-black text-slate-800">{i18n.t('purpose')}</Table.Head>
-										{/if}
-										<Table.Head class="font-black text-slate-800">{i18n.t('duration')}</Table.Head>
-									</Table.Row>
-								</Table.Header>
-								<Table.Body>
-									{#each data.data as log (log.id)}
-										<Table.Row
-											class="group cursor-pointer"
-											onclick={() => goto(`/people/${log.person.id}`)}
-										>
-											<Table.Cell class="py-4">
-												<div
-													class="font-bold text-slate-900 transition-colors group-hover:text-primary-600"
+						<Table.Header>
+							<Table.Row class="bg-slate-200 hover:bg-slate-200">
+								<Table.Head class="font-black text-slate-800">{i18n.t('name')}</Table.Head>
+								<Table.Head class="font-black text-slate-800">{i18n.t('category')}</Table.Head>
+								<Table.Head class="font-black text-slate-800">{i18n.t('date')}</Table.Head>
+								<Table.Head class="font-black text-slate-800">{i18n.t('entryTime')}</Table.Head>
+								<Table.Head class="font-black text-slate-800">{i18n.t('exitTime')}</Table.Head>
+								{#if !isEmployeeView}
+									<Table.Head class="font-black text-slate-800">{i18n.t('purpose')}</Table.Head>
+								{/if}
+								<Table.Head class="font-black text-slate-800">{i18n.t('duration')}</Table.Head>
+							</Table.Row>
+						</Table.Header>
+						<Table.Body>
+							{#each data.data as log (log.id)}
+								<Table.Row
+									class="group cursor-pointer"
+									onclick={() => goto(`/people/${log.person.id}`)}
+								>
+									<Table.Cell class="py-4">
+										<div class="font-bold text-slate-900 transition-colors group-hover:text-primary-600">
+											{log.person.name}
+										</div>
+										<div class="flex items-center gap-2">
+											<span class="text-[10px] font-bold tracking-tight text-slate-400 uppercase">
+												{#if log.person.codeNo}#{log.person.codeNo}{/if}
+												{#if log.person.codeNo && log.person.company} • {/if}
+												{#if log.person.company}{log.person.company}{/if}
+												{#if !log.person.codeNo && !log.person.company}-{/if}
+											</span>
+										</div>
+									</Table.Cell>
+									<Table.Cell>
+										<div class="flex flex-col gap-1.5">
+											<Badge
+												variant="outline"
+												class={cn(
+													'w-fit text-[10px] font-bold tracking-wider capitalize',
+													getCategoryBadgeClass(log.category.slug)
+												)}
+											>
+												{log.category.name}
+											</Badge>
+											{#if log.person.department}
+												<Badge
+													variant="outline"
+													class="w-fit border-blue-200 bg-blue-50 text-[9px] font-black tracking-widest text-blue-700 uppercase"
 												>
-													{log.person.name}
-												</div>
-												<div class="flex items-center gap-2">
-													<span class="text-[10px] font-bold tracking-tight text-slate-400 uppercase">
-														{#if log.person.codeNo}#{log.person.codeNo}{/if}
-														{#if log.person.codeNo && log.person.company} • {/if}
-														{#if log.person.company}{log.person.company}{/if}
-														{#if !log.person.codeNo && !log.person.company}-{/if}
-													</span>
-												</div>
-											</Table.Cell>
-											<Table.Cell>
-												<div class="flex flex-col gap-1.5">
-													<Badge
-														variant="outline"
-														class={cn(
-															'w-fit text-[10px] font-bold tracking-wider capitalize',
-															getCategoryBadgeClass(log.category.slug)
-														)}
-													>
-														{log.category.name}
-													</Badge>
-													{#if log.person.department}
-														<Badge
-															variant="outline"
-															class="w-fit border-blue-200 bg-blue-50 text-[9px] font-black tracking-widest text-blue-700 uppercase"
-														>
-															{log.person.department}
-														</Badge>
-													{/if}
-												</div>
-											</Table.Cell>
-											<Table.Cell class="py-4 font-medium text-slate-600"
-												>{format(parseISO(log.date), 'dd-MM-yyyy')}</Table.Cell
-											>
-											<Table.Cell class="py-4 font-black text-slate-700"
-												>{format(log.entryTime, 'hh:mm a')}</Table.Cell
-											>
-											<Table.Cell class="py-4 font-black text-slate-700">
-												{log.exitTime ? format(log.exitTime, 'hh:mm a') : '-'}
-											</Table.Cell>
-											{#if !isEmployeeView}
-												<Table.Cell class="py-4 font-medium text-slate-600">
-													{log.purpose || '-'}
-												</Table.Cell>
+													{log.person.department}
+												</Badge>
 											{/if}
-											<Table.Cell class="py-4 font-bold tabular-nums text-slate-700">
-												<div class="flex flex-col gap-0.5">
-													<span>{formatDuration(log.durationSeconds)}</span>
-													{#if !log.exitTime}
-														<Badge
-															class={cn(
-																'h-4 w-fit text-[9px] font-bold capitalize',
-																statusBadgeClasses.on_premises
-															)}
-														>
-															{i18n.t('inside')}
-														</Badge>
-													{/if}
-												</div>
-											</Table.Cell>
-										</Table.Row>
-									{:else}
-										<Table.Row>
-											<Table.Cell
-												colspan={isEmployeeView ? 6 : 7}
-												class="h-64 text-center text-slate-400 font-bold"
-												>{i18n.t('noData')}</Table.Cell
-											>
-										</Table.Row>
-									{/each}
-								</Table.Body>
-							{:else if data.view === 'daily'}
-								<Table.Header>
-									<Table.Row class="bg-slate-200 hover:bg-slate-200">
-										<Table.Head class="font-black text-slate-800">{i18n.t('date')}</Table.Head>
-										<Table.Head class="font-black text-slate-800">{i18n.t('entries')}</Table.Head>
-										<Table.Head class="font-black text-slate-800">Unique People</Table.Head>
-										<Table.Head class="font-black text-slate-800">Total Hours</Table.Head>
-									</Table.Row>
-								</Table.Header>
-								<Table.Body>
-									{#each data.data as day}
-										<Table.Row>
-											<Table.Cell class="py-4 font-bold text-slate-900"
-												>{format(parseISO(day.date), 'dd-MM-yyyy')}</Table.Cell
-											>
-											<Table.Cell class="py-4 font-black text-primary-600"
-												>{day.totalEntries}</Table.Cell
-											>
-											<Table.Cell class="py-4 font-black text-emerald-600"
-												>{day.uniquePeople}</Table.Cell
-											>
-											<Table.Cell class="py-4 font-black text-slate-700"
-												>{formatDuration(day.totalDuration)}</Table.Cell
-											>
-										</Table.Row>
-									{/each}
-								</Table.Body>
-							{:else if data.view === 'monthly'}
-								<Table.Header>
-									<Table.Row class="bg-slate-200 hover:bg-slate-200">
-										<Table.Head class="font-black text-slate-800">{i18n.t('month')}</Table.Head>
-										<Table.Head class="font-black text-slate-800">{i18n.t('entries')}</Table.Head>
-										<Table.Head class="font-black text-slate-800">Unique People</Table.Head>
-										<Table.Head class="font-black text-slate-800">Active Days</Table.Head>
-									</Table.Row>
-								</Table.Header>
-								<Table.Body>
-									{#each data.data as month}
-										<Table.Row>
-											<Table.Cell class="py-4 font-bold text-slate-900 uppercase">
-												{format(parseISO(month.month + '-01'), 'MMMM yyyy')}
-											</Table.Cell>
-											<Table.Cell class="py-4 font-black text-primary-600"
-												>{month.totalEntries}</Table.Cell
-											>
-											<Table.Cell class="py-4 font-black text-emerald-600"
-												>{month.uniquePeople}</Table.Cell
-											>
-											<Table.Cell class="py-4 font-black text-amber-600"
-												>{month.activeDays}</Table.Cell
-											>
-										</Table.Row>
-									{/each}
-								</Table.Body>
-							{/if}
-						</Table.Root>
+										</div>
+									</Table.Cell>
+									<Table.Cell class="py-4 font-medium text-slate-600"
+										>{format(parseISO(log.date), 'dd-MM-yyyy')}</Table.Cell
+									>
+									<Table.Cell class="py-4 font-black text-slate-700"
+										>{format(log.entryTime, 'hh:mm a')}</Table.Cell
+									>
+									<Table.Cell class="py-4 font-black text-slate-700">
+										{log.exitTime ? format(log.exitTime, 'hh:mm a') : '-'}
+									</Table.Cell>
+									{#if !isEmployeeView}
+										<Table.Cell class="py-4 font-medium text-slate-600">
+											{log.purpose || '-'}
+										</Table.Cell>
+									{/if}
+									<Table.Cell class="py-4 font-bold tabular-nums text-slate-700">
+										<div class="flex flex-col gap-0.5">
+											<span>{formatDuration(log.durationSeconds)}</span>
+											{#if !log.exitTime}
+												<Badge class={cn('h-4 w-fit text-[9px] font-bold capitalize', statusBadgeClasses.on_premises)}>
+													{i18n.t('inside')}
+												</Badge>
+											{/if}
+										</div>
+									</Table.Cell>
+								</Table.Row>
+							{:else}
+								<Table.Row>
+									<Table.Cell
+										colspan={isEmployeeView ? 6 : 7}
+										class="h-64 text-center text-slate-400 font-bold"
+										>{i18n.t('noData')}</Table.Cell
+									>
+								</Table.Row>
+							{/each}
+						</Table.Body>
+					</Table.Root>
 					</Card.Root>
 				</div>
 

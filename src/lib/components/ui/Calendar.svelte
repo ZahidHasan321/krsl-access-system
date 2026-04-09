@@ -71,7 +71,7 @@
 											class={cn(
 												'group inline-flex size-8 items-center justify-center rounded-lg border border-transparent bg-transparent p-0 text-sm font-medium whitespace-nowrap transition-all hover:border-primary-500 hover:text-primary-600 active:scale-95',
 												'data-[selected]:bg-primary-600 data-[selected]:text-white data-[selected]:hover:bg-primary-700 data-[selected]:hover:text-white',
-												'data-[today]:border-primary-200 data-[today]:text-primary-600',
+												'data-[today]:not-data-[selected]:border-primary-200 data-[today]:not-data-[selected]:text-primary-600',
 												'data-[outside-month]:pointer-events-none data-[outside-month]:text-slate-300',
 												'data-[disabled]:pointer-events-none data-[disabled]:text-slate-300'
 											)}

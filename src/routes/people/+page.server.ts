@@ -329,6 +329,7 @@ export const actions: Actions = {
 			notifyChange();
 			return { success: true, personId: id, biometricId: nextBiometricId, personName: name };
 		} catch (e: any) {
+			console.error('[People Create] Error:', e);
 			if (e.message?.includes('duplicate key value violates unique constraint')) {
 				return fail(400, { message: 'Code Number already exists' });
 			}

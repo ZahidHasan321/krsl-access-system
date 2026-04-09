@@ -72,7 +72,7 @@
 	let selectedSubCategoryId = $state<string>('');
 
 	let isTrained = $state(false);
-	let autoCheckIn = $state(true);
+	let autoCheckIn = $state(false);
 	let location = $state<'ship' | 'yard' | ''>('');
 	let photoPreview = $state<string | null>(null);
 	let purpose = $state('');
@@ -147,7 +147,7 @@
 		selectedRootCategoryId = '';
 		selectedSubCategoryId = '';
 		isTrained = false;
-		autoCheckIn = true;
+		autoCheckIn = false;
 		location = '';
 		photoPreview = null;
 		purpose = '';

@@ -8,7 +8,7 @@ const translations = {
 		people: 'People',
 		personLabel: 'Person',
 		entryLog: 'Entry Log',
-		history: 'Logs',
+		history: 'History',
 		vehicles: 'Vehicles',
 		admin: 'Admin',
 

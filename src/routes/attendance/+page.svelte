@@ -97,6 +97,8 @@
 	let debounceTimer: any;
 	let isPrintConfirmOpen = $state(false);
 	let isPrintMode = $derived(page.url.searchParams.has('print'));
+	const printTh = "border: 1px solid #cbd5e1; padding: 6px 4px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.04em; font-size: 8px; vertical-align: bottom;";
+	const printTd = "border: 1px solid #e2e8f0; padding: 5px 4px; color: #475569; vertical-align: top;";
 
 	$effect(() => {
 		if (isPrintMode) {
@@ -328,35 +330,50 @@
 
 <!-- Print-only section -->
 <div class={cn('print-only', !isPrintMode && 'hidden')}>
-	<PrintHeader title="Entry Log Report" />
+	<PrintHeader title="Entry History Report" />
 
 	<div style="display: flex !important; gap: 2rem; margin-bottom: 1rem; font-size: 11px; font-weight: 900; color: #334155;">
 		<span>Status: <span style="color: #1c55a4;">On Premises</span></span>
 		<span>Personnel Count: <span style="color: #1c55a4;">{data.pagination.totalCount}</span></span>
 	</div>
 
-	<table style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: inherit;">
+	<table style="width: 100%; border-collapse: collapse; font-size: 9px; font-family: inherit; table-layout: fixed;">
+		<colgroup>
+			<col style="width: 3%" />   <!-- # -->
+			<col style="width: 18%" />  <!-- Name -->
+			<col style="width: 8%" />   <!-- ID -->
+			<col style="width: 10%" />  <!-- Category -->
+			<col style="width: 12%" />  <!-- Dept -->
+			<col style="width: 14%" />  <!-- Designation -->
+			<col style="width: 5%" />   <!-- Trained -->
+			<col style="width: 10%" />  <!-- Entry -->
+			<col style="width: 8%" />   <!-- Duration -->
+		</colgroup>
 		<thead>
 			<tr style="background: #f0f0f0;">
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">#</th>
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Name</th>
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Identity No.</th>
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Category</th>
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Company</th>
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Entry Time</th>
-				<th style="border: 1px solid #cbd5e1; padding: 10px 8px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Duration</th>
+				<th style={printTh}>#</th>
+				<th style={printTh}>Name</th>
+				<th style={printTh}>ID</th>
+				<th style={printTh}>Cat.</th>
+				<th style={printTh}>Dept.</th>
+				<th style={printTh}>Designation</th>
+				<th style={printTh}>Trnd</th>
+				<th style={printTh}>Entry</th>
+				<th style={printTh}>Dur.</th>
 			</tr>
 		</thead>
 		<tbody>
 			{#each logs as log, index (log.id)}
-				<tr style={index % 2 === 0 ? '' : 'background: #fff;'}>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #64748b;">{index + 1}</td>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 800; color: #0f172a;">{log.person.name}</td>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.person.codeNo || '-'}</td>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.category.name}</td>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{log.person.company || '-'}</td>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; color: #475569;">{format(log.entryTime, 'hh:mm a')}</td>
-					<td style="border: 1px solid #e2e8f0; padding: 8px; font-weight: 700; color: #000;">
+				<tr style={index % 2 === 0 ? 'background: #f8fafc;' : 'background: #fff;'}>
+					<td style="{printTd} color: #94a3b8;">{index + 1}</td>
+					<td style="{printTd} font-weight: 800; color: #0f172a;">{log.person.name}</td>
+					<td style={printTd}>{log.person.codeNo || '-'}</td>
+					<td style={printTd}>{log.category.name}</td>
+					<td style={printTd}>{log.person.department || '-'}</td>
+					<td style={printTd}>{log.person.designation || '-'}</td>
+					<td style="{printTd} font-weight: 800; color: {log.person.isTrained ? '#059669' : '#e11d48'}; text-align: center;">{log.person.isTrained ? 'Yes' : 'No'}</td>
+					<td style="{printTd} color: #64748b; white-space: nowrap;">{format(log.entryTime, 'hh:mm a')}</td>
+					<td style="{printTd} font-weight: 700; color: #000; white-space: nowrap;">
 						{formatDuration(Math.floor((new Date().getTime() - log.entryTime.getTime()) / 1000))}
 					</td>
 				</tr>
@@ -376,7 +393,7 @@
 {#if isPreparingPrint}
 	<div class="fixed inset-0 z-100 flex flex-col items-center justify-center bg-white">
 		<Loader2 class="mb-4 animate-spin text-primary-600" size={48} />
-		<h2 class="text-xl font-black text-slate-900">Preparing Entry Log Report…</h2>
+		<h2 class="text-xl font-black text-slate-900">Preparing Entry History Report…</h2>
 		<p class="mt-2 font-bold text-slate-500">Fetching all entries currently inside</p>
 	</div>
 {/if}

@@ -1,14 +1,25 @@
 import { db } from '$lib/server/db';
 import { attendanceLogs, people } from '$lib/server/db/schema';
-import { eq, and, count } from 'drizzle-orm';
+import { eq, and, count, inArray } from 'drizzle-orm';
 import { bdDateString } from '$lib/zkteco';
 import { fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { requirePermission } from '$lib/server/rbac';
 import { notifyChange, notifyCheckIn, notifyCheckOut } from '$lib/server/events';
-import { getAttendanceLogs } from '$lib/server/attendance-service';
+import { getAttendanceLogs, getActiveLogIds } from '$lib/server/attendance-service';
 import { createNotification } from '$lib/server/push';
 import { getUniqueDepartments } from '$lib/server/db/department-utils';
+
+function parsePositiveIntParam(
+	value: string | null,
+	fallback: number,
+	min: number,
+	max: number
+): number {
+	const parsed = Number.parseInt(value ?? '', 10);
+	if (!Number.isFinite(parsed)) return fallback;
+	return Math.min(max, Math.max(min, parsed));
+}
 
 export const load: PageServerLoad = async (event) => {
 	requirePermission(event.locals, 'people.view');
@@ -18,34 +29,36 @@ export const load: PageServerLoad = async (event) => {
 	const location = event.url.searchParams.get('location') || '';
 	const department = event.url.searchParams.get('department') || '';
 	const sortBy = (event.url.searchParams.get('sort') || 'recent') as 'recent' | 'duration';
-	const page = parseInt(event.url.searchParams.get('page') || '1');
+	const page = parsePositiveIntParam(event.url.searchParams.get('page'), 1, 1, 1000000);
 	// Default to 50 items for better performance with infinite scroll
-	const limit = Math.min(2000, Math.max(1, parseInt(event.url.searchParams.get('limit') || '50')));
+	const limit = parsePositiveIntParam(event.url.searchParams.get('limit'), 50, 1, 2000);
 
-	const [result, [totalInsideRes], [yardCountRes], [shipCountRes], departments] = await Promise.all([
-		getAttendanceLogs({
-			page,
-			limit,
-			query,
-			categoryId,
-			location,
-			department,
-			sortBy
-		}),
-		db
-			.select({ value: count() })
-			.from(attendanceLogs)
-			.where(eq(attendanceLogs.status, 'on_premises')),
-		db
-			.select({ value: count() })
-			.from(attendanceLogs)
-			.where(and(eq(attendanceLogs.status, 'on_premises'), eq(attendanceLogs.location, 'yard'))),
-		db
-			.select({ value: count() })
-			.from(attendanceLogs)
-			.where(and(eq(attendanceLogs.status, 'on_premises'), eq(attendanceLogs.location, 'ship'))),
-		getUniqueDepartments()
-	]);
+	const [result, [totalInsideRes], [yardCountRes], [shipCountRes], departments] = await Promise.all(
+		[
+			getAttendanceLogs({
+				page,
+				limit,
+				query,
+				categoryId,
+				location,
+				department,
+				sortBy
+			}),
+			db
+				.select({ value: count() })
+				.from(attendanceLogs)
+				.where(eq(attendanceLogs.status, 'on_premises')),
+			db
+				.select({ value: count() })
+				.from(attendanceLogs)
+				.where(and(eq(attendanceLogs.status, 'on_premises'), eq(attendanceLogs.location, 'yard'))),
+			db
+				.select({ value: count() })
+				.from(attendanceLogs)
+				.where(and(eq(attendanceLogs.status, 'on_premises'), eq(attendanceLogs.location, 'ship'))),
+			getUniqueDepartments()
+		]
+	);
 
 	return {
 		logs: result.logs,
@@ -185,6 +198,99 @@ export const actions: Actions = {
 		} catch (err) {
 			console.error('Check-out error:', err);
 			return fail(500, { message: 'Failed to process check-out' });
+		}
+	},
+
+	checkOutBatch: async (event) => {
+		requirePermission(event.locals, 'people.create');
+		const data = await event.request.formData();
+
+		const selectAll = data.get('selectAll') === 'true';
+		const logIdsRaw = data.get('logIds') as string | null;
+
+		let targetIds: string[] = [];
+
+		if (selectAll) {
+			targetIds = await getActiveLogIds({
+				query: (data.get('q') as string) || '',
+				categoryId: (data.get('category') as string) || '',
+				location: (data.get('location') as string) || '',
+				department: (data.get('department') as string) || ''
+			});
+		} else if (logIdsRaw) {
+			try {
+				const parsed = JSON.parse(logIdsRaw);
+				if (Array.isArray(parsed)) {
+					targetIds = parsed.filter((v): v is string => typeof v === 'string' && v.length > 0);
+				}
+			} catch {
+				return fail(400, { message: 'Invalid logIds payload' });
+			}
+		}
+
+		if (targetIds.length === 0) {
+			return fail(400, { message: 'No logs selected' });
+		}
+
+		try {
+			const activeLogs = await db
+				.select({ id: attendanceLogs.id, personId: attendanceLogs.personId })
+				.from(attendanceLogs)
+				.where(
+					and(inArray(attendanceLogs.id, targetIds), eq(attendanceLogs.status, 'on_premises'))
+				);
+
+			if (activeLogs.length === 0) {
+				return fail(400, { message: 'No active logs to check out' });
+			}
+
+			const activeIds = activeLogs.map((l) => l.id);
+			const personIds = [...new Set(activeLogs.map((l) => l.personId))];
+
+			const now = new Date();
+			await db
+				.update(attendanceLogs)
+				.set({ exitTime: now, status: 'checked_out' })
+				.where(
+					and(inArray(attendanceLogs.id, activeIds), eq(attendanceLogs.status, 'on_premises'))
+				);
+
+			const checkedOutPeople = await db
+				.select({
+					id: people.id,
+					name: people.name,
+					photoUrl: people.photoUrl,
+					categoryId: people.categoryId
+				})
+				.from(people)
+				.where(inArray(people.id, personIds));
+
+			const personById = new Map(checkedOutPeople.map((p) => [p.id, p]));
+			for (const log of activeLogs) {
+				const person = personById.get(log.personId);
+				if (!person) continue;
+				notifyCheckOut({
+					personId: person.id,
+					personName: person.name,
+					verifyMethod: 'manual',
+					photoUrl: person.photoUrl,
+					logId: log.id,
+					categoryId: person.categoryId
+				});
+			}
+
+			await createNotification({
+				userId: event.locals.user?.id,
+				type: 'checkout',
+				title: 'Batch Check-Out',
+				message: `${event.locals.user?.username || 'Admin'} checked out ${activeIds.length} ${activeIds.length === 1 ? 'person' : 'people'}`
+			});
+
+			notifyChange();
+			return { success: true, count: activeIds.length };
+		} catch (err) {
+			console.error('Batch check-out error:', err);
+			return fail(500, { message: 'Failed to process batch check-out' });
 		}
 	},
 

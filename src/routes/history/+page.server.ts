@@ -1,9 +1,8 @@
 import { db } from '$lib/server/db';
 import { attendanceLogs, people, personCategories } from '$lib/server/db/schema';
-import { eq, and, desc, sql, gte, lte, or, ilike, count, inArray, type SQL } from 'drizzle-orm';
-import { todayStringBD, bdDateStringDaysAgo } from '$lib/zkteco';
+import { eq, and, desc, sql, count, gte, lte, or, ilike, inArray, type SQL } from 'drizzle-orm';
+import { todayStringBD } from '$lib/zkteco';
 import { requirePermission } from '$lib/server/rbac';
-import { getFlatCategoryList } from '$lib/server/db/category-utils';
 import { getUniqueDepartments } from '$lib/server/db/department-utils';
 import type { PageServerLoad } from './$types';
 
@@ -43,20 +42,21 @@ function buildRootLookup() {
 export const load: PageServerLoad = async (event) => {
 	requirePermission(event.locals, 'people.view');
 
-	const rawView = event.url.searchParams.get('view') || 'detailed';
-	const view = ['detailed', 'daily', 'monthly'].includes(rawView) ? rawView : 'detailed';
 	const startDateParam = event.url.searchParams.get('startDate');
 	const endDateParam = event.url.searchParams.get('endDate');
 
 	// If only one date is provided, use it as both (single-day view).
-	// If neither is provided, default to last 30 days in BD time.
-	const startDate = startDateParam || (endDateParam ?? bdDateStringDaysAgo(30));
+	// If neither is provided, default to today in BD time.
+	const startDate = startDateParam || (endDateParam ?? todayStringBD());
 	const endDate = endDateParam || (startDateParam ?? todayStringBD());
 	const categoryId = event.url.searchParams.get('category') || '';
 	const department = event.url.searchParams.get('department') || '';
 	const query = (event.url.searchParams.get('q') || '').trim();
+	const isPrint = event.url.searchParams.has('print');
 	const page = parseInt(event.url.searchParams.get('page') || '1');
-	const limit = Math.min(100, Math.max(1, parseInt(event.url.searchParams.get('limit') || '20')));
+	const limit = isPrint
+		? Math.min(5000, Math.max(1, parseInt(event.url.searchParams.get('limit') || '5000')))
+		: Math.min(100, Math.max(1, parseInt(event.url.searchParams.get('limit') || '20')));
 	const offset = (page - 1) * limit;
 
 	const rootLookup = buildRootLookup();
@@ -92,114 +92,58 @@ export const load: PageServerLoad = async (event) => {
 
 	const where = and(...whereClauses.filter((c): c is SQL => !!c));
 
-	let data: any[] = [];
-	let totalCount = 0;
+	const rows = await db
+		.select({
+			id: attendanceLogs.id,
+			entryTime: attendanceLogs.entryTime,
+			exitTime: attendanceLogs.exitTime,
+			status: attendanceLogs.status,
+			date: attendanceLogs.date,
+			purpose: attendanceLogs.purpose,
+			person: {
+				id: people.id,
+				name: people.name,
+				codeNo: people.codeNo,
+				company: people.company,
+				department: people.department,
+				designation: people.designation,
+				categoryId: people.categoryId,
+				isTrained: people.isTrained,
+				auditJoinDate: people.auditJoinDate
+			},
+			category: {
+				name: personCategories.name,
+				slug: personCategories.slug
+			}
+		})
+		.from(attendanceLogs)
+		.innerJoin(people, eq(attendanceLogs.personId, people.id))
+		.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
+		.where(where)
+		.limit(limit)
+		.offset(offset)
+		.orderBy(desc(attendanceLogs.entryTime));
 
-	if (view === 'detailed') {
-		const rows = await db
-			.select({
-				id: attendanceLogs.id,
-				entryTime: attendanceLogs.entryTime,
-				exitTime: attendanceLogs.exitTime,
-				status: attendanceLogs.status,
-				date: attendanceLogs.date,
-				purpose: attendanceLogs.purpose,
-				person: {
-					id: people.id,
-					name: people.name,
-					codeNo: people.codeNo,
-					company: people.company,
-					department: people.department,
-					categoryId: people.categoryId,
-					isTrained: people.isTrained,
-					auditJoinDate: people.auditJoinDate
-				},
-				category: {
-					name: personCategories.name,
-					slug: personCategories.slug
-				}
-			})
-			.from(attendanceLogs)
-			.innerJoin(people, eq(attendanceLogs.personId, people.id))
-			.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
-			.where(where)
-			.limit(limit)
-			.offset(offset)
-			.orderBy(desc(attendanceLogs.entryTime));
+	const now = new Date();
+	const data = rows.map((row) => {
+		const root = rootLookup.get(row.person.categoryId);
+		const durationSeconds = row.exitTime
+			? Math.floor((row.exitTime.getTime() - row.entryTime.getTime()) / 1000)
+			: Math.floor((now.getTime() - row.entryTime.getTime()) / 1000);
+		return {
+			...row,
+			durationSeconds,
+			rootCategory: root ? { id: root.id, name: root.name, slug: root.slug } : row.category
+		};
+	});
 
-		const now = new Date();
-
-		// Add root category name and duration to each row
-		data = rows.map((row) => {
-			const root = rootLookup.get(row.person.categoryId);
-			const durationSeconds = row.exitTime
-				? Math.floor((row.exitTime.getTime() - row.entryTime.getTime()) / 1000)
-				: Math.floor((now.getTime() - row.entryTime.getTime()) / 1000);
-
-			return {
-				...row,
-				durationSeconds,
-				rootCategory: root ? { id: root.id, name: root.name, slug: root.slug } : row.category
-			};
-		});
-
-		const [countResult] = await db
-			.select({ value: sql<number>`count(*)` })
-			.from(attendanceLogs)
-			.innerJoin(people, eq(attendanceLogs.personId, people.id))
-			.where(where);
-		totalCount = countResult.value;
-	} else if (view === 'daily') {
-		const summary = await db
-			.select({
-				date: attendanceLogs.date,
-				totalEntries: count(attendanceLogs.id),
-				uniquePeople: sql<number>`COUNT(DISTINCT ${attendanceLogs.personId})`,
-				totalDuration: sql<number>`SUM(CASE WHEN ${attendanceLogs.exitTime} IS NOT NULL THEN EXTRACT(EPOCH FROM (${attendanceLogs.exitTime} - ${attendanceLogs.entryTime})) ELSE 0 END)`
-			})
-			.from(attendanceLogs)
-			.innerJoin(people, eq(attendanceLogs.personId, people.id))
-			.where(where)
-			.groupBy(attendanceLogs.date)
-			.orderBy(desc(attendanceLogs.date))
-			.limit(limit)
-			.offset(offset);
-
-		data = summary;
-
-		const [countResult] = await db
-			.select({ value: sql<number>`COUNT(DISTINCT ${attendanceLogs.date})` })
-			.from(attendanceLogs)
-			.innerJoin(people, eq(attendanceLogs.personId, people.id))
-			.where(where);
-		totalCount = countResult.value;
-	} else if (view === 'monthly') {
-		const summary = await db
-			.select({
-				month: sql<string>`to_char(${attendanceLogs.date}::date, 'YYYY-MM')`,
-				totalEntries: count(attendanceLogs.id),
-				uniquePeople: sql<number>`COUNT(DISTINCT ${attendanceLogs.personId})`,
-				activeDays: sql<number>`COUNT(DISTINCT ${attendanceLogs.date})`
-			})
-			.from(attendanceLogs)
-			.innerJoin(people, eq(attendanceLogs.personId, people.id))
-			.where(where)
-			.groupBy(sql`to_char(${attendanceLogs.date}::date, 'YYYY-MM')`)
-			.orderBy(desc(sql`to_char(${attendanceLogs.date}::date, 'YYYY-MM')`))
-			.limit(limit)
-			.offset(offset);
-
-		data = summary;
-
-		const [countResult] = await db
-			.select({
-				value: sql<number>`COUNT(DISTINCT to_char(${attendanceLogs.date}::date, 'YYYY-MM'))`
-			})
-			.from(attendanceLogs)
-			.innerJoin(people, eq(attendanceLogs.personId, people.id))
-			.where(where);
-		totalCount = countResult.value;
-	}
+	const [countResult] = await db
+		.select({ value: sql<number>`count(*)` })
+		.from(attendanceLogs)
+		.innerJoin(people, eq(attendanceLogs.personId, people.id))
+		.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
+		.where(where);
+	const totalCount = countResult.value;
 
 	// Summary stats for the filtered range
 	const [summaryStats] = await db
@@ -211,10 +155,10 @@ export const load: PageServerLoad = async (event) => {
 		})
 		.from(attendanceLogs)
 		.innerJoin(people, eq(attendanceLogs.personId, people.id))
+		.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
 		.where(where);
 
 	return {
-		view,
 		data,
 		summary: {
 			totalEntries: summaryStats.totalEntries,

@@ -10,14 +10,48 @@ import { queueDeviceSync, queueDeviceDelete } from '$lib/server/device-sync';
 import { createNotification } from '$lib/server/push';
 import { ensureDesignation } from '$lib/server/db/designation-utils';
 import { getUniqueDepartments, ensureDepartment } from '$lib/server/db/department-utils';
-import { writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import sharp from 'sharp';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
-async function savePhoto(photo: FormDataEntryValue | null): Promise<{ photoUrl: string; thumbUrl: string } | null> {
+function parseOptionalDate(value: string | null): Date | null {
+	if (!value) return null;
+	const parsed = new Date(value);
+	return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function parsePositiveIntParam(
+	value: string | null,
+	fallback: number,
+	min: number,
+	max: number
+): number {
+	const parsed = Number.parseInt(value ?? '', 10);
+	if (!Number.isFinite(parsed)) return fallback;
+	return Math.min(max, Math.max(min, parsed));
+}
+
+function toStaticFilePath(relativeUrl: string): string {
+	return join(process.cwd(), 'static', relativeUrl.replace(/^\/+/, ''));
+}
+
+async function getNextBiometricId(tx: any): Promise<string> {
+	// Serialize ID allocation to avoid duplicate biometric IDs under concurrent writes.
+	await tx.execute(sql`SELECT pg_advisory_xact_lock(9476231)`);
+	const [maxResult] = await tx
+		.select({
+			maxId: sql<number>`COALESCE(MAX(CASE WHEN ${people.biometricId} ~ '^[0-9]+$' THEN CAST(${people.biometricId} AS INTEGER) ELSE 0 END), 0)`
+		})
+		.from(people);
+	return String((maxResult?.maxId || 0) + 1);
+}
+
+async function savePhoto(
+	photo: FormDataEntryValue | null
+): Promise<{ photoUrl: string; thumbUrl: string } | null> {
 	if (!photo || !(photo instanceof File) || photo.size === 0) return null;
 
 	if (photo.size > MAX_FILE_SIZE) {
@@ -53,10 +87,7 @@ async function savePhoto(photo: FormDataEntryValue | null): Promise<{ photoUrl: 
 			.toFile(filePath);
 
 		// Save thumbnail
-		await sharp(buffer)
-			.webp({ quality: 75 })
-			.resize(80, 80, { fit: 'cover' })
-			.toFile(thumbPath);
+		await sharp(buffer).webp({ quality: 75 }).resize(80, 80, { fit: 'cover' }).toFile(thumbPath);
 
 		return {
 			photoUrl: `/uploads/people/${fileName}`,
@@ -92,8 +123,8 @@ export const load: PageServerLoad = async (event) => {
 	const categoryId = event.url.searchParams.get('category') || '';
 	const department = event.url.searchParams.get('department') || '';
 	const trained = event.url.searchParams.get('trained') || '';
-	const page = parseInt(event.url.searchParams.get('page') || '1');
-	const limit = Math.min(100, Math.max(1, parseInt(event.url.searchParams.get('limit') || '20')));
+	const page = parsePositiveIntParam(event.url.searchParams.get('page'), 1, 1, 1000000);
+	const limit = parsePositiveIntParam(event.url.searchParams.get('limit'), 20, 1, 100);
 	const offset = (page - 1) * limit;
 
 	const whereClauses = [];
@@ -136,7 +167,7 @@ export const load: PageServerLoad = async (event) => {
 	const validatedOffset = (validatedPage - 1) * limit;
 
 	// Define rank if query exists
-	const rankSql = query 
+	const rankSql = query
 		? sql<number>`GREATEST(
 			similarity(COALESCE(${people.name}, ''), ${query}),
 			word_similarity(${query}, COALESCE(${people.name}, '')),
@@ -220,28 +251,32 @@ export const actions: Actions = {
 		requirePermission(event.locals, 'people.create');
 		const data = await event.request.formData();
 
-		const name = data.get('name') as string;
-		const categoryId = data.get('categoryId') as string;
-		const codeNo = (data.get('codeNo') as string) || null;
-		const cardNo = (data.get('cardNo') as string) || null;
-		const company = (data.get('company') as string) || null;
-		const contactNo = (data.get('contactNo') as string) || null;
-		const rawDesignation = (data.get('designation') as string) || null;
-		const department = (data.get('department') as string) || null;
+		const name = ((data.get('name') as string) || '').trim();
+		const categoryId = ((data.get('categoryId') as string) || '').trim();
+		const codeNo = ((data.get('codeNo') as string) || '').trim() || null;
+		const cardNo = ((data.get('cardNo') as string) || '').trim() || null;
+		const company = ((data.get('company') as string) || '').trim() || null;
+		const contactNo = ((data.get('contactNo') as string) || '').trim() || null;
+		const rawDesignation = ((data.get('designation') as string) || '').trim() || null;
+		const department = ((data.get('department') as string) || '').trim() || null;
 		const joinDateStr = data.get('joinDate') as string;
 		const auditJoinDateStr = data.get('auditJoinDate') as string;
 
-		const joinDate = joinDateStr ? new Date(joinDateStr) : null;
-		const auditJoinDate = auditJoinDateStr ? new Date(auditJoinDateStr) : null;
+		const joinDate = parseOptionalDate(joinDateStr || null);
+		const auditJoinDate = parseOptionalDate(auditJoinDateStr || null);
 
 		const isTrained = data.get('isTrained') === 'true';
-		const notes = (data.get('notes') as string) || null;
+		const notes = ((data.get('notes') as string) || '').trim() || null;
 		const photo = data.get('photo') as File | null;
-		const purpose = (data.get('purpose') as string) || null;
-		const location = (data.get('location') as string) || null;
+		const purpose = ((data.get('purpose') as string) || '').trim() || null;
+		const location = ((data.get('location') as string) || '').trim() || null;
+		const shouldAutoCheckIn = data.get('autoCheckIn') === 'true';
 
 		if (!name || !categoryId) {
 			return fail(400, { message: 'Name and Category are required' });
+		}
+		if (shouldAutoCheckIn && location !== 'ship' && location !== 'yard') {
+			return fail(400, { message: 'Location (Ship/Yard) is required for auto check-in' });
 		}
 
 		try {
@@ -254,10 +289,7 @@ export const actions: Actions = {
 
 			// Auto-generate biometricId atomically
 			const nextBiometricId = await db.transaction(async (tx) => {
-				const [maxResult] = await tx
-					.select({ maxId: sql<number>`COALESCE(MAX(CAST(biometric_id AS INTEGER)), 0)` })
-					.from(people);
-				const nextId = String((maxResult.maxId || 0) + 1);
+				const nextId = await getNextBiometricId(tx);
 
 				await tx.insert(people).values({
 					id,
@@ -287,7 +319,7 @@ export const actions: Actions = {
 			await queueDeviceSync(nextBiometricId, name, cardNo || undefined);
 
 			// Optional: Auto check-in if requested
-			if (data.get('autoCheckIn') === 'true') {
+			if (shouldAutoCheckIn) {
 				const now = new Date();
 				const logId = crypto.randomUUID();
 				await db.insert(attendanceLogs).values({
@@ -344,30 +376,30 @@ export const actions: Actions = {
 		requirePermission(event.locals, 'people.edit');
 		const data = await event.request.formData();
 		const id = data.get('id') as string;
-		const name = data.get('name') as string;
-		const categoryId = data.get('categoryId') as string;
+		const name = ((data.get('name') as string) || '').trim();
+		const categoryId = ((data.get('categoryId') as string) || '').trim();
 
-		const rawDesignation = (data.get('designation') as string) || null;
-		const department = (data.get('department') as string) || null;
+		const rawDesignation = ((data.get('designation') as string) || '').trim() || null;
+		const department = ((data.get('department') as string) || '').trim() || null;
 		const joinDateStr = data.get('joinDate') as string;
 		const auditJoinDateStr = data.get('auditJoinDate') as string;
 
-		const joinDate = joinDateStr ? new Date(joinDateStr) : null;
-		const auditJoinDate = auditJoinDateStr ? new Date(auditJoinDateStr) : null;
+		const joinDate = parseOptionalDate(joinDateStr || null);
+		const auditJoinDate = parseOptionalDate(auditJoinDateStr || null);
 
 		const isTrained = data.get('isTrained') === 'true';
-		const notes = (data.get('notes') as string) || null;
+		const notes = ((data.get('notes') as string) || '').trim() || null;
 		const photo = data.get('photo') as File | null;
-		const cardNo = (data.get('cardNo') as string) || null;
+		const cardNo = ((data.get('cardNo') as string) || '').trim() || null;
 
 		if (!id || !name) return fail(400, { message: 'ID and Name required' });
 
 		const updates: Record<string, any> = {
 			name,
-			codeNo: (data.get('codeNo') as string) || null,
+			codeNo: ((data.get('codeNo') as string) || '').trim() || null,
 			cardNo,
-			company: (data.get('company') as string) || null,
-			contactNo: (data.get('contactNo') as string) || null,
+			company: ((data.get('company') as string) || '').trim() || null,
+			contactNo: ((data.get('contactNo') as string) || '').trim() || null,
 			designation: rawDesignation,
 			department,
 			joinDate,
@@ -387,14 +419,14 @@ export const actions: Actions = {
 			if (photoResult) {
 				// Get old photo URL to delete it
 				const [oldPerson] = await db
-					.select({ 
+					.select({
 						photoUrl: people.photoUrl,
 						thumbUrl: people.thumbUrl
 					})
 					.from(people)
 					.where(eq(people.id, id));
 				if (oldPerson?.photoUrl) {
-					const oldPhotoPath = join(process.cwd(), 'static', oldPerson.photoUrl);
+					const oldPhotoPath = toStaticFilePath(oldPerson.photoUrl);
 					try {
 						if (existsSync(oldPhotoPath)) {
 							unlinkSync(oldPhotoPath);
@@ -404,7 +436,7 @@ export const actions: Actions = {
 					}
 				}
 				if (oldPerson?.thumbUrl) {
-					const oldThumbPath = join(process.cwd(), 'static', oldPerson.thumbUrl);
+					const oldThumbPath = toStaticFilePath(oldPerson.thumbUrl);
 					try {
 						if (existsSync(oldThumbPath)) {
 							unlinkSync(oldThumbPath);
@@ -420,12 +452,7 @@ export const actions: Actions = {
 			// Ensure person has a biometricId
 			const [existing] = await db.select().from(people).where(eq(people.id, id));
 			if (existing && !existing.biometricId) {
-				const nextBiometricId = await db.transaction(async (tx) => {
-					const [maxResult] = await tx
-						.select({ maxId: sql<number>`COALESCE(MAX(CAST(biometric_id AS INTEGER)), 0)` })
-						.from(people);
-					return String((maxResult.maxId || 0) + 1);
-				});
+				const nextBiometricId = await db.transaction((tx) => getNextBiometricId(tx));
 				updates.biometricId = nextBiometricId;
 			}
 
@@ -472,6 +499,41 @@ export const actions: Actions = {
 		}
 	},
 
+	changeCategory: async (event) => {
+		requirePermission(event.locals, 'people.edit');
+		const data = await event.request.formData();
+		const id = ((data.get('id') as string) || '').trim();
+		const categoryId = ((data.get('categoryId') as string) || '').trim();
+
+		if (!id || !categoryId) {
+			return fail(400, { message: 'Person ID and Category are required' });
+		}
+
+		const [person] = await db
+			.select({ id: people.id, name: people.name, categoryId: people.categoryId })
+			.from(people)
+			.where(eq(people.id, id));
+
+		if (!person) {
+			return fail(404, { message: 'Person not found' });
+		}
+
+		if (person.categoryId !== categoryId) {
+			await db.update(people).set({ categoryId }).where(eq(people.id, id));
+
+			await createNotification({
+				userId: event.locals.user?.id,
+				type: 'edit',
+				title: 'Category Updated',
+				message: `${event.locals.user?.username || 'Admin'} changed category for ${person.name}`,
+				link: `/people/${id}`
+			});
+		}
+
+		notifyChange();
+		return { success: true };
+	},
+
 	delete: async (event) => {
 		requirePermission(event.locals, 'people.delete');
 		const data = await event.request.formData();
@@ -484,7 +546,7 @@ export const actions: Actions = {
 			const [person] = await db.select().from(people).where(eq(people.id, id));
 
 			if (person?.photoUrl) {
-				const photoPath = join(process.cwd(), 'static', person.photoUrl);
+				const photoPath = toStaticFilePath(person.photoUrl);
 				try {
 					if (existsSync(photoPath)) {
 						unlinkSync(photoPath);
@@ -495,7 +557,7 @@ export const actions: Actions = {
 			}
 
 			if (person?.thumbUrl) {
-				const thumbPath = join(process.cwd(), 'static', person.thumbUrl);
+				const thumbPath = toStaticFilePath(person.thumbUrl);
 				try {
 					if (existsSync(thumbPath)) {
 						unlinkSync(thumbPath);
@@ -515,7 +577,7 @@ export const actions: Actions = {
 				userId: event.locals.user?.id,
 				type: 'delete',
 				title: 'Person Deleted',
-				message: `${event.locals.user?.username || 'Admin'} deleted record for ${person.name}`
+				message: `${event.locals.user?.username || 'Admin'} deleted record for ${person?.name || 'Unknown'}`
 			});
 
 			notifyChange();

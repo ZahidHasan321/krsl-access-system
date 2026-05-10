@@ -7,15 +7,27 @@ import { attendanceLogs } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { notifyChange } from '$lib/server/events';
 
+function parsePositiveIntParam(
+	value: string | null,
+	fallback: number,
+	min: number,
+	max: number
+): number {
+	const parsed = Number.parseInt(value ?? '', 10);
+	if (!Number.isFinite(parsed)) return fallback;
+	return Math.min(max, Math.max(min, parsed));
+}
+
 export const GET: RequestHandler = async (event) => {
 	requirePermission(event.locals, 'people.view');
 
 	const query = event.url.searchParams.get('q') || '';
 	const categoryId = event.url.searchParams.get('category') || '';
 	const location = event.url.searchParams.get('location') || '';
+	const department = event.url.searchParams.get('department') || '';
 	const sortBy = (event.url.searchParams.get('sort') || 'recent') as 'recent' | 'duration';
-	const page = parseInt(event.url.searchParams.get('page') || '1');
-	const limit = Math.min(2000, Math.max(1, parseInt(event.url.searchParams.get('limit') || '50')));
+	const page = parsePositiveIntParam(event.url.searchParams.get('page'), 1, 1, 1000000);
+	const limit = parsePositiveIntParam(event.url.searchParams.get('limit'), 50, 1, 2000);
 
 	const result = await getAttendanceLogs({
 		page,
@@ -23,6 +35,7 @@ export const GET: RequestHandler = async (event) => {
 		query,
 		categoryId,
 		location,
+		department,
 		sortBy
 	});
 
@@ -31,7 +44,7 @@ export const GET: RequestHandler = async (event) => {
 
 export const PATCH: RequestHandler = async (event) => {
 	requirePermission(event.locals, 'people.create');
-	
+
 	try {
 		const { logId, purpose, location } = await event.request.json();
 
@@ -39,11 +52,20 @@ export const PATCH: RequestHandler = async (event) => {
 			return json({ message: 'Log ID required' }, { status: 400 });
 		}
 
+		const normalizedLocation =
+			location === 'ship' ||
+			location === 'yard' ||
+			location === null ||
+			location === undefined ||
+			location === ''
+				? location || null
+				: null;
+
 		await db
 			.update(attendanceLogs)
 			.set({
 				purpose: purpose || null,
-				location: location || null
+				location: normalizedLocation
 			})
 			.where(eq(attendanceLogs.id, logId));
 

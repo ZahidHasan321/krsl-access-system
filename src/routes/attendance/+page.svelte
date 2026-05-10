@@ -26,13 +26,15 @@
 		Warehouse
 	} from 'lucide-svelte';
 	import PrintHeader from '$lib/components/PrintHeader.svelte';
-	import { goto } from '$app/navigation';
+	import { Checkbox } from '$lib/components/ui/checkbox';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { format } from 'date-fns';
 	import { enhance } from '$app/forms';
 	import { clsx } from 'clsx';
 	import { slide } from 'svelte/transition';
 	import { sineInOut } from 'svelte/easing';
+	import { SvelteSet } from 'svelte/reactivity';
 	import {
 		cn,
 		getCategoryBadgeClass,
@@ -95,6 +97,12 @@
 	let confirmCheckOutOpen = $state(false);
 	let checkOutFormElement = $state<HTMLFormElement | null>(null);
 	let debounceTimer: any;
+
+	// Batch selection state
+	let selectedIds = new SvelteSet<string>();
+	let selectAllAcrossPages = $state(false);
+	let confirmBatchCheckOutOpen = $state(false);
+	let isSubmittingBatch = $state(false);
 	let isPrintConfirmOpen = $state(false);
 	let isPrintMode = $derived(page.url.searchParams.has('print'));
 	const printTh = "border: 1px solid #cbd5e1; padding: 6px 4px; text-align: left; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 0.04em; font-size: 8px; vertical-align: bottom;";
@@ -154,6 +162,7 @@
 		if (searchQuery) url.searchParams.set('q', searchQuery);
 		if (selectedCategoryId) url.searchParams.set('category', selectedCategoryId);
 		if (selectedLocation) url.searchParams.set('location', selectedLocation);
+		if (selectedDepartment) url.searchParams.set('department', selectedDepartment);
 		if (selectedSort) url.searchParams.set('sort', selectedSort);
 
 		try {
@@ -319,6 +328,71 @@
 		const minutes = Math.floor((seconds % 3600) / 60);
 		if (hours > 0) return `${hours}h ${minutes}m`;
 		return `${minutes}m`;
+	}
+
+	// --- Batch selection helpers ---
+	const allVisibleSelected = $derived(
+		logs.length > 0 && logs.every((l: any) => selectedIds.has(l.id))
+	);
+	const someVisibleSelected = $derived(
+		logs.some((l: any) => selectedIds.has(l.id)) && !allVisibleSelected
+	);
+	const effectiveSelectionCount = $derived(
+		selectAllAcrossPages ? data.pagination.totalCount : selectedIds.size
+	);
+	const hasMoreUnloaded = $derived(logs.length < data.pagination.totalCount);
+
+	function toggleRow(id: string) {
+		if (selectedIds.has(id)) {
+			selectedIds.delete(id);
+			selectAllAcrossPages = false;
+		} else {
+			selectedIds.add(id);
+		}
+	}
+
+	function toggleSelectAllVisible() {
+		if (allVisibleSelected) {
+			for (const l of logs) selectedIds.delete(l.id);
+			selectAllAcrossPages = false;
+		} else {
+			for (const l of logs) selectedIds.add(l.id);
+		}
+	}
+
+	function selectAcrossPages() {
+		selectAllAcrossPages = true;
+		for (const l of logs) selectedIds.add(l.id);
+	}
+
+	function clearSelection() {
+		selectedIds.clear();
+		selectAllAcrossPages = false;
+	}
+
+	async function submitBatchCheckOut() {
+		if (effectiveSelectionCount === 0 || isSubmittingBatch) return;
+		isSubmittingBatch = true;
+		const fd = new FormData();
+		if (selectAllAcrossPages) {
+			fd.set('selectAll', 'true');
+			fd.set('q', searchQuery || '');
+			fd.set('category', selectedCategoryId || '');
+			fd.set('location', selectedLocation || '');
+			fd.set('department', selectedDepartment || '');
+		} else {
+			fd.set('logIds', JSON.stringify([...selectedIds]));
+		}
+		try {
+			const res = await fetch('?/checkOutBatch', { method: 'POST', body: fd });
+			if (!res.ok) throw new Error('Batch check-out failed');
+			clearSelection();
+			await invalidateAll();
+		} catch (e) {
+			console.error(e);
+		} finally {
+			isSubmittingBatch = false;
+		}
 	}
 
 	let showMobileFilters = $state(false);
@@ -918,6 +992,46 @@
 				</div>
 
 				<div class="relative min-h-full lg:bg-slate-100/50">
+					{#if logs.length > 0 && data.user?.permissions.includes('people.create')}
+						<div class="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5 lg:rounded-none">
+							<Checkbox
+								checked={allVisibleSelected}
+								indeterminate={someVisibleSelected}
+								onCheckedChange={toggleSelectAllVisible}
+								aria-label="Select all visible"
+							/>
+							<span class="text-[11px] font-black tracking-wider text-slate-500 uppercase">
+								{#if effectiveSelectionCount > 0}
+									{effectiveSelectionCount} selected
+								{:else}
+									Select all
+								{/if}
+							</span>
+							{#if allVisibleSelected && hasMoreUnloaded && !selectAllAcrossPages}
+								<button
+									type="button"
+									class="text-[11px] font-black text-primary-600 underline underline-offset-2 hover:text-primary-700"
+									onclick={selectAcrossPages}
+								>
+									Select all {data.pagination.totalCount} across pages
+								</button>
+							{/if}
+							{#if selectAllAcrossPages}
+								<span class="rounded-md bg-primary-50 px-2 py-0.5 text-[10px] font-black tracking-wider text-primary-700 uppercase">
+									All pages
+								</span>
+							{/if}
+							{#if effectiveSelectionCount > 0}
+								<button
+									type="button"
+									class="ml-auto text-[11px] font-black text-slate-400 hover:text-slate-600"
+									onclick={clearSelection}
+								>
+									Clear
+								</button>
+							{/if}
+						</div>
+					{/if}
 					{#if logs.length > 0}
 						<div class="flex flex-col gap-2.5 lg:p-3">
 							{#each logs as log (log.id)}
@@ -940,6 +1054,14 @@
 
 										<div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
 											<div class="flex min-w-0 flex-1 items-center gap-3 pr-10 lg:pr-0">
+												{#if data.user?.permissions.includes('people.create')}
+													<Checkbox
+														checked={selectAllAcrossPages || selectedIds.has(log.id)}
+														onCheckedChange={() => toggleRow(log.id)}
+														aria-label="Select row"
+														class="shrink-0"
+													/>
+												{/if}
 												<!-- Avatar -->
 												<div class="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-100 bg-white shadow-sm">
 													{#if log.person.photoUrl}
@@ -1089,6 +1211,45 @@
 		</main>
 	</div>
 
+	<!-- Bulk Action Bar -->
+	{#if effectiveSelectionCount > 0 && data.user?.permissions.includes('people.create')}
+		<div
+			class="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-2xl backdrop-blur-sm pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:inset-x-auto sm:right-8 sm:bottom-28 sm:rounded-2xl sm:border sm:px-4"
+			transition:slide={{ duration: 180, easing: sineInOut }}
+		>
+			<div class="mx-auto flex max-w-3xl items-center gap-3">
+				<div class="flex flex-col">
+					<span class="text-sm font-black text-slate-900 tabular-nums">
+						{effectiveSelectionCount} selected
+					</span>
+					{#if selectAllAcrossPages}
+						<span class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">All pages</span>
+					{/if}
+				</div>
+				<button
+					type="button"
+					class="ml-auto rounded-lg px-3 py-2 text-xs font-black text-slate-500 hover:bg-slate-100"
+					onclick={clearSelection}
+				>
+					Clear
+				</button>
+				<Button
+					variant="default"
+					disabled={isSubmittingBatch}
+					class="h-10 gap-2 rounded-xl bg-rose-600 px-4 text-xs font-black text-white shadow-md hover:bg-rose-700"
+					onclick={() => (confirmBatchCheckOutOpen = true)}
+				>
+					{#if isSubmittingBatch}
+						<Loader2 size={14} class="animate-spin" />
+					{:else}
+						<CheckCircle2 size={14} />
+					{/if}
+					Check Out {effectiveSelectionCount}
+				</Button>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Floating Action Buttons -->
 	{#if data.user?.permissions.includes('people.create')}
 		<div class="fixed right-5 bottom-6 z-40 flex flex-col items-end gap-3 pb-[env(safe-area-inset-bottom)] sm:right-8 sm:bottom-8">
@@ -1134,4 +1295,13 @@
 	message="Are you sure you want to check out this person?"
 	confirmText="Confirm"
 	onconfirm={() => checkOutFormElement?.requestSubmit()}
+/>
+
+<ConfirmModal
+	bind:open={confirmBatchCheckOutOpen}
+	title="Confirm Batch Check-Out"
+	message="Check out {effectiveSelectionCount} {effectiveSelectionCount === 1 ? 'person' : 'people'}?"
+	confirmText="Check Out All"
+	variant="warning"
+	onconfirm={submitBatchCheckOut}
 />

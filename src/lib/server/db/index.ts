@@ -7,8 +7,9 @@ let _db: ReturnType<typeof drizzle<typeof schema>>;
 
 export function getDb() {
 	if (!_db) {
-		if (!env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
-		const pool = new pg.Pool({ connectionString: env.DATABASE_URL });
+		const databaseUrl = env.DATABASE_URL || process.env.DATABASE_URL;
+		if (!databaseUrl) throw new Error('DATABASE_URL is not set');
+		const pool = new pg.Pool({ connectionString: databaseUrl });
 		_db = drizzle(pool, { schema });
 	}
 	return _db;

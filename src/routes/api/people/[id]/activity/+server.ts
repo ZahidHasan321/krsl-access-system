@@ -5,11 +5,22 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { requirePermission } from '$lib/server/rbac';
 
+function parsePositiveIntParam(
+	value: string | null,
+	fallback: number,
+	min: number,
+	max: number
+): number {
+	const parsed = Number.parseInt(value ?? '', 10);
+	if (!Number.isFinite(parsed)) return fallback;
+	return Math.min(max, Math.max(min, parsed));
+}
+
 export const GET: RequestHandler = async (event) => {
 	requirePermission(event.locals, 'people.view');
 	const { id } = event.params;
-	const limit = parseInt(event.url.searchParams.get('limit') || '20');
-	const offset = parseInt(event.url.searchParams.get('offset') || '0');
+	const limit = parsePositiveIntParam(event.url.searchParams.get('limit'), 20, 1, 200);
+	const offset = parsePositiveIntParam(event.url.searchParams.get('offset'), 0, 0, 1000000);
 
 	if (!id) return json({ error: 'Missing ID' }, { status: 400 });
 

@@ -42,7 +42,7 @@
 
 		<form
 			method="POST"
-			action="/people?/update"
+			action="/people?/changeCategory"
 			use:enhance={() => {
 				isLoading = true;
 				return async ({ result, update }) => {
@@ -56,8 +56,6 @@
 			class="space-y-6 pt-4"
 		>
 			<input type="hidden" name="id" value={person.id} />
-			<input type="hidden" name="name" value={person.name} />
-			<!-- Name is required by update action -->
 			<input type="hidden" name="categoryId" value={boundCategoryId} />
 
 			<div class="space-y-2">

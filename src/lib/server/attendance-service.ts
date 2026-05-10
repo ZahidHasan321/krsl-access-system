@@ -45,18 +45,20 @@ export interface GetAttendanceLogsParams {
 	sortBy?: 'recent' | 'duration';
 }
 
-export async function getAttendanceLogs({
-	page = 1,
-	limit = 20,
+export interface ActiveLogsFilter {
+	query?: string;
+	categoryId?: string;
+	location?: string;
+	department?: string;
+}
+
+export function buildActiveLogsWhere({
 	query = '',
 	categoryId = '',
 	location = '',
-	department = '',
-	sortBy = 'recent'
-}: GetAttendanceLogsParams) {
+	department = ''
+}: ActiveLogsFilter): SQL | undefined {
 	const trimmedQuery = query.trim();
-	const rootLookup = rootLookupCache;
-
 	const whereClauses: (SQL | undefined)[] = [eq(attendanceLogs.status, 'on_premises')];
 
 	if (trimmedQuery) {
@@ -90,7 +92,31 @@ export async function getAttendanceLogs({
 		whereClauses.push(eq(people.department, department));
 	}
 
-	const where = and(...whereClauses.filter((c): c is SQL => !!c));
+	return and(...whereClauses.filter((c): c is SQL => !!c));
+}
+
+export async function getActiveLogIds(filter: ActiveLogsFilter): Promise<string[]> {
+	const where = buildActiveLogsWhere(filter);
+	const rows = await db
+		.select({ id: attendanceLogs.id })
+		.from(attendanceLogs)
+		.innerJoin(people, eq(attendanceLogs.personId, people.id))
+		.innerJoin(personCategories, eq(people.categoryId, personCategories.id))
+		.where(where);
+	return rows.map((r) => r.id);
+}
+
+export async function getAttendanceLogs({
+	page = 1,
+	limit = 20,
+	query = '',
+	categoryId = '',
+	location = '',
+	department = '',
+	sortBy = 'recent'
+}: GetAttendanceLogsParams) {
+	const rootLookup = rootLookupCache;
+	const where = buildActiveLogsWhere({ query, categoryId, location, department });
 
 	const [totalCountResult] = await db
 		.select({ count: count() })

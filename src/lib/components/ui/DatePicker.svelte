@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Popover } from 'bits-ui';
 	import { Calendar as CalendarIcon, X } from 'lucide-svelte';
-	import { CalendarDate, parseDate, getLocalTimeZone, today } from '@internationalized/date';
+	import { CalendarDate, parseDate, today } from '@internationalized/date';
 	import Calendar from './Calendar.svelte';
 	import { cn, toCalendarDate } from '$lib/utils';
 	import { i18n } from '$lib/i18n.svelte';
@@ -33,11 +33,20 @@
 
 	let open = $state(false);
 
+	const BD_TIMEZONE = 'Asia/Dhaka';
+
+	function bdTodayString(): string {
+		return new Intl.DateTimeFormat('en-CA', {
+			timeZone: BD_TIMEZONE,
+			year: 'numeric', month: '2-digit', day: '2-digit'
+		}).format(new Date());
+	}
+
 	// Internal state for bits-ui
 	let dateValue = $derived.by(() =>
-		toCalendarDate(value || new Date().toISOString().split('T')[0])
+		toCalendarDate(value || bdTodayString())
 	);
-	let placeholderDate = $state(today(getLocalTimeZone()));
+	let placeholderDate = $state(today(BD_TIMEZONE));
 
 	// Formatted value for display
 	const displayValue = $derived.by(() => {

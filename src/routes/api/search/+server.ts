@@ -29,12 +29,18 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	const query = (url.searchParams.get('q') || '').trim();
 	const categoryId = url.searchParams.get('category') || url.searchParams.get('categoryId');
 	const type = url.searchParams.get('type');
-	const limit = Math.min(1000, parseInt(url.searchParams.get('limit') || '15'));
-	const offset = parseInt(url.searchParams.get('offset') || '0');
+	const parsedLimit = Number.parseInt(url.searchParams.get('limit') || '15', 10);
+	const parsedOffset = Number.parseInt(url.searchParams.get('offset') || '0', 10);
+	const limit = Number.isFinite(parsedLimit) ? Math.min(1000, Math.max(1, parsedLimit)) : 15;
+	const offset = Number.isFinite(parsedOffset) ? Math.max(0, parsedOffset) : 0;
 
 	// Get all categories for descendant resolution
 	const allCategories = await db
-		.select({ id: personCategories.id, parentId: personCategories.parentId })
+		.select({
+			id: personCategories.id,
+			parentId: personCategories.parentId,
+			slug: personCategories.slug
+		})
 		.from(personCategories);
 
 	// Build category filter if specified
@@ -65,14 +71,15 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	let foundPeople: any[] = [];
 	if (type !== 'vehicle') {
 		// Define rank and order
-		const rankSql = query && query.length >= 2
-			? sql<number>`GREATEST(
+		const rankSql =
+			query && query.length >= 2
+				? sql<number>`GREATEST(
 				similarity(COALESCE(${people.name}, ''), ${query}),
 				word_similarity(${query}, COALESCE(${people.name}, '')),
 				similarity(COALESCE(${people.codeNo}, ''), ${query}),
 				similarity(COALESCE(${people.company}, ''), ${query})
 			)`.as('search_rank')
-			: sql<number>`0`.as('search_rank');
+				: sql<number>`0`.as('search_rank');
 
 		const orderBy = query && query.length >= 2 ? desc(rankSql) : desc(people.createdAt);
 
@@ -104,12 +111,10 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			.offset(offset);
 	}
 
-	console.log(`[Search API] category="${categoryId}", limit=${limit}, offset=${offset}, found=${foundPeople.length} people`);
-
 	// Build a map for quick root slug lookup
 	const catMap = new Map(allCategories.map((c) => [c.id, c]));
 	function getRootSlug(catId: string): string {
-		let current: any = catMap.get(catId);
+		let current = catMap.get(catId);
 		while (current?.parentId) {
 			current = catMap.get(current.parentId);
 		}
@@ -119,15 +124,17 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	// If searching globally (no categoryId), also search vehicles
 	let foundVehicles: any[] = [];
 	if (!categoryId && type !== 'person') {
-		const vehicleRankSql = query && query.length >= 2
-			? sql<number>`GREATEST(
+		const vehicleRankSql =
+			query && query.length >= 2
+				? sql<number>`GREATEST(
 				similarity(COALESCE(${vehicles.vehicleNumber}, ''), ${query}),
 				similarity(COALESCE(${vehicles.driverName}, ''), ${query}),
 				similarity(COALESCE(${vehicles.vendorName}, ''), ${query})
 			)`.as('search_rank')
-			: sql<number>`0`.as('search_rank');
+				: sql<number>`0`.as('search_rank');
 
-		const vehicleOrderBy = query && query.length >= 2 ? desc(vehicleRankSql) : desc(vehicles.entryTime);
+		const vehicleOrderBy =
+			query && query.length >= 2 ? desc(vehicleRankSql) : desc(vehicles.entryTime);
 		let vehicleWhere = undefined;
 
 		if (query && query.length >= 2) {

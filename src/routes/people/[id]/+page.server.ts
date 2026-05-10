@@ -9,14 +9,37 @@ import { createNotification } from '$lib/server/push';
 import { ensureDesignation } from '$lib/server/db/designation-utils';
 import { ensureDepartment } from '$lib/server/db/department-utils';
 import type { PageServerLoad, Actions } from './$types';
-import { writeFileSync, mkdirSync, existsSync, unlinkSync } from 'fs';
+import { mkdirSync, existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import sharp from 'sharp';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
-async function savePhoto(photo: FormDataEntryValue | null): Promise<{ photoUrl: string; thumbUrl: string } | null> {
+function parseOptionalDate(value: string | null): Date | null {
+	if (!value) return null;
+	const parsed = new Date(value);
+	return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function toStaticFilePath(relativeUrl: string): string {
+	return join(process.cwd(), 'static', relativeUrl.replace(/^\/+/, ''));
+}
+
+async function getNextBiometricId(tx: any): Promise<string> {
+	// Serialize ID allocation to avoid duplicate biometric IDs under concurrent writes.
+	await tx.execute(sql`SELECT pg_advisory_xact_lock(9476231)`);
+	const [maxResult] = await tx
+		.select({
+			maxId: sql<number>`COALESCE(MAX(CASE WHEN ${people.biometricId} ~ '^[0-9]+$' THEN CAST(${people.biometricId} AS INTEGER) ELSE 0 END), 0)`
+		})
+		.from(people);
+	return String((maxResult?.maxId || 0) + 1);
+}
+
+async function savePhoto(
+	photo: FormDataEntryValue | null
+): Promise<{ photoUrl: string; thumbUrl: string } | null> {
 	if (!photo || !(photo instanceof File) || photo.size === 0) return null;
 
 	if (photo.size > MAX_FILE_SIZE) {
@@ -52,10 +75,7 @@ async function savePhoto(photo: FormDataEntryValue | null): Promise<{ photoUrl: 
 			.toFile(filePath);
 
 		// Save thumbnail
-		await sharp(buffer)
-			.webp({ quality: 75 })
-			.resize(80, 80, { fit: 'cover' })
-			.toFile(thumbPath);
+		await sharp(buffer).webp({ quality: 75 }).resize(80, 80, { fit: 'cover' }).toFile(thumbPath);
 
 		return {
 			photoUrl: `/uploads/people/${fileName}`,
@@ -169,32 +189,32 @@ export const actions: Actions = {
 		const { id } = event.params;
 		const data = await event.request.formData();
 
-		const name = data.get('name') as string;
-		const categoryId = data.get('categoryId') as string;
+		const name = ((data.get('name') as string) || '').trim();
+		const categoryId = ((data.get('categoryId') as string) || '').trim();
 		const photo = data.get('photo') as File | null;
-		const cardNo = (data.get('cardNo') as string) || null;
-		const designation = (data.get('designation') as string) || null;
-		const department = (data.get('department') as string) || null;
+		const cardNo = ((data.get('cardNo') as string) || '').trim() || null;
+		const designation = ((data.get('designation') as string) || '').trim() || null;
+		const department = ((data.get('department') as string) || '').trim() || null;
 		const joinDateStr = data.get('joinDate') as string;
 		const auditJoinDateStr = data.get('auditJoinDate') as string;
 
-		const joinDate = joinDateStr ? new Date(joinDateStr) : null;
-		const auditJoinDate = auditJoinDateStr ? new Date(auditJoinDateStr) : null;
+		const joinDate = parseOptionalDate(joinDateStr || null);
+		const auditJoinDate = parseOptionalDate(auditJoinDateStr || null);
 
 		if (!name) return fail(400, { message: 'Name required' });
 
 		const updates: Record<string, any> = {
 			name,
-			codeNo: (data.get('codeNo') as string) || null,
+			codeNo: ((data.get('codeNo') as string) || '').trim() || null,
 			cardNo,
-			company: (data.get('company') as string) || null,
-			contactNo: (data.get('contactNo') as string) || null,
+			company: ((data.get('company') as string) || '').trim() || null,
+			contactNo: ((data.get('contactNo') as string) || '').trim() || null,
 			designation,
 			department,
 			joinDate,
 			auditJoinDate,
 			isTrained: data.get('isTrained') === 'true',
-			notes: (data.get('notes') as string) || null
+			notes: ((data.get('notes') as string) || '').trim() || null
 		};
 
 		if (categoryId) {
@@ -208,14 +228,14 @@ export const actions: Actions = {
 			if (photoResult) {
 				// Get old photo URL to delete it
 				const [oldPerson] = await db
-					.select({ 
+					.select({
 						photoUrl: people.photoUrl,
 						thumbUrl: people.thumbUrl
 					})
 					.from(people)
 					.where(eq(people.id, id));
 				if (oldPerson?.photoUrl) {
-					const oldPhotoPath = join(process.cwd(), 'static', oldPerson.photoUrl);
+					const oldPhotoPath = toStaticFilePath(oldPerson.photoUrl);
 					try {
 						if (existsSync(oldPhotoPath)) {
 							unlinkSync(oldPhotoPath);
@@ -225,7 +245,7 @@ export const actions: Actions = {
 					}
 				}
 				if (oldPerson?.thumbUrl) {
-					const oldThumbPath = join(process.cwd(), 'static', oldPerson.thumbUrl);
+					const oldThumbPath = toStaticFilePath(oldPerson.thumbUrl);
 					try {
 						if (existsSync(oldThumbPath)) {
 							unlinkSync(oldThumbPath);
@@ -241,12 +261,7 @@ export const actions: Actions = {
 			// Ensure person has a biometricId
 			const [existing] = await db.select().from(people).where(eq(people.id, id));
 			if (existing && !existing.biometricId) {
-				const nextBiometricId = await db.transaction(async (tx) => {
-					const [maxResult] = await tx
-						.select({ maxId: sql<number>`COALESCE(MAX(CAST(biometric_id AS INTEGER)), 0)` })
-						.from(people);
-					return String((maxResult.maxId || 0) + 1);
-				});
+				const nextBiometricId = await db.transaction((tx) => getNextBiometricId(tx));
 				updates.biometricId = nextBiometricId;
 			}
 
@@ -302,7 +317,7 @@ export const actions: Actions = {
 			const [person] = await db.select().from(people).where(eq(people.id, id));
 
 			if (person?.photoUrl) {
-				const photoPath = join(process.cwd(), 'static', person.photoUrl);
+				const photoPath = toStaticFilePath(person.photoUrl);
 				try {
 					if (existsSync(photoPath)) {
 						unlinkSync(photoPath);
@@ -313,7 +328,7 @@ export const actions: Actions = {
 			}
 
 			if (person?.thumbUrl) {
-				const thumbPath = join(process.cwd(), 'static', person.thumbUrl);
+				const thumbPath = toStaticFilePath(person.thumbUrl);
 				try {
 					if (existsSync(thumbPath)) {
 						unlinkSync(thumbPath);
@@ -323,24 +338,24 @@ export const actions: Actions = {
 				}
 			}
 
+			// Remove user from all devices before deleting DB record.
+			if (person?.biometricId) {
+				await queueDeviceDelete(person.biometricId);
+			}
+
 			await db.delete(people).where(eq(people.id, id));
 
 			await createNotification({
 				userId: event.locals.user?.id,
 				type: 'delete',
 				title: 'Person Deleted',
-				message: `${event.locals.user?.username || 'Admin'} deleted record for ${person.name}`
+				message: `${event.locals.user?.username || 'Admin'} deleted record for ${person?.name || 'Unknown'}`
 			});
-
-			// Remove user from all ZK devices so the PIN is fully cleared
-			if (person?.biometricId) {
-				await queueDeviceDelete(person.biometricId);
-			}
 
 			notifyChange();
 			return { success: true };
 		} catch (e) {
-			return fail(500, { message: 'Cannot delete person with attendance history' });
+			return fail(500, { message: 'Failed to delete person' });
 		}
 	}
 };
